@@ -130,6 +130,16 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
+    if (s.mode === "elevator" && inp.elevatorFloor !== null) {
+      const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
+      if (chosen < 0) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
+      else {
+        const from = elevatorY.current, to = floorHeight(chosen, world.elevator.floors);
+        s.elevatorFloor = chosen;
+        if (Math.abs(from - to) < .08) onPrompt("F / פעולה — לצאת מהמעלית");
+        else { s.elevatorTrip = makeElevatorTrip(from, to, "ride"); elevatorMoving.current = true; onPrompt(""); }
+      }
+    }
     s.yaw -= inp.drag.dx * .005; s.pitch = THREE.MathUtils.clamp(s.pitch + inp.drag.dy * .004, -.35, 1.25); inp.drag.dx = inp.drag.dy = 0;
     if (s.mode === "heli") s.heliDist = THREE.MathUtils.clamp(s.heliDist + inp.zoom * 2, 7, 30);
     else if (s.mode === "car") s.carDist = THREE.MathUtils.clamp(s.carDist + inp.zoom * 1.4, 5, 20);

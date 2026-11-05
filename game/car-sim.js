@@ -20,7 +20,7 @@ export function stepCar(car, controls, dt, env) {
     car.yaw += car.steering * CAR.STEER * speedFactor * dt * Math.sign(car.speed || 1);
     const proposed = { x: car.x + Math.sin(car.yaw) * car.speed * dt, z: car.z + Math.cos(car.yaw) * car.speed * dt };
     const beforeX = proposed.x, beforeZ = proposed.z;
-    env.resolve(proposed, car.y + .2, car.y + 1.55, CAR.RADIUS);
+    env.resolve(proposed, car.y + .2, car.y + 1.55, CAR.RADIUS, car);
     const hit = Math.hypot(proposed.x - beforeX, proposed.z - beforeZ) > .025;
     car.x = proposed.x; car.z = proposed.z;
     if (hit) car.speed *= .24;

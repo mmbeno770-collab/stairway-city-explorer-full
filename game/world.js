@@ -1,9 +1,9 @@
-export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 32, GRID = 5, CITY_HALF = (GRID * BLOCK) / 2;
+export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 36, GRID = 7, CITY_HALF = (GRID * BLOCK) / 2;
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const THEMES = [
-    { theme: "cafe", label: "בית קפה", floor: "#b98a5e" }, { theme: "library", label: "ספרייה", floor: "#7a5a43" }, { theme: "gym", label: "חדר כושר", floor: "#3d4450" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#e8e2d6" }, { theme: "office", label: "משרדים", floor: "#8f9aa6" }, { theme: "apartment", label: "דירת מגורים", floor: "#c9a77c" }, { theme: "arcade", label: "אולם משחקים", floor: "#2b2540" }, { theme: "garden", label: "גן פנימי", floor: "#6f8f4e" }, { theme: "music", label: "אולפן מוזיקה", floor: "#4a3530" }, { theme: "kids", label: "חדר ילדים", floor: "#9ec7d8" },
+    { theme: "cafe", label: "בית קפה", floor: "#76523d" }, { theme: "library", label: "ספרייה", floor: "#584638" }, { theme: "gym", label: "חדר כושר", floor: "#343d49" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#d7d0c2" }, { theme: "office", label: "משרדים", floor: "#8d9b9d" }, { theme: "apartment", label: "דירת מגורים", floor: "#b99a72" }, { theme: "arcade", label: "אולם משחקים", floor: "#25283b" }, { theme: "garden", label: "גן פנימי", floor: "#637a4d" }, { theme: "music", label: "אולפן מוזיקה", floor: "#56383a" }, { theme: "kids", label: "חדר ילדים", floor: "#c3d0ce" },
 ];
-const FACADES = ["#e8d9c0", "#c9b8a6", "#d98f6a", "#a9c2c9", "#efe6d2", "#b7a1c4", "#cfd6a3", "#e3b48d", "#9fb6a0", "#d6c7b2"];
+const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [];
@@ -21,7 +21,7 @@ export function generateWorld(seed = 7) {
     };
     for (let gx = 0; gx < GRID; gx++) for (let gz = 0; gz < GRID; gz++) {
         const cx = -CITY_HALF + gx * BLOCK + BLOCK / 2, cz = -CITY_HALF + gz * BLOCK + BLOCK / 2;
-        if (gx === 2 && gz === 2) {
+        if (gx === Math.floor(GRID / 2) && gz === Math.floor(GRID / 2)) {
             add(cx - 11, 0, cz - 11, cx + 11, .02, cz + 11, "#6fa25a", "solid", false);
             add(cx - 4, 0, cz - 4, cx + 4, .25, cz + 4, "#c9c2b0");
             add(cx - 2.5, .25, cz - 2.5, cx + 2.5, .35, cz + 2.5, "#5aa9d6", "glow", false);
@@ -33,7 +33,7 @@ export function generateWorld(seed = 7) {
             }
             continue;
         }
-        const W = 14 + Math.floor(r() * 4) * 1.5, D = 14 + Math.floor(r() * 3) * 1.5, nFloors = 2 + Math.floor(r() * 5), x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2, facade = FACADES[Math.floor(r() * FACADES.length)], glass = r() > .5 ? "#8fc6e0" : "#a9d8d0";
+        const W = 14 + Math.floor(r() * 4) * 1.5, D = 14 + Math.floor(r() * 3) * 1.5, nFloors = 2 + Math.floor(r() * 5), x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2, facade = FACADES[Math.floor(r() * FACADES.length)], glass = r() > .5 ? "#83aab9" : "#9bbdb6";
         const floors = [{ theme: "lobby", label: "לובי" }], pool = [...THEMES].sort(() => r() - .5);
         for (let f = 1; f < nFloors; f++) floors.push(pool[(f - 1) % pool.length]);
         const id = buildings.length;
@@ -60,11 +60,22 @@ export function generateWorld(seed = 7) {
                 } else add(x0 + t, .12, z0 + t, x1 - t, .15, z1 - t, floorCol);
             } else {
                 if (id === 0) {
+                    // Non-overlapping floor panels around the elevator and stair openings.
                     const ex0 = x1 - 3, ex1 = x1 - .3, ez0 = z0 + 2.8, ez1 = z0 + 5.5;
-                    add(x0, sb, z0, x1, sy, ez0, floorCol); add(x0, sb, ez1, x1, sy, sz0, floorCol);
-                    add(x0, sb, ez0, ex0, sy, ez1, floorCol); add(ex1, sb, ez0, x1, sy, ez1, floorCol);
-                } else add(x0, sb, z0, x1, sy, sz0, floorCol);
-                add(sx1, sb, sz0, x1, sy, z1, floorCol); add(x0, sb, sz0, sx0, sy, z1, facade); add(x0, sb, sz1, sx1, sy, z1, facade);
+                    add(x0, sb, z0, x1, sy, ez0, floorCol);
+                    add(x0, sb, ez0, ex0, sy, ez1, floorCol);
+                    add(ex1, sb, ez0, x1, sy, ez1, floorCol);
+                    add(x0, sb, ez1, x1, sy, sz0, floorCol);
+                    add(x0, sb, sz0, sx0, sy, sz1, floorCol);
+                    add(sx1, sb, sz0, x1, sy, sz1, floorCol);
+                    add(x0, sb, sz1, x1, sy, z1, floorCol);
+                } else {
+                    // The stairwell is a real opening; each floor panel is drawn exactly once.
+                    add(x0, sb, z0, x1, sy, sz0, floorCol);
+                    add(x0, sb, sz0, sx0, sy, sz1, floorCol);
+                    add(sx1, sb, sz0, x1, sy, sz1, floorCol);
+                    add(x0, sb, sz1, x1, sy, z1, floorCol);
+                }
                 const lx = (sx1 + x1) / 2, lz = (z0 + z1) / 2;
                 add(lx - 1.5, sb - .06, lz - .3, lx + 1.5, sb, lz + .3, "#fff6dc", "glow", false);
                 add(lx - 1.5, sb - .06, z0 + 1.7, lx + 1.5, sb, z0 + 2.3, "#fff6dc", "glow", false);
@@ -79,7 +90,7 @@ export function generateWorld(seed = 7) {
             wall("x", x0, x1, z1 - t / 2, y, facade, false, glass);
             wall("z", z0 + t, z1 - t, x0 + t / 2, y, facade, false, glass);
             wall("z", z0 + t, z1 - t, x1 - t / 2, y, facade, false, glass);
-            add(x0 - .08, y + FLOOR_H - .3, z0 - .08, x1 + .08, y + FLOOR_H, z1 + .08, shade(facade, -.15), "solid", false);
+            // The former full-width ceiling slab overlapped the next floor slab and caused z-fighting.
             const stairCol = "#b8b2a6";
             for (let i = 0; i < 8; i++) { const top = y + .25 * (i + 1); add(sx0, top - .5, sz0 + i * .5, sx0 + 2, top, sz0 + (i + 1) * .5, i % 2 ? stairCol : shade(stairCol, -.06)); }
             add(sx0, y + 1.5, sz0 + 4, sx1, y + 2, sz1, stairCol);
@@ -93,7 +104,7 @@ export function generateWorld(seed = 7) {
         lamps.push({ x: cx - BLOCK / 2 + 3, z: cz - BLOCK / 2 + 3 }, { x: cx + BLOCK / 2 - 3, z: cz + BLOCK / 2 - 3 });
     }
     const carCols = ["#c0392b", "#2e86c1", "#f4d03f", "#ecf0f1", "#27ae60", "#34495e"];
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < GRID * 6; i++) {
         const road = Math.floor(r() * (GRID - 1)) + 1, along = -CITY_HALF + 10 + r() * (GRID * BLOCK - 20), horiz = r() > .5, rx = -CITY_HALF + road * BLOCK + (r() > .5 ? 2.2 : -2.2), color = carCols[i % carCols.length], [x, z] = horiz ? [along, rx] : [rx, along], [hx, hz] = horiz ? [2.1, .9] : [.9, 2.1], face = horiz ? (r() > .5 ? Math.PI / 2 : -Math.PI / 2) : (r() > .5 ? 0 : Math.PI);
         const driveable = i % 4 === 0;
         if (driveable) inter.push({ type: "car", x, y: .12, z, face, vehicleId: i, color });

@@ -47,16 +47,18 @@ function Ground({ quality, wet }) {
     const size = quality === "low" ? 768 : quality === "balanced" ? 1024 : 1280;
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
     const ctx = canvas.getContext("2d"), total = GRID * BLOCK + 40, p = size / total, to = (v) => (v + total / 2) * p;
-    ctx.fillStyle = "#6f9a52"; ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = "#3d4046"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
+    ctx.fillStyle = "#668452"; ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#27323a"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
-      ctx.fillStyle = "#b9b4a8"; ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
-      ctx.strokeStyle = "#a7a296"; ctx.lineWidth = 1;
+      ctx.fillStyle = (i + k) % 2 ? "#b8b1a1" : "#c0b9aa"; ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
+      ctx.strokeStyle = "#a49d8e"; ctx.lineWidth = 1;
       for (let t = 0; t < BLOCK - 8; t += 1.5) {
         ctx.beginPath(); ctx.moveTo(to(x + t), to(z)); ctx.lineTo(to(x + t), to(z + BLOCK - 8)); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(to(x), to(z + t)); ctx.lineTo(to(x + BLOCK - 8), to(z + t)); ctx.stroke();
       }
+      ctx.strokeStyle = "#d0bd91"; ctx.lineWidth = Math.max(1, 1.5 * p);
+      ctx.strokeRect(to(x + .45), to(z + .45), (BLOCK - 8 - .9) * p, (BLOCK - 8 - .9) * p);
     }
     ctx.fillStyle = "#f2e9c9";
     for (let i = 0; i <= GRID; i++) {
@@ -64,14 +66,18 @@ function Ground({ quality, wet }) {
       for (let t = -CITY_HALF; t < CITY_HALF; t += 4) { ctx.fillRect(to(r) - 2, to(t), 4, 2 * p); ctx.fillRect(to(t), to(r) - 2, 2 * p, 4); }
     }
     const image = ctx.getImageData(0, 0, size, size);
-    for (let i = 0; i < image.data.length; i += 4) { const n = (Math.random() - .5) * 10; image.data[i] += n; image.data[i + 1] += n; image.data[i + 2] += n; }
+    for (let i = 0; i < image.data.length; i += 4) {
+      const pixel = i / 4, hash = (Math.imul(pixel + 1, 1664525) + 1013904223) >>> 0;
+      const n = (hash / 4294967296 - .5) * 6;
+      image.data[i] += n; image.data[i + 1] += n; image.data[i + 2] += n;
+    }
     ctx.putImageData(image, 0, 0);
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = quality === "high" ? 8 : 2;
     return { texture, total };
   }, [quality]);
   useEffect(() => () => data.texture.dispose(), [data]);
   return h(React.Fragment, null,
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughness: wet ? .48 : .95, metalness: wet ? .12 : 0 })),
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughness: wet ? .28 : .93, metalness: wet ? .2 : 0 })),
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.025, 0] }, h("planeGeometry", { args: [1200, 1200] }), h("meshStandardMaterial", { color: "#6f9a52", roughness: wet ? .72 : 1 }))
   );
 }
@@ -300,7 +306,7 @@ export default function Game() {
   const joyEnd = () => { input.current.joy = { x: 0, y: 0 }; setKnob({ x: 0, y: 0 }); };
   return h("div", { id: "scene-root", className: "game-root", dir: "rtl" },
     h("div", { className: "game-canvas", onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel: (e) => { input.current.zoom += e.deltaY * .005; } },
-      h(Canvas, { shadows: quality !== "low", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.5) : quality === "balanced" ? 1.1 : .85, camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: quality === "high", powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.05; gl.setClearColor(environment.skyColor); } },
+      h(Canvas, { shadows: quality !== "low", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.5) : quality === "balanced" ? 1.1 : .85, camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: quality === "high", powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); } },
         h("color", { attach: "background", args: [environment.skyColor] }), h("fog", { attach: "fog", args: [environment.fogColor, environment.fogNear, environment.fogFar] }),
         h(Sky, { sunPosition: environment.sunPosition, turbidity: environment.turbidity, rayleigh: 1.2 + environment.daylight * .5, mieCoefficient: weather === "fog" ? .012 : .004 }),
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),

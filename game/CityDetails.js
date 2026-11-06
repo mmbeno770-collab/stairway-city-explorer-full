@@ -16,7 +16,7 @@ function addWindowFrames(b, building, axis, fixed, reverse, floor, lengthStart, 
     for (let i = 0; i < count; i++) {
         if (skipDoor && floor === 0 && i === doorCell) continue;
         const start = lengthStart + i * cell, width = 2, w0 = start + (cell - width) / 2, w1 = w0 + width, center = (w0 + w1) / 2;
-        const depth = 0.105, out = reverse ? 1 : -1, face = fixed + out * 0.09, dark = "#263945", trim = "#b7c3c4";
+        const depth = 0.105, out = reverse ? 1 : -1, face = fixed + out * 0.09, dark = "#1d3038", trim = "#c7ad77";
         const vertical = (p) => axis === "x" ? put(b.metal, p, y + 1.9, face, 0.065, 1.94, depth, dark) : put(b.metal, face, y + 1.9, p, depth, 1.94, 0.065, dark);
         const horizontal = (yy, thick, projection = depth) => axis === "x" ? put(b.stone, center, y + yy, face, width + 0.14, thick, projection, trim) : put(b.stone, face, y + yy, center, projection, thick, width + 0.14, trim);
         vertical(w0 - 0.035); vertical(w1 + 0.035); vertical(center);
@@ -40,7 +40,7 @@ function buildBatches(buildings) {
     const b = makeBatches();
     for (const building of buildings) {
         const { x0, x1, z0, z1, id } = building, width = x1 - x0, depth = z1 - z0;
-        const roofY = building.floors.length * FLOOR_H, facadeAccent = id % 2 === 0 ? "#d8c6a9" : "#b7c6c8";
+        const roofY = building.floors.length * FLOOR_H, facadeAccent = id % 2 === 0 ? "#d9c39c" : "#94a8a9";
         for (const x of [x0 + 0.12, x1 - 0.12]) for (const z of [z0 + 0.12, z1 - 0.12]) put(b.stone, x, roofY / 2, z, 0.16, roofY, 0.16, facadeAccent);
         for (const z of [z0 + 0.12, z1 - 0.12]) put(b.stone, (x0 + x1) / 2, roofY + 0.06, z, width + 0.28, 0.12, 0.22, "#d9d1c4");
         for (const x of [x0 + 0.12, x1 - 0.12]) put(b.stone, x, roofY + 0.06, (z0 + z1) / 2, 0.22, 0.12, depth + 0.28, "#d9d1c4");

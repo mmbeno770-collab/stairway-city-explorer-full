@@ -10,8 +10,8 @@
   --hud-bg: rgba(10, 21, 31, .78);
   --hud-border: rgba(255,255,255,.17);
   --hud-fg: #f2f8fa;
-  --hud-accent: #72e3ce;
-  --hud-accent-fg: #09221f;
+  --hud-accent: #dfc184;
+  --hud-accent-fg: #221b10;
 }
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
@@ -81,3 +81,19 @@ button { font: inherit; }
   .hud-loc { max-width: calc(100vw - 220px); right: 8px; left: auto; transform: none; }
 }
 @media (pointer: coarse) { .climate-panel { top: max(60px, calc(env(safe-area-inset-top) + 54px)); } }
+
+/* Refined luxury finish */
+.hud-panel, .climate-panel {
+  border-color: rgba(219, 190, 132, .28);
+  box-shadow: 0 12px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.start-card {
+  border-color: rgba(223,193,132,.34);
+  background: linear-gradient(145deg, rgba(25,37,45,.94), rgba(9,19,28,.92));
+  box-shadow: 0 28px 100px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.start-card h1 { color: #f3e4c4; text-shadow: 0 4px 22px rgba(223,193,132,.18); }
+.climate-status, .climate-time-row strong { color: #ead5a5; }
+.climate-cycle { color: #f7e8c9; background: rgba(183,145,76,.15); border-color: rgba(223,193,132,.3); }
+.climate-cycle:hover { background: rgba(183,145,76,.25); }
+.interaction-prompt { border-color: rgba(223,193,132,.58); }

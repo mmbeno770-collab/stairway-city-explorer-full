@@ -5,7 +5,7 @@ import * as THREE from "three";
 const cloudSeed = (seed) => { let value = seed >>> 0; return () => { value = (value * 1664525 + 1013904223) >>> 0; return value / 4294967296; }; };
 function CloudLayer({ profile }) {
     const mesh = useRef(null);
-    const instances = useMemo(() => { const random = cloudSeed(9051); return Array.from({ length: 42 }, (_, index) => ({ x: (random() - 0.5) * 290, y: 29 + random() * 15, z: (random() - 0.5) * 290, sx: 4 + random() * 6, sy: 0.65 + random() * 1.25, sz: 2.6 + random() * 5, phase: index * 0.37 })); }, []);
+    const instances = useMemo(() => { const random = cloudSeed(9051); return Array.from({ length: 58 }, (_, index) => ({ x: (random() - 0.5) * 370, y: 31 + random() * 17, z: (random() - 0.5) * 370, sx: 4 + random() * 6, sy: 0.65 + random() * 1.25, sz: 2.6 + random() * 5, phase: index * 0.37 })); }, []);
     useLayoutEffect(() => {
         const target = mesh.current; if (!target) return;
         const object = new THREE.Object3D(), color = new THREE.Color();
@@ -19,7 +19,7 @@ function CloudLayer({ profile }) {
         const target = mesh.current; if (!target) return;
         target.visible = profile.cloudCover > 0.2;
         const cloudCount = Math.round(instances.length * profile.cloudCover); if (target.count !== cloudCount) target.count = cloudCount;
-        target.position.x += dt * (0.12 + profile.windStrength * 0.16); if (target.position.x > 155) target.position.x = -155;
+        target.position.x += dt * (0.12 + profile.windStrength * 0.16); if (target.position.x > 195) target.position.x = -195;
         target.material.opacity = profile.cloudOpacity;
     });
     return _jsxs("instancedMesh", { ref: mesh, args: [undefined, undefined, instances.length], frustumCulled: false, children: [

@@ -151,7 +151,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     else if (s.mode === "car") s.carDist = THREE.MathUtils.clamp(s.carDist + inp.zoom * 1.4, 5, 20);
     else s.dist = THREE.MathUtils.clamp(s.dist + inp.zoom, 2.5, 14);
     inp.zoom = 0;
-    const mx = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) + inp.joy.x;
+    const mx = (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) - (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) + inp.joy.x;
     const mz = (keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) - (keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0) + inp.joy.y;
     const len = Math.hypot(mx, mz), moveX = len > 1 ? mx / len : mx, moveZ = len > 1 ? mz / len : mz;
     const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), jump = keys.has("Space") || inp.up;
@@ -342,8 +342,8 @@ export default function Game() {
         h("li", null, h("b", null, "גרירת עכבר"), " — סיבוב מצלמה · ", h("b", null, "גלגלת"), " — זום"),
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
         h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות ומעלית"),
-        h("li", null, "רכב: W/S נסיעה, A/D היגוי, Shift בלימה"),
-        h("li", null, "מסוק: W/S תנועה, A/D פנייה, רווח עלייה, Shift ירידה"),
+        h("li", null, "רכב: W/S נסיעה, A פנייה שמאלה, D פנייה ימינה, Shift בלימה"),
+        h("li", null, "מסוק: W/S תנועה, A פנייה שמאלה, D פנייה ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
       )
     ),

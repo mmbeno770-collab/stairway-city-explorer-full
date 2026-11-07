@@ -33,6 +33,82 @@ export function generateWorld(seed = 7) {
             }
             continue;
         }
+        if (gx === 1 && gz === 1) {
+            // A dedicated recreation square with rubber safety surfacing and accessible clear paths.
+            add(cx - 12, 0, cz - 12, cx + 12, .08, cz + 12, "#678455", "solid", false);
+            add(cx - 10, .08, cz - 9, cx + 10, .16, cz + 9, "#b2a58e", "solid", false);
+            add(cx - 9, .16, cz - 8, cx - 1, .19, cz + 7, "#c88765", "solid", false);
+            add(cx + 1, .16, cz - 8, cx + 9, .19, cz + 7, "#7896a1", "solid", false);
+            add(cx - 5, .16, cz - 10, cx + 5, .19, cz - 4, "#d7bd75", "solid", false);
+
+            // Swing set: graphite frame, gold joints, two hanging seats.
+            for (const dx of [-2.8, 2.8]) {
+                add(cx + dx - .09, .18, cz + 2.7, cx + dx + .09, 3.15, cz + 2.9, "#34434b", "solid", false);
+                add(cx + dx - .09, .18, cz + 4.7, cx + dx + .09, 3.15, cz + 4.9, "#34434b", "solid", false);
+                add(cx + dx - .16, 3.0, cz + 2.7, cx + dx + .16, 3.18, cz + 4.9, "#c6a66a", "solid", false);
+            }
+            add(cx - 2.95, 3.0, cz + 2.65, cx + 2.95, 3.2, cz + 4.95, "#34434b", "solid", false);
+            for (const dx of [-1, 1]) {
+                add(cx + dx - .025, .9, cz + 3.05, cx + dx + .025, 2.95, cz + 3.1, "#9ca9ad", "solid", false);
+                add(cx + dx - .025, .9, cz + 4.55, cx + dx + .025, 2.95, cz + 4.6, "#9ca9ad", "solid", false);
+                add(cx + dx - .55, .78, cz + 3.0, cx + dx + .55, .95, cz + 4.68, "#d0a74e", "solid", false);
+            }
+
+            // Slide tower, ladder and a stepped glossy chute.
+            add(cx + 4.1, .18, cz - 2.2, cx + 5.9, 1.85, cz - 1.95, "#3c5962", "solid", false);
+            add(cx + 4.1, .18, cz - .25, cx + 5.9, 1.85, cz, "#3c5962", "solid", false);
+            add(cx + 4.0, 1.72, cz - 2.25, cx + 6.0, 1.9, cz + .15, "#d1ad62", "solid", false);
+            for (let step = 0; step < 6; step++) {
+                const zz = cz - 2.0 + step * .72, yy = 1.52 - step * .22;
+                add(cx + 4.35, yy, zz, cx + 5.65, yy + .12, zz + .83, "#d9774d", "solid", false);
+            }
+            for (let step = 0; step < 5; step++) {
+                const zz = cz - 3.0 + step * .48, yy = .35 + step * .27;
+                add(cx + 6.4, yy, zz, cx + 6.55, yy + .12, zz + .42, "#c7c5bd", "solid", false);
+            }
+            add(cx + 6.25, .2, cz - 3.1, cx + 6.45, 1.75, cz - 2.95, "#34434b", "solid", false);
+            add(cx + 6.85, .2, cz - 3.1, cx + 7.05, 1.75, cz - 2.95, "#34434b", "solid", false);
+
+            // Climbing frame with colored crossbars.
+            for (const dx of [-5.8, -2.8]) for (const dz of [-5.4, -2.4])
+                add(cx + dx - .09, .18, cz + dz - .09, cx + dx + .09, 2.65, cz + dz + .09, "#52656a", "solid", false);
+            for (let i = 0; i < 5; i++) {
+                const xx = cx - 5.8 + i * .75;
+                add(xx, 2.48, cz - 5.5, xx + .12, 2.62, cz - 2.25, i % 2 ? "#caa65c" : "#7097a0", "solid", false);
+            }
+
+            // Sandpit and low play mound.
+            add(cx - 1.7, .18, cz - 1.1, cx + 1.7, .33, cz + 2.2, "#a77f50", "solid", false);
+            add(cx - 1.45, .33, cz - .85, cx + 1.45, .39, cz + 1.95, "#dfc58c", "solid", false);
+            add(cx - 1.1, .18, cz + 6.0, cx + 1.1, .65, cz + 6.5, "#78975b", "solid", false);
+            add(cx - .85, .65, cz + 6.15, cx + .85, 1.0, cz + 6.35, "#c5a55e", "solid", false);
+
+            // Park benches, planted edges, and decorative street trees.
+            for (const bx of [-8.5, 8.5]) {
+                add(cx + bx - 1.1, .55, cz - 10.5, cx + bx + 1.1, .72, cz - 10.2, "#76523d", "solid", false);
+                add(cx + bx - 1.1, .72, cz - 10.5, cx + bx + 1.1, 1.25, cz - 10.3, "#76523d", "solid", false);
+            }
+            for (const [dx, dz] of [[-9,-9],[9,-9],[-9,9],[9,9]]) trees.push({ x: cx + dx, z: cz + dz, s: .8 + r() * .25 });
+            lamps.push({ x: cx - 10.5, z: cz - 10.5 }, { x: cx + 10.5, z: cz + 10.5 });
+
+            // Bus stops on opposite sides of the recreation square.
+            const busStop = (sx, sz) => {
+                add(sx - 2.8, .02, sz - .95, sx + 2.8, .18, sz + .95, "#b9b1a1", "solid", false);
+                add(sx - 2.55, .18, sz - .78, sx + 2.55, .25, sz + .78, "#344149", "solid", false);
+                for (const dx of [-2.35, 2.35]) for (const dz of [-.68, .68])
+                    add(sx + dx - .055, .22, sz + dz - .055, sx + dx + .055, 2.35, sz + dz + .055, "#b99a62", "solid", false);
+                add(sx - 2.45, 2.28, sz - .82, sx + 2.45, 2.48, sz + .82, "#35444b", "solid", false);
+                add(sx - 2.25, .35, sz - .76, sx + 2.25, 1.95, sz - .7, "#8fb7c0", "glass", false);
+                add(sx - 1.55, .55, sz + .2, sx + 1.35, .72, sz + .58, "#805b3c", "solid", false);
+                add(sx - 1.55, .72, sz + .43, sx + 1.35, 1.18, sz + .58, "#805b3c", "solid", false);
+                add(sx + 1.75, 1.0, sz + .82, sx + 2.05, 2.75, sz + 1.0, "#46555b", "solid", false);
+                add(sx + 1.58, 2.35, sz + .78, sx + 2.2, 2.85, sz + 1.04, "#d5b36b", "glow", false);
+                add(sx + 1.67, 2.42, sz + .75, sx + 2.12, 2.78, sz + .78, "#eaf5ed", "glow", false);
+            };
+            busStop(cx - 5.5, cz - 15.0);
+            busStop(cx + 5.5, cz + 15.0);
+            continue;
+        }
         const W = 14 + Math.floor(r() * 4) * 1.5, D = 14 + Math.floor(r() * 3) * 1.5, nFloors = 2 + Math.floor(r() * 5), x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2, facade = FACADES[Math.floor(r() * FACADES.length)], glass = r() > .5 ? "#83aab9" : "#9bbdb6";
         const floors = [{ theme: "lobby", label: "לובי" }], pool = [...THEMES].sort(() => r() - .5);
         for (let f = 1; f < nFloors; f++) floors.push(pool[(f - 1) % pool.length]);
@@ -100,7 +176,15 @@ export function generateWorld(seed = 7) {
             add(sx1 - .02, y + FLOOR_H + .9, sz0, sx1 + .14, y + FLOOR_H + 1.05, sz1, "#d9b26a", "solid", false);
             furnish(add, inter, r, floors[f].theme, sx1 + .6, id === 0 ? x1 - 3.5 : x1 - t - .4, z0 + t + .4, z1 - t - .4, y + (f === 0 ? .15 : 0), f === 0);
         }
-        for (let i = 0; i < 3; i++) trees.push({ x: cx - 10 + i * 10, z: cz - BLOCK / 2 + 3, s: .8 + r() * .5 });
+        for (let i = 0; i < 3; i++) {
+            trees.push({ x: cx - 10 + i * 10, z: cz - BLOCK / 2 + 3, s: .8 + r() * .5 });
+            trees.push({ x: cx - 10 + i * 10, z: cz + BLOCK / 2 - 3, s: .72 + r() * .42 });
+        }
+        for (const side of [-1, 1]) {
+            const px = cx + side * 12.8, pz = cz + BLOCK / 2 - 3.1;
+            add(px - .85, 0, pz - .85, px + .85, .55, pz + .85, "#927a5c", "solid", false);
+            add(px - .72, .55, pz - .72, px + .72, 1.45, pz + .72, "#4f7c4d", "solid", false);
+        }
         lamps.push({ x: cx - BLOCK / 2 + 3, z: cz - BLOCK / 2 + 3 }, { x: cx + BLOCK / 2 - 3, z: cz + BLOCK / 2 - 3 });
     }
     const carCols = ["#c0392b", "#2e86c1", "#f4d03f", "#ecf0f1", "#27ae60", "#34495e"];
@@ -131,10 +215,23 @@ function furnish(add, inter, r, theme, x0, x1, z0, z1, y, ground) {
     const clearFront = (x, z) => ground && Math.abs(x - cx) < 2 && z < z0 + 5;
     switch (theme) {
         case "lobby":
-            add(x1 - 4, y, z1 - 2.2, x1 - .5, y + 1.1, z1 - 1.4, "#5a3e2b");
-            add(x1 - 4, y + 1.1, z1 - 2.25, x1 - .5, y + 1.18, z1 - 1.35, "#e8dcc0");
-            add(x1 - 3.2, y + 1.18, z1 - 1.9, x1 - 2.6, y + 1.6, z1 - 1.85, "#4fc3f7", "glow", false);
-            rug(cx - 3, z0 + 5, cx + 3, z0 + 9, "#8e3b46");
+            add(x1 - 4, y, z1 - 2.2, x1 - .5, y + 1.1, z1 - 1.4, "#554334");
+            add(x1 - 4, y + 1.1, z1 - 2.25, x1 - .5, y + 1.18, z1 - 1.35, "#ded1b8");
+            add(x1 - 3.2, y + 1.18, z1 - 1.9, x1 - 2.6, y + 1.6, z1 - 1.85, "#d9b66f", "glow", false);
+            // Tiered marble fountain with a softly lit water basin.
+            add(cx - 1.35, y, z0 + 1.65, cx + 1.35, y + .22, z0 + 4.25, "#c9c1b2", "solid", false);
+            add(cx - 1.12, y + .22, z0 + 1.88, cx + 1.12, y + .32, z0 + 4.02, "#e2d7c4", "solid", false);
+            add(cx - .88, y + .32, z0 + 2.12, cx + .88, y + .39, z0 + 3.78, "#59b6c7", "glow", false);
+            add(cx - .28, y + .38, z0 + 2.65, cx + .28, y + 1.12, z0 + 3.22, "#b49a69", "solid", false);
+            add(cx - .48, y + 1.12, z0 + 2.48, cx + .48, y + 1.22, z0 + 3.38, "#d8bd7c", "solid", false);
+            add(cx - .62, y + 1.23, z0 + 2.55, cx + .62, y + 1.3, z0 + 3.31, "#55c9d5", "glow", false);
+            // Fine brass inlay and ceiling-light accents.
+            add(cx - 3.2, y + .025, z0 + 1.25, cx + 3.2, y + .045, z0 + 1.34, "#c7a96a", "glow", false);
+            add(cx - 3.2, y + .025, z0 + 4.55, cx + 3.2, y + .045, z0 + 4.64, "#c7a96a", "glow", false);
+            add(cx - .07, y + 2.65, z0 + 6.3, cx + .07, y + 3.15, z0 + 6.43, "#b99a62", "solid", false);
+            add(cx - 1.1, y + 3.05, z0 + 6.12, cx + 1.1, y + 3.18, z0 + 6.62, "#c4a56c", "solid", false);
+            add(cx - 1.65, y + 3.0, z0 + 5.95, cx + 1.65, y + 3.06, z0 + 6.78, "#ffe0a1", "glow", false);
+            rug(cx - 3, z0 + 5, cx + 3, z0 + 9, "#78504a");
             add(cx - 2.5, y, z0 + 9, cx + 2.5, y + .5, z0 + 10, "#3c5a7a");
             add(cx - 2.5, y + .5, z0 + 9.7, cx + 2.5, y + 1.1, z0 + 10, "#3c5a7a");
             for (const ox of [-1.5, 0, 1.5]) inter.push({ type: "sofa", x: cx + ox, y, z: z0 + 9.3, face: Math.PI });

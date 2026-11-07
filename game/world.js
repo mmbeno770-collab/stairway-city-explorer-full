@@ -52,12 +52,14 @@ export function generateWorld(seed = 7) {
                 add(cx + dx - .025, .9, cz + 3.05, cx + dx + .025, 2.95, cz + 3.1, "#9ca9ad", "solid", false);
                 add(cx + dx - .025, .9, cz + 4.55, cx + dx + .025, 2.95, cz + 4.6, "#9ca9ad", "solid", false);
                 add(cx + dx - .55, .78, cz + 3.0, cx + dx + .55, .95, cz + 4.68, "#d0a74e", "solid", false);
+                inter.push({ type: "swing", x: cx + dx, y: .82, z: cz + 3.85, face: Math.PI });
             }
 
             // Slide tower, ladder and a stepped glossy chute.
             add(cx + 4.1, .18, cz - 2.2, cx + 5.9, 1.85, cz - 1.95, "#3c5962", "solid", false);
             add(cx + 4.1, .18, cz - .25, cx + 5.9, 1.85, cz, "#3c5962", "solid", false);
             add(cx + 4.0, 1.72, cz - 2.25, cx + 6.0, 1.9, cz + .15, "#d1ad62", "solid", false);
+            inter.push({ type: "slide", x: cx + 5, y: .8, z: cz - 1.8, endZ: cz + 2.15 });
             for (let step = 0; step < 6; step++) {
                 const zz = cz - 2.0 + step * .72, yy = 1.52 - step * .22;
                 add(cx + 4.35, yy, zz, cx + 5.65, yy + .12, zz + .83, "#d9774d", "solid", false);
@@ -118,8 +120,8 @@ export function generateWorld(seed = 7) {
         add(x0 - .3, 0, z0 - .3, x1 + .3, .12, z1 + .3, "#9a948a");
         if (id === 0) {
             const ex = x1 - 1.65, ez = z0 + 4.15;
-            elevator = { x: ex, z: ez, doorX: ex - 1.35, approachX: ex - 2.2, floors: nFloors };
-            for (let ef = 0; ef < nFloors; ef++) inter.push({ type: "elevator", x: elevator.approachX, y: ef * FLOOR_H, z: ez, face: Math.PI / 2, floor: ef });
+            elevator = { x: ex, z: ez, doorX: ex - 1.35, approachX: ex - 2.2, floors: nFloors + 1 };
+            for (let ef = 0; ef <= nFloors; ef++) inter.push({ type: "elevator", x: elevator.approachX, y: ef * FLOOR_H, z: ez, face: Math.PI / 2, floor: ef });
             const shaftTop = nFloors * FLOOR_H + .25;
             add(ex + 1.28, .15, ez - 1.42, ex + 1.42, shaftTop, ez + 1.42, "#9bb8c4", "glass", true);
             add(ex - 1.42, .15, ez - 1.42, ex + 1.42, shaftTop, ez - 1.28, "#9bb8c4", "glass", true);
@@ -260,6 +262,7 @@ function furnish(add, inter, r, theme, x0, x1, z0, z1, y, ground) {
                 add(tx - .4, y, z0 + .8, tx + .4, y + .25, z0 + 2.6, "#212121");
                 add(tx - .4, y, z0 + .8, tx + .4, y + 1.4, z0 + 1, "#90a4ae");
                 add(tx - .3, y + 1.3, z0 + .95, tx + .3, y + 1.6, z0 + 1, "#00e676", "glow", false);
+                inter.push({ type: "treadmill", x: tx, y, z: z0 + 3.2, face: Math.PI });
             }
             for (let i = 0; i < 4; i++) { const wx = x0 + 1.5 + i * (W / 4); inter.push({ type: "weights", x: wx, y, z: z1 - 3, face: 0 }); }
             add(x0 + .3, y + .8, z1 - .38, x1 - .3, y + 2.6, z1 - .34, "#cfe8f2", "glow", false); break;

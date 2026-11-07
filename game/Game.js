@@ -16,7 +16,7 @@ import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./enviro
 
 const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", weights: "להתחיל אימון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב" };
 
 function Boxes({ world, kind }) {
   const ref = useRef(null);
@@ -136,6 +136,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
+    const p = s.p, root = rig.root;
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       if (chosen < 0) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
@@ -151,11 +152,10 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     else if (s.mode === "car") s.carDist = THREE.MathUtils.clamp(s.carDist + inp.zoom * 1.4, 5, 20);
     else s.dist = THREE.MathUtils.clamp(s.dist + inp.zoom, 2.5, 14);
     inp.zoom = 0;
-    const mx = (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) - (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) + inp.joy.x;
+    const mx = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) + inp.joy.x;
     const mz = (keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) - (keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0) + inp.joy.y;
     const len = Math.hypot(mx, mz), moveX = len > 1 ? mx / len : mx, moveZ = len > 1 ? mz / len : mz;
     const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), jump = keys.has("Space") || inp.up;
-    const p = s.p, root = rig.root;
     let camTarget = new THREE.Vector3(p.x, p.y + 1.5, p.z), camDist = s.dist, followYaw = null;
     if (s.mode === "elevator") {
       if (s.elevatorTrip) {
@@ -198,8 +198,24 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       }
       if (act && s.near >= 0 && s.onGround) {
         const it = world.interactables[s.near]; s.target = s.near; s.v.set(0, 0, 0); s.lastPrompt = ""; onPrompt("");
-        if (it.type === "sofa") { p.set(it.x, it.y, it.z); s.sitY = it.y; s.face = it.face; s.mode = "sit"; onMode("sit"); onPrompt("F — לקום"); }
-        else if (it.type === "weights") { p.set(it.x, it.y, it.z - .75); s.face = 0; s.liftElapsed = 0; bar.current = weightIndices.get(s.near); s.mode = "lift"; onMode("lift"); onPrompt("האימון התחיל · F לסיום"); }
+        if (it.type === "sofa" || it.type === "swing") {
+          p.set(it.x, it.y, it.z); s.sitY = it.y; s.face = it.face ?? 0; s.mode = "sit"; onMode("sit");
+          onPrompt(it.type === "swing" ? "F — לרדת מהנדנדה" : "F — לקום");
+        }
+        else if (it.type === "slide") {
+          s.activity = it; s.slideElapsed = 0; p.set(it.x, it.y + .7, it.z); s.face = 0;
+          s.mode = "slide"; onMode("slide"); onPrompt("הגלישה התחילה!");
+        }
+        else if (it.type === "treadmill") {
+          p.set(it.x, it.y, it.z); s.face = it.face ?? Math.PI; s.phase = 0; s.liftElapsed = 0;
+          s.mode = "treadmill"; s.hudTimer = 0; onMode("treadmill"); onHud("הליכון פעיל · F לסיום");
+          onPrompt("ריצה על ההליכון · F לעצירה");
+        }
+        else if (it.type === "weights") {
+          p.set(it.x, it.y, it.z - .75); s.face = 0; s.liftElapsed = 0; bar.current = weightIndices.get(s.near);
+          s.mode = "lift"; s.hudTimer = 0; onMode("lift"); onHud("אימון משקולות · F לסיום");
+          onPrompt("האימון התחיל · F לסיום");
+        }
         else if (it.type === "heli") { s.target = heliIndices.get(s.near); s.mode = "heli"; onMode("heli"); }
         else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
         else if (it.type === "door") { toggleDoor(s.near); onPrompt(doorStates[s.near] ? "F — לפתוח דלת" : "F — לסגור דלת"); }
@@ -209,11 +225,42 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
       poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: !s.onGround, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z);
+    } else if (s.mode === "slide") {
+      const activity = s.activity;
+      s.slideElapsed += dt;
+      const progress = THREE.MathUtils.clamp(s.slideElapsed / 1.55, 0, 1);
+      if (activity) {
+        p.x = activity.x;
+        p.z = THREE.MathUtils.lerp(activity.z, activity.endZ, progress);
+        p.y = THREE.MathUtils.lerp(activity.y + .7, 0, progress);
+      }
+      if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+      poseHuman(rig, { mode: "sit", phase: 0, speed: 0, air: false, t: s.t, dt });
+      camTarget.set(p.x, p.y + 1.25, p.z);
+      if (progress >= 1) {
+        p.y = 0; s.activity = null; s.mode = "walk"; s.onGround = true; s.near = -1;
+        onMode("walk"); onPrompt("");
+      }
+    } else if (s.mode === "treadmill") {
+      if (act) {
+        s.mode = "walk"; s.target = -1; s.near = -1; onMode("walk"); onPrompt(""); onHud("");
+      } else {
+        s.phase += dt * 7.2;
+        if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+        poseHuman(rig, { mode: "walk", phase: s.phase, speed: 5.8, air: false, t: s.t, dt });
+        camTarget.set(p.x, p.y + 1.55, p.z);
+        s.hudTimer -= dt;
+        if (s.hudTimer <= 0) { s.hudTimer = .5; onHud("הליכון פעיל · ריצה במקום · F לעצירה"); }
+      }
     } else if (s.mode === "sit" || s.mode === "lift") {
-      if (s.mode === "lift") s.liftElapsed += dt;
-      if (act || (s.mode === "sit" && (len > .3 || jump)) || (s.mode === "lift" && s.liftElapsed > 2.85)) {
+      if (s.mode === "lift") {
+        s.liftElapsed += dt;
+        s.hudTimer -= dt;
+        if (s.hudTimer <= 0) { s.hudTimer = .5; onHud(`אימון משקולות · ${Math.floor(s.liftElapsed / 2.6)} חזרות · F לסיום`); }
+      }
+      if (act || (s.mode === "sit" && (len > .3 || jump))) {
         if (s.mode === "sit") { p.x += Math.sin(s.face) * .8; p.z += Math.cos(s.face) * .8; p.y = s.sitY; }
-        bar.current = -1; s.mode = "walk"; onMode("walk"); s.target = -1; onPrompt("");
+        bar.current = -1; s.mode = "walk"; s.target = -1; onMode("walk"); onPrompt(""); onHud("");
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       poseHuman(rig, { mode: s.mode, phase: 0, speed: 0, air: false, t: s.t, dt });
@@ -329,10 +376,10 @@ export default function Game() {
       h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "heli" || mode === "car") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    hud && (mode === "heli" || mode === "car" || mode === "lift" || mode === "treadmill") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     elevatorMenu && h("div", { className: "elevator-dialog", role: "dialog", "aria-label": "בחירת קומה במעלית" },
       h("h3", null, "מעלית · בחירת קומה"),
-      h("div", { className: "elevator-floor-grid" }, Array.from({ length: elevatorMenu.floors }, (_, floor) => h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : `קומה ${floor}`))),
+      h("div", { className: "elevator-floor-grid" }, Array.from({ length: elevatorMenu.floors }, (_, floor) => h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`))),
       h("button", { className: "elevator-cancel", onClick: () => { input.current.action = true; } }, "ביטול")
     ),
     h("section", { className: `hud-panel hud-help ${help ? "" : "hud-collapsed"}` }, h("button", { className: "hud-btn", onClick: () => setHelp((v) => !v) }, help ? "הסתר" : "עזרה"),
@@ -344,6 +391,8 @@ export default function Game() {
         h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות ומעלית"),
         h("li", null, "רכב: W/S נסיעה, A פנייה שמאלה, D פנייה ימינה, Shift בלימה"),
         h("li", null, "מסוק: W/S תנועה, A פנייה שמאלה, D פנייה ימינה, רווח עלייה, Shift ירידה"),
+        h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
+        h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
       )
     ),

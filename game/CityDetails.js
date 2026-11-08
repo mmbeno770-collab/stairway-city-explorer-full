@@ -5,7 +5,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { FLOOR_H } from "./world.js";
-const makeBatches = () => ({ stone: [], metal: [], wood: [], glass: [], solar: [], glow: [] });
+const makeBatches = () => ({ stone: [], metal: [], gold: [], wood: [], glass: [], solar: [], glow: [] });
 const put = (list, x, y, z, sx, sy, sz, color, rx = 0, ry = 0, rz = 0) => {
     if (![x, y, z, sx, sy, sz, rx, ry, rz].every(Number.isFinite) || sx <= 0 || sy <= 0 || sz <= 0) return;
     list.push({ x, y, z, sx, sy, sz, color, rx, ry, rz });
@@ -18,7 +18,7 @@ function addWindowFrames(b, building, axis, fixed, reverse, floor, lengthStart, 
         const start = lengthStart + i * cell, width = 2, w0 = start + (cell - width) / 2, w1 = w0 + width, center = (w0 + w1) / 2;
         const depth = 0.105, out = reverse ? 1 : -1, face = fixed + out * 0.09, dark = "#1d3038", trim = "#c7ad77";
         const vertical = (p) => axis === "x" ? put(b.metal, p, y + 1.9, face, 0.065, 1.94, depth, dark) : put(b.metal, face, y + 1.9, p, depth, 1.94, 0.065, dark);
-        const horizontal = (yy, thick, projection = depth) => axis === "x" ? put(b.stone, center, y + yy, face, width + 0.14, thick, projection, trim) : put(b.stone, face, y + yy, center, projection, thick, width + 0.14, trim);
+        const horizontal = (yy, thick, projection = depth) => axis === "x" ? put(b.gold, center, y + yy, face, width + 0.14, thick, projection, trim) : put(b.gold, face, y + yy, center, projection, thick, width + 0.14, trim);
         vertical(w0 - 0.035); vertical(w1 + 0.035); vertical(center);
         horizontal(0.99, 0.07, 0.16); horizontal(2.81, 0.065, 0.12);
         if (axis === "x") put(b.metal, center, y + 1.9, face + out * 0.009, 0.025, 1.76, 0.025, "#82959b");
@@ -41,9 +41,9 @@ function buildBatches(buildings) {
     for (const building of buildings) {
         const { x0, x1, z0, z1, id } = building, width = x1 - x0, depth = z1 - z0;
         const roofY = building.floors.length * FLOOR_H, facadeAccent = id % 2 === 0 ? "#d9c39c" : "#94a8a9";
-        for (const x of [x0 + 0.12, x1 - 0.12]) for (const z of [z0 + 0.12, z1 - 0.12]) put(b.stone, x, roofY / 2, z, 0.16, roofY, 0.16, facadeAccent);
-        for (const z of [z0 + 0.12, z1 - 0.12]) put(b.stone, (x0 + x1) / 2, roofY + 0.06, z, width + 0.28, 0.12, 0.22, "#d9d1c4");
-        for (const x of [x0 + 0.12, x1 - 0.12]) put(b.stone, x, roofY + 0.06, (z0 + z1) / 2, 0.22, 0.12, depth + 0.28, "#d9d1c4");
+        for (const x of [x0 + 0.12, x1 - 0.12]) for (const z of [z0 + 0.12, z1 - 0.12]) put(b.stone, x, roofY / 2, z, 0.18, roofY, 0.18, facadeAccent);
+        for (const z of [z0 + 0.12, z1 - 0.12]) put(b.gold, (x0 + x1) / 2, roofY + 0.06, z, width + 0.28, 0.075, 0.24, "#c8a96b");
+        for (const x of [x0 + 0.12, x1 - 0.12]) put(b.gold, x, roofY + 0.06, (z0 + z1) / 2, 0.24, 0.075, depth + 0.28, "#c8a96b");
         for (let floor = 0; floor < building.floors.length; floor++) {
             addWindowFrames(b, building, "x", z0 + 0.075, false, floor, x0, x1, true);
             addWindowFrames(b, building, "x", z1 - 0.075, true, floor, x0, x1, false);
@@ -136,16 +136,18 @@ function ExtraFoliage({ trees, windStrength }) {
 export function CityDetails({ buildings, trees, windStrength = 1 }) {
     const batches = useMemo(() => buildBatches(buildings), [buildings]);
     const materials = useMemo(() => ({
-        stone: new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0.05 }),
-        metal: new THREE.MeshStandardMaterial({ roughness: 0.46, metalness: 0.62 }),
-        wood: new THREE.MeshStandardMaterial({ roughness: 0.82, metalness: 0.02 }),
-        glass: new THREE.MeshPhysicalMaterial({ roughness: 0.12, metalness: 0.3, transparent: true, opacity: 0.7, depthWrite: false }),
-        solar: new THREE.MeshStandardMaterial({ roughness: 0.22, metalness: 0.38 }),
+        stone: new THREE.MeshPhysicalMaterial({ roughness: 0.52, metalness: 0.08, clearcoat: 0.18, clearcoatRoughness: 0.42, envMapIntensity: 1.15 }),
+        metal: new THREE.MeshStandardMaterial({ roughness: 0.27, metalness: 0.82, envMapIntensity: 1.5 }),
+        gold: new THREE.MeshPhysicalMaterial({ color: "#d0ad70", roughness: 0.24, metalness: 0.86, clearcoat: 0.55, clearcoatRoughness: 0.2, envMapIntensity: 1.8 }),
+        wood: new THREE.MeshStandardMaterial({ roughness: 0.58, metalness: 0.03, envMapIntensity: 0.9 }),
+        glass: new THREE.MeshPhysicalMaterial({ roughness: 0.055, metalness: 0.18, transparent: true, opacity: 0.76, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 2.1, depthWrite: false }),
+        solar: new THREE.MeshPhysicalMaterial({ roughness: 0.16, metalness: 0.58, clearcoat: 0.8, clearcoatRoughness: 0.12, envMapIntensity: 1.8 }),
         glow: new THREE.MeshBasicMaterial({ toneMapped: false }),
     }), []);
     return _jsxs(_Fragment, { children: [
         _jsx(BoxBatch, { items: batches.stone, material: materials.stone }),
         _jsx(BoxBatch, { items: batches.metal, material: materials.metal }),
+        _jsx(BoxBatch, { items: batches.gold, material: materials.gold }),
         _jsx(BoxBatch, { items: batches.wood, material: materials.wood }),
         _jsx(BoxBatch, { items: batches.glass, material: materials.glass }),
         _jsx(BoxBatch, { items: batches.solar, material: materials.solar }),

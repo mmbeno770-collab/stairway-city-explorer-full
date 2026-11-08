@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, Sky } from "@react-three/drei";
 import * as THREE from "three";
-import { Collider, generateWorld, locate, CITY_HALF, BLOCK, GRID } from "./world.js";
+import { Collider, generateWorld, locate, CITY_HALF, BLOCK, GRID, CABLE_STATIONS, WALKABLE_HILLS } from "./world.js";
 import { Human, poseHuman, BARBELL } from "./human.js";
 import { Helicopters } from "./helicopter.js";
 import { makeHeli, stepHeli, canExitHeli } from "./heli-sim.js";
@@ -17,7 +17,7 @@ import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./enviro
 
 const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לתחנת הרכבל" };
 
 function ScenicHills() {
   const hills = [
@@ -34,6 +34,154 @@ function ScenicHills() {
       h("meshStandardMaterial", { color: hill.c, roughness: 1 })
     )
   ));
+}
+
+
+function hillGeometry(hill) {
+  const segments = 36, positions = [], indices = [];
+  for (let iz = 0; iz <= segments; iz++) {
+    const z = (iz / segments * 2 - 1) * hill.rz;
+    for (let ix = 0; ix <= segments; ix++) {
+      const x = (ix / segments * 2 - 1) * hill.rx;
+      const nx = x / hill.rx, nz = z / hill.rz, radius = Math.hypot(nx, nz);
+      const y = radius >= 1 ? 0 : hill.height * .5 * (1 + Math.cos(Math.PI * radius));
+      positions.push(x, y, z);
+    }
+  }
+  for (let iz = 0; iz < segments; iz++) for (let ix = 0; ix < segments; ix++) {
+    const a = iz * (segments + 1) + ix, b = a + 1, c = a + segments + 1, d = c + 1;
+    indices.push(a, d, b, a, c, d);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function WalkableHills() {
+  const geometries = useMemo(() => WALKABLE_HILLS.map(hillGeometry), []);
+  useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
+  return h(React.Fragment, null, WALKABLE_HILLS.map((hill, i) =>
+    h("mesh", { key: i, geometry: geometries[i], position: [hill.x, 0, hill.z], castShadow: true, receiveShadow: true },
+      h("meshStandardMaterial", { color: i % 2 ? "#829b5f" : "#748e55", roughness: .98, metalness: 0 })
+    )
+  ));
+}
+
+function cableRouteBetween(from, to) {
+  const count = CABLE_STATIONS.length, clockwise = (to - from + count) % count, counter = (from - to + count) % count;
+  const step = clockwise <= counter ? 1 : -1, route = [from];
+  while (route[route.length - 1] !== to && route.length <= count) route.push((route[route.length - 1] + step + count) % count);
+  return route;
+}
+function sampleCableRoute(route, progress) {
+  const segments = Math.max(1, route.length - 1), scaled = THREE.MathUtils.clamp(progress, 0, 1) * segments;
+  const index = Math.min(Math.floor(scaled), segments - 1), t = THREE.MathUtils.clamp(scaled - index, 0, 1);
+  const a = CABLE_STATIONS[route[index]], b = CABLE_STATIONS[route[index + 1]];
+  return {
+    x: THREE.MathUtils.lerp(a.x, b.x, t),
+    y: THREE.MathUtils.lerp(a.y, b.y, t),
+    z: THREE.MathUtils.lerp(a.z, b.z, t),
+    yaw: Math.atan2(b.x - a.x, b.z - a.z)
+  };
+}
+
+function CableCabin() {
+  const glass = h("meshPhysicalMaterial", { color: "#9bcbd0", transparent: true, opacity: .3, roughness: .12, metalness: .18, clearcoat: 1, clearcoatRoughness: .08, depthWrite: false });
+  return h(React.Fragment, null,
+    h("mesh", { position: [0, 6.45, 0], castShadow: true }, h("boxGeometry", { args: [3.35, .38, 1.05] }), h("meshStandardMaterial", { color: "#35454b", metalness: .82, roughness: .26 })),
+    h("mesh", { position: [0, 6.68, 0], castShadow: true }, h("cylinderGeometry", { args: [.32, .32, .22, 16] }), h("meshStandardMaterial", { color: "#d9b56f", metalness: .86, roughness: .22 })),
+    ...[-.78, .78].map((x) => h("mesh", { key: "hanger-" + x, position: [x, 4.4, 0] }, h("boxGeometry", { args: [.13, 4.15, .13] }), h("meshStandardMaterial", { color: "#b7c0bd", metalness: .8, roughness: .28 }))),
+    h("mesh", { position: [0, .14, 0], castShadow: true }, h("boxGeometry", { args: [3.05, .28, 2.55] }), h("meshStandardMaterial", { color: "#b99a62", metalness: .82, roughness: .24 })),
+    h("mesh", { position: [0, 1.28, 0], castShadow: true }, h("boxGeometry", { args: [2.9, 2.0, 2.4] }), glass),
+    ...[-1.38, 1.38].flatMap((x) => [-1.13, 1.13].map((z) => h("mesh", { key: "frame-" + x + "-" + z, position: [x, 1.28, z] }, h("boxGeometry", { args: [.12, 2.18, .12] }), h("meshStandardMaterial", { color: "#c9a86a", metalness: .85, roughness: .24 })))),
+    h("mesh", { position: [0, 2.35, 0], castShadow: true }, h("boxGeometry", { args: [3.05, .18, 2.55] }), h("meshStandardMaterial", { color: "#3b4d52", metalness: .75, roughness: .3 })),
+    h("mesh", { position: [0, .36, 1.215] }, h("boxGeometry", { args: [1.0, .055, .035] }), h("meshStandardMaterial", { color: "#e3c486", metalness: .8, roughness: .2 }))
+  );
+}
+
+function Cableway({ ride }) {
+  const autonomous = useRef([]), passengerCabin = useRef(null);
+  const loop = [0, 1, 2, 3, 0];
+  const cables = useMemo(() => CABLE_STATIONS.map((station, i) => {
+    const next = CABLE_STATIONS[(i + 1) % CABLE_STATIONS.length];
+    const dx = next.x - station.x, dz = next.z - station.z, length = Math.hypot(dx, dz) || 1;
+    const nx = dz / length, nz = -dx / length;
+    return [-.78, .78].map((offset) => {
+      const start = new THREE.Vector3(station.x + nx * offset, station.y + 6.65, station.z + nz * offset);
+      const end = new THREE.Vector3(next.x + nx * offset, next.y + 6.65, next.z + nz * offset);
+      const mid = new THREE.Vector3((start.x + end.x) / 2, (start.y + end.y) / 2 - .22, (start.z + end.z) / 2);
+      return new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(start, mid, end), 48, .12, 8, false);
+    });
+  }), []);
+  useEffect(() => () => cables.flat().forEach((geometry) => geometry.dispose()), [cables]);
+  useFrame(({ clock }) => {
+    for (let i = 0; i < 3; i++) {
+      const node = autonomous.current[i];
+      if (!node) continue;
+      const progress = (clock.elapsedTime * .018 + i / 3) % 1, point = sampleCableRoute(loop, progress);
+      node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
+    }
+    const node = passengerCabin.current, current = ride.current;
+    if (node) {
+      node.visible = !!current?.active;
+      if (current?.active && current.route?.length > 1) {
+        const point = sampleCableRoute(current.route, current.progress);
+        node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
+      }
+    }
+  });
+  const stationVisuals = CABLE_STATIONS.map((station) => {
+    const support = [];
+    for (const dx of [-3.45, 3.45]) for (const dz of [-3.0, 3.0]) {
+      support.push(h("mesh", { key: "leg-" + dx + "-" + dz, position: [station.x + dx, station.y / 2, station.z + dz], castShadow: true },
+        h("boxGeometry", { args: [.38, station.y, .38] }),
+        h("meshStandardMaterial", { color: "#526168", metalness: .82, roughness: .34 })
+      ));
+    }
+    const mast = [];
+    for (const dx of [-.78, .78]) for (const dz of [-.78, .78]) {
+      mast.push(h("mesh", { key: "mast-" + dx + "-" + dz, position: [station.x + dx, station.y + 3.35, station.z + dz] },
+        h("boxGeometry", { args: [.2, 6.7, .2] }),
+        h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })
+      ));
+    }
+    const ladderX = station.x - 5.2;
+    const ladder = [
+      ...[-.58, .58].map((dz) => h("mesh", { key: "ladder-rail-" + dz, position: [ladderX, station.y / 2, station.z + dz] },
+        h("boxGeometry", { args: [.16, station.y, .16] }),
+        h("meshStandardMaterial", { color: "#d0ae70", metalness: .78, roughness: .28 })
+      )),
+      ...Array.from({ length: 21 }, (_, i) => h("mesh", { key: "rung-" + i, position: [ladderX, .9 + i * 2.3, station.z] },
+        h("boxGeometry", { args: [.17, .12, 1.22] }),
+        h("meshStandardMaterial", { color: "#d8bd84", metalness: .72, roughness: .3 })
+      ))
+    ];
+    const railings = [
+      ...[-3.8, 3.8].map((dx) => h("mesh", { key: "rail-side-" + dx, position: [station.x + dx, station.y + .75, station.z] },
+        h("boxGeometry", { args: [.12, 1.5, 7.8] }), h("meshStandardMaterial", { color: "#c7a66b", metalness: .78, roughness: .28 })
+      )),
+      ...[-3.8, 3.8].flatMap((dx) => [-3.5, 0, 3.5].map((dz) => h("mesh", { key: "post-" + dx + "-" + dz, position: [station.x + dx, station.y + .75, station.z + dz] },
+        h("boxGeometry", { args: [.12, 1.5, .12] }), h("meshStandardMaterial", { color: "#57676b", metalness: .74, roughness: .3 })
+      )))
+    ];
+    return h("group", { key: station.id },
+      ...support, ...mast,
+      h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [2.5, .2, .2] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
+      h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [.2, .2, 2.5] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
+      h("mesh", { position: [station.x, station.y + .035, station.z] }, h("boxGeometry", { args: [8.5, .06, 7.5] }), h("meshStandardMaterial", { color: "#4b5a5e", metalness: .78, roughness: .3 })),
+      ...ladder, ...railings,
+      h("mesh", { position: [station.x + 5.0, station.y + 2.0, station.z] }, h("boxGeometry", { args: [.22, 2.0, 3.5] }), h("meshStandardMaterial", { color: "#31444a", metalness: .52, roughness: .35 })),
+      h("mesh", { position: [station.x + 4.86, station.y + 2.0, station.z] }, h("boxGeometry", { args: [.035, 1.35, 2.8] }), h("meshStandardMaterial", { color: "#c9aa6d", emissive: "#8b6b2f", emissiveIntensity: .16, metalness: .78, roughness: .28 }))
+    );
+  });
+  return h(React.Fragment, null,
+    cables.flat().map((geometry, i) => h("mesh", { key: "cable-" + i, geometry, castShadow: false }, h("meshStandardMaterial", { color: "#343f43", metalness: .86, roughness: .28 }))),
+    ...stationVisuals,
+    ...[0, 1, 2].map((i) => h("group", { key: "gondola-" + i, ref: (node) => { autonomous.current[i] = node; } }, h(CableCabin))),
+    h("group", { ref: passengerCabin, visible: false }, h(CableCabin))
+  );
 }
 
 function Boxes({ world, kind }) {
@@ -135,11 +283,11 @@ function DoorSet({ world, doorStates }) {
   return h(React.Fragment, null, world.interactables.map((item, index) => item.type === "door" ? h(DoorLeaf, { key: index, item, open: !!doorStates[index] }) : null));
 }
 
-function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
+function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, onCableMenu, cableRide, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, hudTimer: 0, cameraReady: false, lastPrompt: "" });
   const heliEnv = useMemo(() => ({ ground: (x, z, y) => col.groundAt(x, z, y, .6, 1), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveCarObstacles(p, a, b, radius, cars); col.resolve(p, a, b, radius); } }), [col, cars]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveCarObstacles(p, a, b, radius, cars, ignore); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars]);
   const temp = useMemo(() => ({ e: new THREE.Euler(), q: new THREE.Quaternion(), v: new THREE.Vector3() }), []);
@@ -155,6 +303,26 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
     const p = s.p, root = rig.root;
+    if (inp.cableDestination !== null && s.cableStation >= 0) {
+      const destination = inp.cableDestination;
+      inp.cableDestination = null; onCableMenu(null);
+      if (destination < 0) {
+        const station = CABLE_STATIONS[s.cableStation];
+        p.set(station.x - 5.2, station.y, station.z);
+        s.cableDescending = true; s.mode = "cable-ladder"; onMode("cable-ladder");
+        onPrompt("החזיקו ↓ / S כדי לרדת בסולם");
+      } else if (destination !== s.cableStation) {
+        const route = cableRouteBetween(s.cableStation, destination);
+        let distance = 0;
+        for (let i = 0; i < route.length - 1; i++) {
+          const a = CABLE_STATIONS[route[i]], b = CABLE_STATIONS[route[i + 1]];
+          distance += Math.hypot(b.x - a.x, b.z - a.z, b.y - a.y);
+        }
+        s.cableTrip = { route, elapsed: 0, duration: Math.max(5, distance / 22) };
+        cableRide.current = { active: true, route, progress: 0 };
+        s.mode = "cable"; onMode("cable"); onPrompt("הרכבל יוצא לדרך");
+      }
+    }
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       if (chosen < 0) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
@@ -185,6 +353,52 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.35, p.z);
+    } else if (s.mode === "cable-ladder") {
+      const station = CABLE_STATIONS[s.cableStation] || CABLE_STATIONS[0];
+      const climbing = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0) + inp.joy.y;
+      if (s.cableDescending) {
+        p.y = Math.max(0, p.y - Math.max(0, -climbing) * 6.2 * dt);
+        if (p.y <= .04) {
+          p.set(station.x - 5.2, 0, station.z); s.cableDescending = false; s.cableStation = -1;
+          s.mode = "walk"; s.v.set(0, 0, 0); onMode("walk"); onPrompt("");
+        }
+      } else {
+        p.y = Math.min(station.y, p.y + Math.max(0, climbing) * 6.2 * dt);
+        if (p.y >= station.y - .03) {
+          p.set(station.x - 5.2, station.y, station.z);
+          s.mode = "cable-platform"; onMode("cable-platform");
+          onPrompt("הגעתם לתחנה — F לבחירת יעד או ירידה בסולם");
+        }
+      }
+      if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+      poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
+      camTarget.set(p.x, p.y + 1.55, p.z); camDist = 7;
+    } else if (s.mode === "cable-platform") {
+      if (act) { onCableMenu({ current: s.cableStation }); onPrompt(""); }
+      if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+      poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
+      camTarget.set(p.x, p.y + 1.55, p.z); camDist = 7;
+    } else if (s.mode === "cable") {
+      const trip = s.cableTrip;
+      if (trip) {
+        trip.elapsed += dt;
+        const progress = THREE.MathUtils.clamp(trip.elapsed / trip.duration, 0, 1);
+        const point = sampleCableRoute(trip.route, progress);
+        p.set(point.x, point.y, point.z); s.face = point.yaw;
+        cableRide.current = { active: true, route: trip.route, progress };
+        if (progress >= 1) {
+          const destination = trip.route[trip.route.length - 1], station = CABLE_STATIONS[destination];
+          s.cableStation = destination; s.cableTrip = null; cableRide.current = { active: false, route: trip.route, progress: 1 };
+          p.set(station.x - 5.2, station.y, station.z); s.mode = "cable-platform"; onMode("cable-platform");
+          onPrompt("הגעתם לתחנה — F לבחירת יעד או ירידה בסולם"); onHud("");
+        } else {
+          s.hudTimer -= dt;
+          if (s.hudTimer <= 0) { s.hudTimer = .4; onHud("רכבל מעל העיר · בדרך ל" + CABLE_STATIONS[trip.route[trip.route.length - 1]].name); }
+        }
+      }
+      if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+      poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
+      camTarget.set(p.x, p.y + 2.35, p.z); camDist = 8; followYaw = s.face;
     } else if (s.mode === "walk") {
       const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw), wx = fx * moveZ - fz * moveX, wz = fz * moveZ + fx * moveX, speed = shift ? RUN : WALK, blend = 1 - Math.exp(-ACCEL * dt);
       s.v.x += (wx * speed - s.v.x) * blend; s.v.z += (wz * speed - s.v.z) * blend;
@@ -203,7 +417,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       if (s.timer <= 0) {
         s.timer = .14; let best = -1, bestD = Infinity;
         world.interactables.forEach((it, i) => {
-          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "car" ? 3.5 : 1.8;
+          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "car" ? 3.5 : it.type === "cable" ? 2.8 : 1.8;
           if (it.type === "heli") { const item = helis[heliIndices.get(i)]; x = item.x; y = item.y; z = item.z; if (!item.grounded) return; }
           if (it.type === "car") { const item = cars[carIndices.get(i)]; x = item.x; y = item.y; z = item.z; }
           if (Math.abs(p.y - y) > (it.type === "car" ? 1.6 : 1.2)) return;
@@ -238,6 +452,11 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
         else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
         else if (it.type === "door") { toggleDoor(s.near); onPrompt(doorStates[s.near] ? "F — לפתוח דלת" : "F — לסגור דלת"); }
         else if (it.type === "elevator" && world.elevator) { s.elevatorFloor = Math.max(0, Math.min(world.elevator.floors - 1, Math.floor(it.floor || 0))); p.set(world.elevator.x, s.elevatorFloor * 4 + .22, world.elevator.z); elevatorY.current = s.elevatorFloor * 4; s.mode = "elevator"; onMode("elevator"); onElevatorMenu({ floors: world.elevator.floors, current: s.elevatorFloor }); }
+        else if (it.type === "cable") {
+          s.cableStation = Math.max(0, Math.min(CABLE_STATIONS.length - 1, it.stationId || 0));
+          s.cableDescending = false; p.set(it.x, 0, it.z); s.mode = "cable-ladder"; s.v.set(0, 0, 0);
+          onMode("cable-ladder"); onPrompt("החזיקו ↑ / W כדי לטפס לתחנת הרכבל");
+        }
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
@@ -325,8 +544,8 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     const desired = camTarget.clone().addScaledVector(back, distance);
     if (!s.cameraReady) { camera.position.copy(desired); s.cameraReady = true; }
     camera.position.lerp(desired, 1 - Math.exp(-6 * dt)); camera.lookAt(camTarget);
-    const place = s.mode === "heli" ? "בטיסה מעל העיר" : locate(world, p.x, p.y, p.z);
-    const label = s.mode === "heli" ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
+    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : locate(world, p.x, p.y, p.z);
+    const label = s.mode === "heli" || s.mode === "cable" ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
@@ -337,12 +556,12 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
 
 export default function Game() {
   const world = useMemo(() => generateWorld(7), []);
-  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, elevatorFloor: null });
+  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, elevatorFloor: null, cableDestination: null });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("high");
-  const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
-  const doorRef = useRef({}), elevatorY = useRef(0), elevatorMoving = useRef(false);
+  const [elevatorMenu, setElevatorMenu] = useState(null), [cableMenu, setCableMenu] = useState(null), [doorStates, setDoorStates] = useState({});
+  const doorRef = useRef({}), elevatorY = useRef(0), elevatorMoving = useRef(false), cableRide = useRef({ active: false, route: [], progress: 0 });
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
@@ -353,7 +572,7 @@ export default function Game() {
   useEffect(() => {
     const down = (event) => {
       if (!started) return;
-      if (event.target instanceof HTMLElement && event.target.closest(".climate-panel, .elevator-dialog")) return;
+      if (event.target instanceof HTMLElement && event.target.closest(".climate-panel, .elevator-dialog, .cable-dialog")) return;
       input.current.keys.add(event.code);
       if (event.code === "KeyF" && !event.repeat) input.current.action = true;
       if (event.code === "Space" || event.code.startsWith("Arrow")) event.preventDefault();
@@ -378,13 +597,14 @@ export default function Game() {
         h(Environment, { resolution: quality === "high" ? 96 : 64 }, h(Lightformer, { intensity: 1.2 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [20, 20, 1] }), h(Lightformer, { intensity: .6, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [20, 4, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { quality, wet: weather === "rain" || weather === "storm" }),
-        h(ScenicHills),
+        h(ScenicHills), h(WalkableHills),
+        h(Cableway, { ride: cableRide }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
         h(Helicopters, { helis }), h(Cars, { cars }),
-        h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, elevatorY, elevatorMoving, quality })
+        h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, onCableMenu: setCableMenu, cableRide, elevatorY, elevatorMoving, quality })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -395,8 +615,17 @@ export default function Game() {
       h("input", { id: "game-time", className: "climate-range", type: "range", min: "0", max: "23.75", step: ".25", value: hour, onChange: (e) => setHour(Number(e.target.value)) }),
       h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
-    prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "heli" || mode === "car" || mode === "lift" || mode === "treadmill") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    prompt && !elevatorMenu && !cableMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
+    hud && (mode === "heli" || mode === "car" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    cableMenu && h("div", { className: "cable-dialog", role: "dialog", "aria-label": "בחירת יעד ברכבל" },
+      h("h3", null, "רכבל עירוני · בחירת תחנה"),
+      h("p", null, CABLE_STATIONS[cableMenu.current]?.name || "התחנה הנוכחית"),
+      h("div", { className: "cable-stop-grid" }, CABLE_STATIONS.filter((station) => station.id !== cableMenu.current).map((station) =>
+        h("button", { key: station.id, onClick: () => { input.current.cableDestination = station.id; } }, station.name)
+      )),
+      h("button", { className: "cable-descend", onClick: () => { input.current.cableDestination = -1; } }, "ירידה למטה בסולם"),
+      h("button", { className: "cable-cancel", onClick: () => { setCableMenu(null); setPrompt("F — בחירת יעד או ירידה בסולם"); } }, "סגירה")
+    ),
     elevatorMenu && h("div", { className: "elevator-dialog", role: "dialog", "aria-label": "בחירת קומה במעלית" },
       h("h3", null, "מעלית · בחירת קומה"),
       h("div", { className: "elevator-floor-grid" }, Array.from({ length: elevatorMenu.floors }, (_, floor) => h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`))),
@@ -408,7 +637,8 @@ export default function Game() {
         h("li", null, h("b", null, "Shift"), " — ריצה · ", h("b", null, "רווח"), " — קפיצה"),
         h("li", null, h("b", null, "גרירת עכבר"), " — סיבוב מצלמה · ", h("b", null, "גלגלת"), " — זום"),
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
-        h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות ומעלית"),
+        h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות, מעלית ורכבל"),
+        h("li", null, "רכבל: ניגשים לסולם, לוחצים F ומחזיקים ↑ / W לטיפוס; בתחנה לוחצים F ובוחרים יעד. ↓ / S מוריד בסולם."),
         h("li", null, "רכב: W/S נסיעה, A פנייה שמאלה, D פנייה ימינה, Shift בלימה"),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
@@ -417,10 +647,10 @@ export default function Game() {
       )
     ),
     h("div", { ref: joyRef, className: "joy", onPointerDown: (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }, onPointerMove: joyMove, onPointerUp: joyEnd, onPointerCancel: joyEnd }, h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
-    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add("Space"); }, onPointerUp: () => input.current.keys.delete("Space"), onPointerCancel: () => input.current.keys.delete("Space") }, mode === "heli" ? "עלייה" : mode === "car" ? "בלימה" : "קפיצה"),
-    mode === "heli" && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.down = true; }, onPointerUp: () => { input.current.down = false; }, onPointerCancel: () => { input.current.down = false; } }, "ירידה"),
+    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" ? "ArrowUp" : "Space"); } }, mode === "heli" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : "קפיצה"),
+    (mode === "heli" || mode === "cable-ladder") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
-      h("h1", null, "עיר פתוחה"), h("p", null, "עיר שלמה לחקור: היכנסו לבניינים, עלו במדרגות מקומה לקומה — בית קפה, ספרייה, גלריה, אולם משחקים, אולפן מוזיקה ועוד. כל בניין מוביל לגג."),
+      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות."),
       h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך")
     ))
   );

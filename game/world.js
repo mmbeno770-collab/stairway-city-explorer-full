@@ -1,4 +1,20 @@
 export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 36, GRID = 7, CITY_HALF = (GRID * BLOCK) / 2;
+
+export const CABLE_STATIONS = [
+  { id: 0, name: "תחנת צפון־מערב", x: -90, z: -90, y: 48 },
+  { id: 1, name: "תחנת צפון־מזרח", x: 90, z: -90, y: 48 },
+  { id: 2, name: "תחנת דרום־מזרח", x: 90, z: 90, y: 48 },
+  { id: 3, name: "תחנת דרום־מערב", x: -90, z: 90, y: 48 }
+];
+export const WALKABLE_HILLS = [
+  { x: -78, z: -80, rx: 6.5, rz: 6.5, height: 2.8 },
+  { x: -64, z: -80, rx: 6.5, rz: 6.5, height: 3.5 }
+];
+export function hillHeightAt(hill, x, z) {
+  const nx = (x - hill.x) / hill.rx, nz = (z - hill.z) / hill.rz;
+  const radius = Math.hypot(nx, nz);
+  return radius >= 1 ? 0 : hill.height * 0.5 * (1 + Math.cos(Math.PI * radius));
+}
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const THEMES = [
     { theme: "cafe", label: "בית קפה", floor: "#76523d" }, { theme: "library", label: "ספרייה", floor: "#584638" }, { theme: "gym", label: "חדר כושר", floor: "#343d49" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#d7d0c2" }, { theme: "office", label: "משרדים", floor: "#8d9b9d" }, { theme: "apartment", label: "דירת מגורים", floor: "#b99a72" }, { theme: "arcade", label: "אולם משחקים", floor: "#25283b" }, { theme: "garden", label: "גן פנימי", floor: "#637a4d" }, { theme: "music", label: "אולפן מוזיקה", floor: "#56383a" }, { theme: "kids", label: "חדר ילדים", floor: "#c3d0ce" },
@@ -9,6 +25,11 @@ export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [];
     let elevator = null;
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide });
+    for (const station of CABLE_STATIONS) {
+        // Elevated station decks are real walkable collision surfaces.
+        add(station.x - 7, station.y - .35, station.z - 4.2, station.x + 7, station.y, station.z + 4.2, "#8d9698", "solid", true);
+        inter.push({ type: "cable", x: station.x - 5.2, y: 0, z: station.z, stationId: station.id });
+    }
     const wall = (axis, a, b, c, y, color, door, glassColor) => {
         const L = b - a, n = Math.max(1, Math.floor(L / 3.6)), cell = L / n, doorCell = Math.floor(n / 2);
         const seg = (s0, s1, h0, h1, col = color, k = "solid", collide = true) => { if (s1 - s0 < .01) return; const t = WALL_T / 2; if (axis === "x") add(s0, y + h0, c - t, s1, y + h1, c + t, col, k, collide); else add(c - t, y + h0, s0, c + t, y + h1, s1, col, k, collide); };
@@ -90,7 +111,8 @@ export function generateWorld(seed = 7) {
                 add(cx + bx - 1.1, .55, cz - 10.5, cx + bx + 1.1, .72, cz - 10.2, "#76523d", "solid", false);
                 add(cx + bx - 1.1, .72, cz - 10.5, cx + bx + 1.1, 1.25, cz - 10.3, "#76523d", "solid", false);
             }
-            for (const [dx, dz] of [[-9,-9],[9,-9],[-9,9],[9,9]]) trees.push({ x: cx + dx, z: cz + dz, s: .8 + r() * .25 });
+            // Leave the northern park edge open for two smooth, climbable landscape mounds.
+            for (const [dx, dz] of [[-9,9],[9,9]]) trees.push({ x: cx + dx, z: cz + dz, s: .8 + r() * .25 });
             lamps.push({ x: cx - 10.5, z: cz - 10.5 }, { x: cx + 10.5, z: cz + 10.5 });
 
             // Bus stops on opposite sides of the recreation square.
@@ -366,7 +388,18 @@ export class Collider {
             for (let k = Math.floor((z - rad) / this.cell); k <= Math.floor((z + rad) / this.cell); k++) this.map.get(i + "," + k)?.forEach(b => out.add(b));
         return out;
     }
-    groundAt(x, z, y, step, rad = .2) { let g = 0; for (const b of this.near(x, z, rad)) { if (x + rad < b.x0 || x - rad > b.x1 || z + rad < b.z0 || z - rad > b.z1) continue; if (b.y1 <= y + step && b.y1 > g) g = b.y1; } return g; }
+    groundAt(x, z, y, step, rad = .2) {
+        let g = 0;
+        for (const b of this.near(x, z, rad)) {
+            if (x + rad < b.x0 || x - rad > b.x1 || z + rad < b.z0 || z - rad > b.z1) continue;
+            if (b.y1 <= y + step && b.y1 > g) g = b.y1;
+        }
+        for (const hill of WALKABLE_HILLS) {
+            const surface = hillHeightAt(hill, x, z);
+            if (surface > g) g = surface;
+        }
+        return g;
+    }
     ceilingAt(x, z, y, rad = .2) { let c = Infinity; for (const b of this.near(x, z, rad)) { if (x + rad < b.x0 || x - rad > b.x1 || z + rad < b.z0 || z - rad > b.z1) continue; if (b.y0 >= y && b.y0 < c) c = b.y0; } return c; }
     resolve(p, yLo, yHi, rad) {
         for (let it = 0; it < 3; it++) for (const b of this.near(p.x, p.z, rad + .5)) {

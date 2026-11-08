@@ -97,3 +97,23 @@ button { font: inherit; }
 .climate-cycle { color: #f7e8c9; background: rgba(183,145,76,.15); border-color: rgba(223,193,132,.3); }
 .climate-cycle:hover { background: rgba(183,145,76,.25); }
 .interaction-prompt { border-color: rgba(223,193,132,.58); }
+
+/* Premium cableway station interface */
+.cable-dialog {
+  position: absolute; z-index: 42; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: min(390px, calc(100vw - 34px)); padding: 22px; border-radius: 20px;
+  color: #f5f5ef; text-align: center; direction: rtl;
+  background: linear-gradient(145deg, rgba(24,38,45,.97), rgba(8,19,27,.97));
+  border: 1px solid rgba(220,190,130,.42); box-shadow: 0 24px 80px rgba(0,0,0,.56);
+  backdrop-filter: blur(18px);
+}
+.cable-dialog h3 { margin: 0 0 7px; color: #f2dfb7; font-size: 20px; }
+.cable-dialog p { margin: 0 0 16px; color: #c2d0ce; font-size: 13px; }
+.cable-stop-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.cable-stop-grid button, .cable-descend, .cable-cancel {
+  min-height: 44px; padding: 10px 12px; border-radius: 11px; cursor: pointer;
+  color: #f7f3e8; background: rgba(255,255,255,.07); border: 1px solid rgba(223,193,132,.24);
+}
+.cable-stop-grid button:hover, .cable-descend:hover { background: rgba(192,157,95,.2); border-color: rgba(223,193,132,.56); }
+.cable-descend { width: 100%; margin-top: 12px; color: #f3dfb4; background: rgba(183,145,76,.16); }
+.cable-cancel { width: 100%; margin-top: 8px; background: transparent; border-color: rgba(255,255,255,.12); }

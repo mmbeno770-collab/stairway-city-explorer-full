@@ -165,7 +165,7 @@ function AnimatedTreadmills({ world }) {
   return h("instancedMesh", {
     ref: mesh, args: [undefined, material, belts.length],
     castShadow: false, receiveShadow: true
-  }, h("boxGeometry"), h("meshStandardMaterial", { map: texture, color: "#d4e0e1", roughness: .4, metalness: .22 }));
+  }, h("boxGeometry"), h("primitive", { object: material, attach: "material" }));
 }
 
 function FountainAnimations({ world }) {

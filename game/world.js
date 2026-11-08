@@ -49,8 +49,8 @@ export function generateWorld(seed = 7) {
             }
             add(cx - 2.95, 3.0, cz + 2.65, cx + 2.95, 3.2, cz + 4.95, "#34434b", "solid", false);
             for (const dx of [-1, 1]) {
-                add(cx + dx - .025, .9, cz + 3.05, cx + dx + .025, 2.95, cz + 3.1, "#9ca9ad", "solid", false);
-                add(cx + dx - .025, .9, cz + 4.55, cx + dx + .025, 2.95, cz + 4.6, "#9ca9ad", "solid", false);
+                add(cx + dx - .025, .9, cz + 3.05, cx + dx + .025, 2.95, cz + 3.1, "#9ca9ad", "animatedSwingChain", false);
+                add(cx + dx - .025, .9, cz + 4.55, cx + dx + .025, 2.95, cz + 4.6, "#9ca9ad", "animatedSwingChain", false);
                 add(cx + dx - .55, .78, cz + 3.0, cx + dx + .55, .95, cz + 4.68, "#d0a74e", "animatedSwingSeat", false);
                 inter.push({ type: "swing", x: cx + dx, y: .82, z: cz + 3.85, face: Math.PI });
             }

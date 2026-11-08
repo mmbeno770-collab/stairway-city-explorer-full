@@ -170,7 +170,12 @@ export function generateWorld(seed = 7) {
         const id = buildings.length;
         const sx0 = x0 + WALL_T, sx1 = sx0 + 4, sz1 = z1 - WALL_T, sz0 = sz1 - 6, t = WALL_T;
         const basementStairwell = { x0: sx0, x1: sx1, z0: sz0, z1: sz1 };
+        const basementEntry = { x: sx0 + 1.05, y: .15, z: sz0 + .28 };
+        // Place the lower exit right at the end of the final tread, clear of the next step.
+        const basementExit = { x: sx0 + 3.05, y: -4, z: sz0 + .08 };
         buildings.push({ id, name: NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : ""), x0, z0, x1, z1, floors, basementStairwell, basementFloor: -1 });
+        inter.push({ type: "basement", x: basementEntry.x, y: basementEntry.y, z: basementEntry.z, buildingId: id, toX: basementExit.x, toY: basementExit.y, toZ: basementExit.z });
+        inter.push({ type: "basementExit", x: basementExit.x, y: basementExit.y, z: basementExit.z, buildingId: id, toX: basementEntry.x, toY: basementEntry.y, toZ: basementEntry.z });
         add(x0 - .3, 0, z0 - .3, x1 + .3, .12, sz0, "#9a948a");
         add(x0 - .3, 0, sz0, sx0, .12, sz1, "#9a948a");
         add(sx1, 0, sz0, x1 + .3, .12, sz1, "#9a948a");

@@ -17,7 +17,7 @@ import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./enviro
 
 const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
 function ScenicHills() {
   const hills = [
@@ -672,7 +672,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       if (s.timer <= 0) {
         s.timer = .14; let best = -1, bestD = Infinity;
         world.interactables.forEach((it, i) => {
-          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "car" ? 3.5 : it.type === "cable" ? 2.8 : 1.8;
+          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "car" ? 3.5 : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : 1.8;
           if (it.type === "heli") { const item = helis[heliIndices.get(i)]; x = item.x; y = item.y; z = item.z; if (!item.grounded) return; }
           if (it.type === "car") { const item = cars[carIndices.get(i)]; x = item.x; y = item.y; z = item.z; }
           if (Math.abs(p.y - y) > (it.type === "car" ? 1.6 : 1.2)) return;
@@ -706,6 +706,15 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
         else if (it.type === "heli") { s.target = heliIndices.get(s.near); s.mode = "heli"; onMode("heli"); }
         else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
         else if (it.type === "door") { toggleDoor(s.near); onPrompt(doorStates[s.near] ? "F — לפתוח דלת" : "F — לסגור דלת"); }
+        else if (it.type === "basement" || it.type === "basementExit") {
+          // Guaranteed F-key access complements the visible switchback staircase.
+          p.set(it.toX, it.toY, it.toZ);
+          s.v.set(0, 0, 0); s.onGround = true; s.near = -1; s.target = -1;
+          s.mode = "walk"; onMode("walk");
+          const entering = it.type === "basement";
+          onPrompt(entering ? "נכנסתם למחסן · F ליד המדרגות לחזרה" : "חזרתם לקומת הקרקע");
+          s.lastPrompt = entering ? "נכנסתם למחסן" : "";
+        }
         else if (it.type === "elevator" && world.elevator) { s.elevatorFloor = Math.max(0, Math.min(world.elevator.floors - 1, Math.floor(it.floor || 0))); p.set(world.elevator.x, s.elevatorFloor * 4 + .22, world.elevator.z); elevatorY.current = s.elevatorFloor * 4; s.mode = "elevator"; onMode("elevator"); onElevatorMenu({ floors: world.elevator.floors, current: s.elevatorFloor }); }
         else if (it.type === "cable") {
           s.cableStation = Math.max(0, Math.min(CABLE_STATIONS.length - 1, it.stationId || 0));
@@ -890,6 +899,7 @@ export default function Game() {
         h("li", null, "רכב: W/S נסיעה, A פנייה שמאלה, D פנייה ימינה, Shift בלימה"),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
+        h("li", null, "מחסן בכל בניין: ניגשים לפתח המדרגות ולוחצים F כדי לרדת לקומה -1; בתוך המחסן F ליד המדרגות כדי לחזור."),
         h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
       )

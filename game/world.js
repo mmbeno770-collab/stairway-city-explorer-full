@@ -24,7 +24,7 @@ const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפ�
 export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [];
     let elevator = null;
-    const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround });
+    const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
     for (const station of CABLE_STATIONS) {
         // Elevated station decks are real walkable collision surfaces.
         add(station.x - 7, station.y - .35, station.z - 4.2, station.x + 7, station.y, station.z + 4.2, "#8d9698", "solid", true);
@@ -58,12 +58,27 @@ export function generateWorld(seed = 7) {
     };
     for (let gx = 0; gx < GRID; gx++) for (let gz = 0; gz < GRID; gz++) {
         const cx = -CITY_HALF + gx * BLOCK + BLOCK / 2, cz = -CITY_HALF + gz * BLOCK + BLOCK / 2;
+        const lotX0 = -CITY_HALF + gx * BLOCK + 4, lotX1 = lotX0 + BLOCK - 8;
+        const lotZ0 = -CITY_HALF + gz * BLOCK + 4, lotZ1 = lotZ0 + BLOCK - 8;
+        const curbHeight = .56, walkWidth = 2.05;
+        add(lotX0, 0, lotZ0, lotX1, .49, lotZ0 + walkWidth, "#85877f", "solid", true);
+        add(lotX0, .49, lotZ0, lotX1, curbHeight, lotZ0 + walkWidth - .12, "#c4c0b4", "solid", true);
+        add(lotX0, 0, lotZ1 - walkWidth, lotX1, .49, lotZ1, "#85877f", "solid", true);
+        add(lotX0, .49, lotZ1 - walkWidth + .12, lotX1, curbHeight, lotZ1, "#c4c0b4", "solid", true);
+        add(lotX0, 0, lotZ0 + walkWidth, lotX0 + walkWidth, .49, lotZ1 - walkWidth, "#85877f", "solid", true);
+        add(lotX0, .49, lotZ0 + walkWidth, lotX0 + walkWidth - .12, curbHeight, lotZ1 - walkWidth, "#c4c0b4", "solid", true);
+        add(lotX1 - walkWidth, 0, lotZ0 + walkWidth, lotX1, .49, lotZ1 - walkWidth, "#85877f", "solid", true);
+        add(lotX1 - walkWidth + .12, .49, lotZ0 + walkWidth, lotX1, curbHeight, lotZ1 - walkWidth, "#c4c0b4", "solid", true);
+        add(lotX0, .49, lotZ0 + walkWidth - .1, lotX1, .53, lotZ0 + walkWidth, "#747b78", "solid", false);
+        add(lotX0, .49, lotZ1 - walkWidth, lotX1, .53, lotZ1 - walkWidth + .1, "#747b78", "solid", false);
+        add(lotX0 + walkWidth - .1, .49, lotZ0 + walkWidth, lotX0 + walkWidth, .53, lotZ1 - walkWidth, "#747b78", "solid", false);
+        add(lotX1 - walkWidth, .49, lotZ0 + walkWidth, lotX1 - walkWidth + .1, .53, lotZ1 - walkWidth, "#747b78", "solid", false);
         if (gx === Math.floor(GRID / 2) && gz === Math.floor(GRID / 2)) {
             add(cx - 11, 0, cz - 11, cx + 11, .02, cz + 11, "#6fa25a", "solid", false);
             add(cx - 4, 0, cz - 4, cx + 4, .25, cz + 4, "#c9c2b0");
             add(cx - 2.5, .25, cz - 2.5, cx + 2.5, .35, cz + 2.5, "#5aa9d6", "glow", false);
             add(cx - .4, .25, cz - .4, cx + .4, 2.2, cz + .4, "#e6e0d0");
-            for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; trees.push({ x: cx + Math.cos(a) * 8.5, z: cz + Math.sin(a) * 8.5, s: .9 + r() * .5 }); }
+            for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + (r() - .5) * .62, radius = 7.6 + r() * 2.1; trees.push({ x: cx + Math.cos(a) * radius, z: cz + Math.sin(a) * radius, s: .82 + r() * .34 }); }
             for (const [bx, bz] of [[-6, 0], [6, 0], [0, -6], [0, 6]]) {
                 add(cx + bx - 1, 0, cz + bz - .3, cx + bx + 1, .5, cz + bz + .3, "#8a5a3a");
                 inter.push({ type: "sofa", x: cx + bx, y: 0, z: cz + bz, face: bz > 0 ? Math.PI : 0 });
@@ -153,9 +168,58 @@ export function generateWorld(seed = 7) {
         const floors = [{ theme: "lobby", label: "לובי" }], pool = [...THEMES].sort(() => r() - .5);
         for (let f = 1; f < nFloors; f++) floors.push(pool[(f - 1) % pool.length]);
         const id = buildings.length;
-        buildings.push({ id, name: NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : ""), x0, z0, x1, z1, floors });
         const sx0 = x0 + WALL_T, sx1 = sx0 + 4, sz1 = z1 - WALL_T, sz0 = sz1 - 6, t = WALL_T;
-        add(x0 - .3, 0, z0 - .3, x1 + .3, .12, z1 + .3, "#9a948a");
+        const basementStairwell = { x0: sx0, x1: sx1, z0: sz0, z1: sz1 };
+        buildings.push({ id, name: NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : ""), x0, z0, x1, z1, floors, basementStairwell, basementFloor: -1 });
+        add(x0 - .3, 0, z0 - .3, x1 + .3, .12, sz0, "#9a948a");
+        add(x0 - .3, 0, sz0, sx0, .12, sz1, "#9a948a");
+        add(sx1, 0, sz0, x1 + .3, .12, sz1, "#9a948a");
+        add(x0 - .3, 0, sz1, x1 + .3, .12, z1 + .3, "#9a948a");
+
+        const basementBottom = -4.24, basementFloorY = -4, basementWallTop = -.06;
+        add(x0 + t, basementBottom, z0 + t, x1 - t, basementFloorY, z1 - t, "#595c5a", "solid", true, false, { basementGround: true });
+        add(x0, basementBottom, z0, x1, basementWallTop, z0 + t, "#77756e", "solid", true);
+        add(x0, basementBottom, z1 - t, x1, basementWallTop, z1, "#77756e", "solid", true);
+        add(x0, basementBottom, z0 + t, x0 + t, basementWallTop, z1 - t, "#77756e", "solid", true);
+        add(x1 - t, basementBottom, z0 + t, x1, basementWallTop, z1 - t, "#77756e", "solid", true);
+
+        const stairCol = "#a9a59a";
+        for (let i = 0; i < 8; i++) {
+            const top = -.25 * (i + 1);
+            add(sx0, top - .5, sz0 + i * .5, sx0 + 2, top, sz0 + (i + 1) * .5, i % 2 ? stairCol : shade(stairCol, -.055), "solid", true, false, { basementGround: true });
+        }
+        add(sx0, -2.5, sz0 + 4, sx1, -2, sz1, "#aaa69b", "solid", true, false, { basementGround: true });
+        for (let i = 0; i < 8; i++) {
+            const top = -2 - .25 * (i + 1);
+            add(sx0 + 2, top - .5, sz0 + 4 - (i + 1) * .5, sx1, top, sz0 + 4 - i * .5, i % 2 ? stairCol : shade(stairCol, -.055), "solid", true, false, { basementGround: true });
+        }
+        for (let i = 0; i <= 8; i++) {
+            const z = sz0 + i * .5, y = -.12 - i * .25;
+            add(sx0 + .12, y - .08, z - .035, sx0 + .2, y + .18, z + .035, "#5f6665", "solid", false);
+            add(sx1 - .2, y - .08, z - .035, sx1 - .12, y + .18, z + .035, "#5f6665", "solid", false);
+        }
+
+        const shelfZ = z0 + .75;
+        for (let shelf = 0; shelf < 2; shelf++) {
+            const sx = x0 + 5.3 + shelf * 3.7;
+            for (const dx of [-.85, .85]) add(sx + dx - .045, -3.95, shelfZ - .045, sx + dx + .045, -.55, shelfZ + .045, "#47565b", "solid", false);
+            for (let level = 0; level < 4; level++) {
+                const yy = -3.45 + level * .82;
+                add(sx - .95, yy, shelfZ - .35, sx + .95, yy + .1, shelfZ + .35, "#98754c", "solid", false);
+                if (level < 3) {
+                    add(sx - .72, yy + .1, shelfZ - .24, sx - .12, yy + .63, shelfZ + .24, level % 2 ? "#687c83" : "#8a7760", "solid", false);
+                    add(sx + .12, yy + .1, shelfZ - .24, sx + .72, yy + .58, shelfZ + .24, level % 2 ? "#9b875f" : "#566a70", "solid", false);
+                }
+            }
+        }
+        for (let crate = 0; crate < 5; crate++) {
+            const xx = x0 + 5.2 + (crate % 3) * 2.25, zz = z1 - 1.6 - Math.floor(crate / 3) * 1.35, yy = -3.52 + (crate % 2) * .05;
+            add(xx - .42, -4, zz - .42, xx + .42, yy + .52, zz + .42, crate % 2 ? "#826744" : "#68777a", "solid", false);
+            add(xx - .43, yy + .36, zz - .44, xx + .43, yy + .42, zz + .44, "#b2915f", "solid", false);
+        }
+        add((x0 + x1) / 2 - 1.4, -.38, (z0 + z1) / 2, (x0 + x1) / 2 + 1.4, -.29, (z0 + z1) / 2 + .14, "#ffe2a5", "glow", false);
+        add(sx1 + .25, -1.12, sz0 + 4.6, sx1 + .36, -.55, sz0 + 5.7, "#293c46", "solid", false);
+        add(sx1 + .18, -1.2, sz0 + 4.5, sx1 + .43, -1.08, sz0 + 5.8, "#d0ad70", "glow", false);
         if (id === 0) {
             const ex = x1 - 1.65, ez = z0 + 4.15;
             elevator = { x: ex, z: ez, doorX: ex - 1.35, approachX: ex - 2.2, floors: nFloors + 1 };
@@ -170,10 +234,19 @@ export function generateWorld(seed = 7) {
             if (f === 0) {
                 if (id === 0) {
                     const ex0 = x1 - 3, ex1 = x1 - .3, ez0 = z0 + 2.8, ez1 = z0 + 5.5;
-                    add(x0 + t, .12, z0 + t, ex0, .15, ez1, floorCol);
-                    add(x0 + t, .12, ez1, x1 - t, .15, z1 - t, floorCol);
+                    add(x0 + t, .12, z0 + t, x1 - t, .15, ez0, floorCol);
+                    add(x0 + t, .12, ez0, ex0, .15, ez1, floorCol);
                     add(ex1, .12, ez0, x1 - t, .15, ez1, floorCol);
-                } else add(x0 + t, .12, z0 + t, x1 - t, .15, z1 - t, floorCol);
+                    add(x0 + t, .12, ez1, x1 - t, .15, sz0, floorCol);
+                    add(x0 + t, .12, sz0, sx0, .15, sz1, floorCol);
+                    add(sx1, .12, sz0, x1 - t, .15, sz1, floorCol);
+                    add(x0 + t, .12, sz1, x1 - t, .15, z1 - t, floorCol);
+                } else {
+                    add(x0 + t, .12, z0 + t, x1 - t, .15, sz0, floorCol);
+                    add(x0 + t, .12, sz0, sx0, .15, sz1, floorCol);
+                    add(sx1, .12, sz0, x1 - t, .15, sz1, floorCol);
+                    add(x0 + t, .12, sz1, x1 - t, .15, z1 - t, floorCol);
+                }
             } else {
                 if (id === 0) {
                     // Non-overlapping floor panels around the elevator and stair openings.
@@ -216,15 +289,17 @@ export function generateWorld(seed = 7) {
             add(sx1 - .02, y + FLOOR_H + .9, sz0, sx1 + .14, y + FLOOR_H + 1.05, sz1, "#d9b26a", "solid", false);
             furnish(add, inter, r, floors[f].theme, sx1 + .6, id === 0 ? x1 - 3.5 : x1 - t - .4, z0 + t + .4, z1 - t - .4, y + (f === 0 ? .15 : 0), f === 0);
         }
-        // Fewer, more widely spaced avenue trees leave open sightlines around each building.
-        for (const tx of [-11, 11]) {
-            trees.push({ x: cx + tx, z: cz - BLOCK / 2 + 3, s: .9 + r() * .42 });
-            trees.push({ x: cx + tx, z: cz + BLOCK / 2 - 3, s: .84 + r() * .38 });
+        // One or two trees per building plot, placed at changing corners with random offsets.
+        if (r() > .16) {
+            const sx = r() > .5 ? 1 : -1, sz = r() > .5 ? 1 : -1;
+            const count = r() > .72 ? 2 : 1;
+            trees.push({ x: cx + sx * (W / 2 + 1.7 + r() * .9), z: cz + sz * (D / 2 + 1.5 + r() * 1.1), s: .78 + r() * .34 });
+            if (count === 2) trees.push({ x: cx - sx * (W / 2 + 1.8 + r() * .8), z: cz + sz * (D / 2 + 1.4 + r() * .9), s: .76 + r() * .34 });
         }
-        for (const side of [-1, 1]) {
-            const px = cx + side * 12.8, pz = cz + BLOCK / 2 - 3.1;
-            add(px - .85, 0, pz - .85, px + .85, .55, pz + .85, "#927a5c", "solid", false);
-            add(px - .72, .55, pz - .72, px + .72, 1.45, pz + .72, "#4f7c4d", "solid", false);
+        if (r() > .38) {
+            const px = cx + (r() > .5 ? 1 : -1) * (10.8 + r() * 1.4), pz = cz + (r() - .5) * 17;
+            add(px - .72, 0, pz - .72, px + .72, .48, pz + .72, "#927a5c", "solid", false);
+            add(px - .61, .48, pz - .61, px + .61, 1.24, pz + .61, "#4f7c4d", "solid", false);
         }
         lamps.push({ x: cx - BLOCK / 2 + 3, z: cz - BLOCK / 2 + 3 }, { x: cx + BLOCK / 2 - 3, z: cz + BLOCK / 2 - 3 });
     }
@@ -405,16 +480,21 @@ export class Collider {
         return out;
     }
     groundAt(x, z, y, step, rad = .2) {
-        let g = 0;
+        let g = 0, basementGround = -Infinity;
         for (const b of this.near(x, z, rad)) {
             if (b.noGround) continue;
             if (x + rad < b.x0 || x - rad > b.x1 || z + rad < b.z0 || z - rad > b.z1) continue;
+            if (b.basementGround) {
+                if (b.y1 <= y + step && b.y1 >= y - .65 && b.y1 > basementGround) basementGround = b.y1;
+                continue;
+            }
             if (b.y1 <= y + step && b.y1 > g) g = b.y1;
         }
         for (const hill of WALKABLE_HILLS) {
             const surface = hillHeightAt(hill, x, z);
             if (surface > g) g = surface;
         }
+        if (basementGround > -Infinity) g = basementGround;
         return g;
     }
     ceilingAt(x, z, y, rad = .2) { let c = Infinity; for (const b of this.near(x, z, rad)) { if (x + rad < b.x0 || x - rad > b.x1 || z + rad < b.z0 || z - rad > b.z1) continue; if (b.y0 >= y && b.y0 < c) c = b.y0; } return c; }
@@ -438,6 +518,7 @@ export class Collider {
 export function locate(world, x, y, z) {
     for (const b of world.buildings) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1) {
         const f = Math.floor((y + .6) / FLOOR_H);
+        if (f < 0) return { building: b.name, floor: "-1", room: "מחסן" };
         if (f >= b.floors.length) return { building: b.name, floor: "גג", room: "גג הבניין" };
         return { building: b.name, floor: f === 0 ? "קרקע" : String(f), room: b.floors[Math.max(0, f)].label };
     }

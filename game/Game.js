@@ -391,7 +391,7 @@ function Boxes({ world, kind }) {
   return h("instancedMesh", { ref, args: [undefined, undefined, list.length], castShadow: kind === "solid", receiveShadow: kind === "solid" }, h("boxGeometry"), material);
 }
 
-function Ground({ quality, wet }) {
+function Ground({ quality, wet, buildings }) {
   const data = useMemo(() => {
     const size = quality === "low" ? 768 : quality === "balanced" ? 1024 : 1280;
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
@@ -414,6 +414,39 @@ function Ground({ quality, wet }) {
       const r = -CITY_HALF + i * BLOCK;
       for (let t = -CITY_HALF; t < CITY_HALF; t += 4) { ctx.fillRect(to(r) - 2, to(t), 4, 2 * p); ctx.fillRect(to(t), to(r) - 2, 2 * p, 4); }
     }
+    ctx.save();
+    ctx.lineCap = "butt";
+    ctx.strokeStyle = "#f4d66f";
+    ctx.lineWidth = Math.max(1.4, p * .19);
+    ctx.setLineDash([p * 2.35, p * 1.25]);
+    for (let i = 0; i <= GRID; i++) {
+      const road = -CITY_HALF + i * BLOCK;
+      for (const offset of [-.13, .13]) {
+        ctx.beginPath(); ctx.moveTo(to(road + offset), to(-CITY_HALF + 1)); ctx.lineTo(to(road + offset), to(CITY_HALF - 1)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(to(-CITY_HALF + 1), to(road + offset)); ctx.lineTo(to(CITY_HALF - 1), to(road + offset)); ctx.stroke();
+      }
+      ctx.strokeStyle = "#e7e6df";
+      ctx.lineWidth = Math.max(1.1, p * .14);
+      ctx.setLineDash([]);
+      for (const edge of [-3.72, 3.72]) {
+        ctx.beginPath(); ctx.moveTo(to(road + edge), to(-CITY_HALF)); ctx.lineTo(to(road + edge), to(CITY_HALF)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(to(-CITY_HALF), to(road + edge)); ctx.lineTo(to(CITY_HALF), to(road + edge)); ctx.stroke();
+      }
+      ctx.strokeStyle = "#f4d66f";
+      ctx.lineWidth = Math.max(1.4, p * .19);
+      ctx.setLineDash([p * 2.35, p * 1.25]);
+    }
+    ctx.fillStyle = "#f3f0e7";
+    for (let gx = 0; gx <= GRID; gx++) for (let gz = 0; gz <= GRID; gz++) {
+      const rx = -CITY_HALF + gx * BLOCK, rz = -CITY_HALF + gz * BLOCK;
+      for (const sign of [-1, 1]) for (let stripe = 0; stripe < 5; stripe++) {
+        const z = rz + sign * (2.35 + stripe * .34);
+        const x = rx + sign * (2.35 + stripe * .34);
+        ctx.fillRect(to(rx - 3.35), to(z), 6.7 * p, .16 * p);
+        ctx.fillRect(to(x), to(rz - 3.35), .16 * p, 6.7 * p);
+      }
+    }
+    ctx.restore();
     const image = ctx.getImageData(0, 0, size, size);
     for (let i = 0; i < image.data.length; i += 4) {
       const pixel = i / 4, hash = (Math.imul(pixel + 1, 1664525) + 1013904223) >>> 0;
@@ -421,13 +454,18 @@ function Ground({ quality, wet }) {
       image.data[i] += n; image.data[i + 1] += n; image.data[i + 2] += n;
     }
     ctx.putImageData(image, 0, 0);
+    for (const building of buildings) {
+      const opening = building.basementStairwell;
+      if (!opening) continue;
+      ctx.clearRect(to(opening.x0 + .025), to(opening.z0 + .025), (opening.x1 - opening.x0 - .05) * p, (opening.z1 - opening.z0 - .05) * p);
+    }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = quality === "high" ? 8 : 2;
     return { texture, total };
   }, [quality]);
   useEffect(() => () => data.texture.dispose(), [data]);
   return h(React.Fragment, null,
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughness: wet ? .28 : .93, metalness: wet ? .2 : 0 })),
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.025, 0] }, h("planeGeometry", { args: [1200, 1200] }), h("meshStandardMaterial", { color: "#6f9a52", roughness: wet ? .72 : 1 }))
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .28 : .93, metalness: wet ? .2 : 0 })),
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -5.1, 0] }, h("planeGeometry", { args: [1200, 1200] }), h("meshStandardMaterial", { color: "#6f9a52", roughness: wet ? .72 : 1 }))
   );
 }
 
@@ -438,9 +476,10 @@ function Trees({ world, nightFactor }) {
   useEffect(() => {
     const obj = new THREE.Object3D(), color = new THREE.Color();
     world.trees.forEach((tree, i) => {
-      obj.position.set(tree.x, 1.1 * tree.s, tree.z); obj.scale.setScalar(tree.s); obj.rotation.set(0, i, 0); obj.updateMatrix(); trunk.current.setMatrixAt(i, obj.matrix);
-      obj.position.set(tree.x, 3 * tree.s, tree.z); obj.updateMatrix(); crown.current.setMatrixAt(i, obj.matrix); crown.current.setColorAt(i, color.setHSL(.25 + (i % 5) * .02, .45, .32 + (i % 3) * .05));
-      obj.position.set(tree.x + Math.sin(i) * .6 * tree.s, 3.9 * tree.s, tree.z + Math.cos(i) * .6 * tree.s); obj.scale.setScalar(tree.s * .65); obj.updateMatrix(); crown2.current.setMatrixAt(i, obj.matrix); crown2.current.setColorAt(i, color.setHSL(.24 + (i % 4) * .02, .5, .38));
+      const baseY = tree.y ?? 0;
+      obj.position.set(tree.x, baseY + 1.1 * tree.s, tree.z); obj.scale.setScalar(tree.s); obj.rotation.set(0, i * 1.71 + (tree.turn || 0), 0); obj.updateMatrix(); trunk.current.setMatrixAt(i, obj.matrix);
+      obj.position.set(tree.x, baseY + 3 * tree.s, tree.z); obj.updateMatrix(); crown.current.setMatrixAt(i, obj.matrix); crown.current.setColorAt(i, color.setHSL(.25 + (i % 5) * .02, .45, .32 + (i % 3) * .05));
+      obj.position.set(tree.x + Math.sin(i * 1.71) * .6 * tree.s, baseY + 3.9 * tree.s, tree.z + Math.cos(i * 1.71) * .6 * tree.s); obj.scale.setScalar(tree.s * .65); obj.updateMatrix(); crown2.current.setMatrixAt(i, obj.matrix); crown2.current.setColorAt(i, color.setHSL(.24 + (i % 4) * .02, .5, .38));
     });
     world.lamps.forEach((lamp, i) => { obj.position.set(lamp.x, 2.5, lamp.z); obj.scale.set(1, 1, 1); obj.rotation.set(0, 0, 0); obj.updateMatrix(); lampPole.current.setMatrixAt(i, obj.matrix); obj.position.y = 5.1; obj.updateMatrix(); lampHead.current.setMatrixAt(i, obj.matrix); });
     [trunk, crown, crown2, lampPole, lampHead].forEach((r) => { if (r.current) { r.current.instanceMatrix.needsUpdate = true; if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; r.current.computeBoundingSphere(); } });
@@ -813,7 +852,7 @@ export default function Game() {
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
         h(Environment, { resolution: quality === "high" ? 96 : 64 }, h(Lightformer, { intensity: 1.2 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [20, 20, 1] }), h(Lightformer, { intensity: .6, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [20, 4, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
-        h(Ground, { quality, wet: weather === "rain" || weather === "storm" }),
+        h(Ground, { quality, wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
         h(ScenicHills), h(WalkableHills),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),

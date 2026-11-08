@@ -24,15 +24,15 @@ const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפ�
 export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [];
     let elevator = null;
-    const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide });
+    const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround });
     for (const station of CABLE_STATIONS) {
         // Elevated station decks are real walkable collision surfaces.
         add(station.x - 7, station.y - .35, station.z - 4.2, station.x + 7, station.y, station.z + 4.2, "#8d9698", "solid", true);
         // Low perimeter safety rails: collision posts and rails block walking, but are low enough to jump over.
         const fenceHeight = 1.08, fencePost = .09, fenceY = station.y;
-        const post = (x, z) => add(x - fencePost, fenceY, z - fencePost, x + fencePost, fenceY + fenceHeight, z + fencePost, "#c7a66b", "solid", true);
-        const railX = (z, x0, x1) => add(x0, fenceY + .88, z - .07, x1, fenceY + 1.02, z + .07, "#8c9997", "solid", true);
-        const railZ = (x, z0, z1) => add(x - .07, fenceY + .88, z0, x + .07, fenceY + 1.02, z1, "#8c9997", "solid", true);
+        const post = (x, z) => add(x - fencePost, fenceY, z - fencePost, x + fencePost, fenceY + fenceHeight, z + fencePost, "#c7a66b", "solid", true, true);
+        const railX = (z, x0, x1) => add(x0, fenceY + .88, z - .07, x1, fenceY + 1.02, z + .07, "#8c9997", "solid", true, true);
+        const railZ = (x, z0, z1) => add(x - .07, fenceY + .88, z0, x + .07, fenceY + 1.02, z1, "#8c9997", "solid", true, true);
         const addPostsX = (z) => { for (let x = station.x - 6.65; x <= station.x + 6.66; x += .55) post(x, z); };
         const addPostsZ = (x, z0, z1) => { for (let z = z0; z <= z1 + .001; z += .55) post(x, z); };
         // North and south edges, plus the full eastern edge.
@@ -41,11 +41,9 @@ export function generateWorld(seed = 7) {
         railX(station.z - 3.98, station.x - 6.65, station.x + 6.65);
         railX(station.z + 3.98, station.x - 6.65, station.x + 6.65);
         railZ(station.x + 6.65, station.z - 3.98, station.z + 3.98);
-        // West edge has a wide opening beside the ladder so players can reach the way down.
-        for (const [z0, z1] of [[station.z - 3.98, station.z - 1.25], [station.z + 1.25, station.z + 3.98]]) {
-          addPostsZ(station.x - 6.65, z0, z1);
-          railZ(station.x - 6.65, z0, z1);
-        }
+        // The west edge is fenced too; the ladder remains reachable from inside the platform.
+        addPostsZ(station.x - 6.65, station.z - 3.98, station.z + 3.98);
+        railZ(station.x - 6.65, station.z - 3.98, station.z + 3.98);
         inter.push({ type: "cable", x: station.x - 5.2, y: 0, z: station.z, stationId: station.id });
     }
     const wall = (axis, a, b, c, y, color, door, glassColor) => {
@@ -409,6 +407,7 @@ export class Collider {
     groundAt(x, z, y, step, rad = .2) {
         let g = 0;
         for (const b of this.near(x, z, rad)) {
+            if (b.noGround) continue;
             if (x + rad < b.x0 || x - rad > b.x1 || z + rad < b.z0 || z - rad > b.z1) continue;
             if (b.y1 <= y + step && b.y1 > g) g = b.y1;
         }

@@ -248,7 +248,7 @@ function Cableway({ ride }) {
       ...support, ...mast, ...stationPulleys,
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [2.5, .2, .2] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [.2, .2, 2.5] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
-      h("mesh", { position: [station.x, station.y + .035, station.z] }, h("boxGeometry", { args: [8.5, .06, 7.5] }), h("meshStandardMaterial", { color: "#4b5a5e", metalness: .78, roughness: .3 })),
+      h("mesh", { position: [station.x, station.y + .035, station.z] }, h("boxGeometry", { args: [13.8, .06, 8.4] }), h("meshStandardMaterial", { color: "#4b5a5e", metalness: .78, roughness: .3 })),
       ...ladder, ...railings,
       h("mesh", { position: [station.x + 5.0, station.y + 2.0, station.z] }, h("boxGeometry", { args: [.22, 2.0, 3.5] }), h("meshStandardMaterial", { color: "#31444a", metalness: .52, roughness: .35 })),
       h("mesh", { position: [station.x + 4.86, station.y + 2.0, station.z] }, h("boxGeometry", { args: [.035, 1.35, 2.8] }), h("meshStandardMaterial", { color: "#c9aa6d", emissive: "#8b6b2f", emissiveIntensity: .16, metalness: .78, roughness: .28 }))

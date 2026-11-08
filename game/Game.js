@@ -77,63 +77,131 @@ function cableRouteBetween(from, to) {
   while (route[route.length - 1] !== to && route.length <= count) route.push((route[route.length - 1] + step + count) % count);
   return route;
 }
-function sampleCableRoute(route, progress) {
-  const segments = Math.max(1, route.length - 1), scaled = THREE.MathUtils.clamp(progress, 0, 1) * segments;
-  const index = Math.min(Math.floor(scaled), segments - 1), t = THREE.MathUtils.clamp(scaled - index, 0, 1);
-  const a = CABLE_STATIONS[route[index]], b = CABLE_STATIONS[route[index + 1]];
-  return {
-    x: THREE.MathUtils.lerp(a.x, b.x, t),
-    y: THREE.MathUtils.lerp(a.y, b.y, t),
-    z: THREE.MathUtils.lerp(a.z, b.z, t),
-    yaw: Math.atan2(b.x - a.x, b.z - a.z)
-  };
+const CABLE_BENDS = [
+  [{ x: -42, y: 54, z: -119 }, { x: 34, y: 52, z: -116 }],
+  [{ x: 120, y: 55, z: -38 }, { x: 115, y: 51, z: 43 }],
+  [{ x: 38, y: 55, z: 120 }, { x: -42, y: 57, z: 116 }],
+  [{ x: -121, y: 56, z: 32 }, { x: -116, y: 52, z: -43 }]
+];
+
+function makeCableCurve() {
+  const points = [];
+  CABLE_STATIONS.forEach((station, i) => {
+    points.push(new THREE.Vector3(station.x, station.y, station.z));
+    for (const bend of CABLE_BENDS[i]) points.push(new THREE.Vector3(bend.x, bend.y, bend.z));
+  });
+  return new THREE.CatmullRomCurve3(points, true, "centripetal", .5);
+}
+
+function sampleCableRoute(route, progress, curve) {
+  const count = Math.max(1, route.length - 1), scaled = THREE.MathUtils.clamp(progress, 0, 1) * count;
+  const segment = Math.min(Math.floor(scaled), count - 1), local = THREE.MathUtils.clamp(scaled - segment, 0, 1);
+  const from = route[segment], to = route[segment + 1], stationCount = CABLE_STATIONS.length;
+  const direction = (to - from + stationCount) % stationCount === 1 ? 1 : -1;
+  const u = (((from * 3 + direction * 3 * local) / (stationCount * 3)) % 1 + 1) % 1;
+  const point = curve.getPoint(u), tangent = curve.getTangent(u).multiplyScalar(direction);
+  return { x: point.x, y: point.y, z: point.z, yaw: Math.atan2(tangent.x, tangent.z) };
+}
+
+function CableBeam({ a, b, radius = .22, color = "#62747a" }) {
+  const start = new THREE.Vector3(a[0], a[1], a[2]), end = new THREE.Vector3(b[0], b[1], b[2]);
+  const delta = end.clone().sub(start), length = delta.length(), mid = start.clone().add(end).multiplyScalar(.5);
+  const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+  return h("mesh", { position: [mid.x, mid.y, mid.z], quaternion: rotation, castShadow: true, receiveShadow: true },
+    h("cylinderGeometry", { args: [radius * .82, radius, length, 9] }),
+    h("meshStandardMaterial", { color, metalness: .82, roughness: .3 })
+  );
+}
+
+function CablePylon({ point, id }) {
+  const top = point.y + 6.55, x = point.x, z = point.z;
+  return h("group", { key: "route-pylon-" + id },
+    h(CableBeam, { a: [x - 3.1, .2, z], b: [x - .72, top, z], radius: .3 }),
+    h(CableBeam, { a: [x + 3.1, .2, z], b: [x + .72, top, z], radius: .3 }),
+    h(CableBeam, { a: [x - 1.45, top - 2.3, z], b: [x + 1.45, top - 2.3, z], radius: .18, color: "#b79a66" }),
+    h(CableBeam, { a: [x - 1.35, top - 4.8, z], b: [x + 1.35, top - 4.8, z], radius: .14 }),
+    h("mesh", { position: [x, top, z], castShadow: true }, h("boxGeometry", { args: [4.3, .26, .55] }), h("meshStandardMaterial", { color: "#44545a", metalness: .84, roughness: .27 })),
+    ...[-1.15, 0, 1.15].map((offset) => h("mesh", { key: "wheel-" + offset, position: [x + offset, top + .23, z], rotation: [Math.PI / 2, 0, 0] },
+      h("torusGeometry", { args: [.48, .09, 9, 22] }),
+      h("meshStandardMaterial", { color: "#c5a66c", metalness: .86, roughness: .24 })
+    )),
+    h("mesh", { position: [x, top - 1.0, z] }, h("boxGeometry", { args: [.18, 1.6, .18] }), h("meshStandardMaterial", { color: "#c5a66c", metalness: .78, roughness: .3 }))
+  );
 }
 
 function CableCabin() {
-  const glass = h("meshPhysicalMaterial", { color: "#9bcbd0", transparent: true, opacity: .3, roughness: .12, metalness: .18, clearcoat: 1, clearcoatRoughness: .08, depthWrite: false });
+  const wheels = useRef([]);
+  useFrame((_, dt) => {
+    wheels.current.forEach((wheel) => { if (wheel) wheel.rotation.z += dt * 2.1; });
+  });
+  const glass = h("meshPhysicalMaterial", { color: "#a9d9df", transparent: true, opacity: .22, roughness: .1, metalness: .16, clearcoat: 1, clearcoatRoughness: .06, depthWrite: false });
+  const gold = h("meshPhysicalMaterial", { color: "#d6b477", roughness: .22, metalness: .88, clearcoat: .6 });
+  const dark = h("meshStandardMaterial", { color: "#263940", roughness: .3, metalness: .62 });
   return h(React.Fragment, null,
-    h("mesh", { position: [0, 6.45, 0], castShadow: true }, h("boxGeometry", { args: [3.35, .38, 1.05] }), h("meshStandardMaterial", { color: "#35454b", metalness: .82, roughness: .26 })),
-    h("mesh", { position: [0, 6.68, 0], castShadow: true }, h("cylinderGeometry", { args: [.32, .32, .22, 16] }), h("meshStandardMaterial", { color: "#d9b56f", metalness: .86, roughness: .22 })),
-    ...[-.78, .78].map((x) => h("mesh", { key: "hanger-" + x, position: [x, 4.4, 0] }, h("boxGeometry", { args: [.13, 4.15, .13] }), h("meshStandardMaterial", { color: "#b7c0bd", metalness: .8, roughness: .28 }))),
-    h("mesh", { position: [0, .14, 0], castShadow: true }, h("boxGeometry", { args: [3.05, .28, 2.55] }), h("meshStandardMaterial", { color: "#b99a62", metalness: .82, roughness: .24 })),
-    h("mesh", { position: [0, 1.28, 0], castShadow: true }, h("boxGeometry", { args: [2.9, 2.0, 2.4] }), glass),
-    ...[-1.38, 1.38].flatMap((x) => [-1.13, 1.13].map((z) => h("mesh", { key: "frame-" + x + "-" + z, position: [x, 1.28, z] }, h("boxGeometry", { args: [.12, 2.18, .12] }), h("meshStandardMaterial", { color: "#c9a86a", metalness: .85, roughness: .24 })))),
-    h("mesh", { position: [0, 2.35, 0], castShadow: true }, h("boxGeometry", { args: [3.05, .18, 2.55] }), h("meshStandardMaterial", { color: "#3b4d52", metalness: .75, roughness: .3 })),
-    h("mesh", { position: [0, .36, 1.215] }, h("boxGeometry", { args: [1.0, .055, .035] }), h("meshStandardMaterial", { color: "#e3c486", metalness: .8, roughness: .2 }))
+    // Suspension arm and animated sheave wheels above the cabin.
+    h("mesh", { position: [0, 6.55, 0], castShadow: true }, h("boxGeometry", { args: [2.5, .3, .72] }), dark),
+    h("mesh", { position: [0, 6.82, 0] }, h("cylinderGeometry", { args: [.28, .28, .26, 18] }), gold),
+    ...[-.9, -.3, .3, .9].map((x, i) => h("group", { key: "sheave-" + i, position: [x, 6.52, 0], rotation: [Math.PI / 2, 0, 0], ref: (node) => { wheels.current[i] = node; } },
+      h("mesh", null, h("torusGeometry", { args: [.38, .085, 9, 20] }), gold),
+      h("mesh", null, h("cylinderGeometry", { args: [.12, .12, .17, 12] }), dark)
+    )),
+    ...[-.78, .78].map((x) => h("mesh", { key: "hanger-" + x, position: [x, 4.45, 0] }, h("boxGeometry", { args: [.13, 4.1, .13] }), dark)),
+    h("mesh", { position: [0, .12, 0], castShadow: true }, h("boxGeometry", { args: [3.05, .28, 2.55] }), gold),
+    h("mesh", { position: [0, .48, 0] }, h("boxGeometry", { args: [2.9, .5, 2.35] }), dark),
+    // Rounded, translucent cabin shell makes the gondola read as a 3D capsule.
+    h("mesh", { position: [0, 1.45, 0], scale: [1.46, 1.05, 1.22], castShadow: true }, h("sphereGeometry", { args: [1, 28, 20] }), glass),
+    h("mesh", { position: [0, 2.32, 0], scale: [1.36, .2, 1.12] }, h("sphereGeometry", { args: [1, 20, 12] }), dark),
+    // Gold corner frames, front windshield trim and roof detailing.
+    ...[-1.28, 1.28].flatMap((x) => [-1.02, 1.02].map((z) => h("mesh", { key: "frame-" + x + "-" + z, position: [x, 1.42, z] }, h("cylinderGeometry", { args: [.055, .075, 2.08, 10] }), gold))),
+    ...[-1.26, 1.26].map((x) => h("mesh", { key: "crossbar-" + x, position: [x, 1.44, 0] }, h("boxGeometry", { args: [.08, 2.0, 2.05] }), gold)),
+    h("mesh", { position: [0, .83, 0] }, h("boxGeometry", { args: [2.45, .12, 1.8] }), h("meshStandardMaterial", { color: "#a9b4b0", roughness: .52, metalness: .25 })),
+    // Two compact passenger benches and contrasting cushions.
+    ...[-.62, .62].map((z) => h("group", { key: "seat-" + z, position: [0, 0, z] },
+      h("mesh", { position: [0, 1.04, 0] }, h("boxGeometry", { args: [1.7, .16, .48] }), h("meshStandardMaterial", { color: "#344d55", roughness: .78 })),
+      h("mesh", { position: [0, 1.35, -.18] }, h("boxGeometry", { args: [1.7, .48, .14] }), h("meshStandardMaterial", { color: "#344d55", roughness: .8 })),
+      h("mesh", { position: [0, 1.15, .18] }, h("boxGeometry", { args: [1.5, .045, .025] }), gold)
+    )),
+    ...[-1, 1].map((x) => h("mesh", { key: "lamp-" + x, position: [x * 1.25, 1.03, 1.12] }, h("sphereGeometry", { args: [.12, 12, 10] }), h("meshBasicMaterial", { color: "#ffe4a8" }))),
+    h("mesh", { position: [0, .58, 1.19] }, h("boxGeometry", { args: [.74, .1, .04] }), gold)
   );
 }
 
 function Cableway({ ride }) {
   const autonomous = useRef([]), passengerCabin = useRef(null);
-  const loop = [0, 1, 2, 3, 0];
-  const cables = useMemo(() => CABLE_STATIONS.map((station, i) => {
-    const next = CABLE_STATIONS[(i + 1) % CABLE_STATIONS.length];
-    const dx = next.x - station.x, dz = next.z - station.z, length = Math.hypot(dx, dz) || 1;
-    const nx = dz / length, nz = -dx / length;
-    return [-.78, .78].map((offset) => {
-      const start = new THREE.Vector3(station.x + nx * offset, station.y + 6.65, station.z + nz * offset);
-      const end = new THREE.Vector3(next.x + nx * offset, next.y + 6.65, next.z + nz * offset);
-      const mid = new THREE.Vector3((start.x + end.x) / 2, (start.y + end.y) / 2 - .22, (start.z + end.z) / 2);
-      return new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(start, mid, end), 48, .12, 8, false);
-    });
-  }), []);
-  useEffect(() => () => cables.flat().forEach((geometry) => geometry.dispose()), [cables]);
+  const loop = [...CABLE_STATIONS.map((station) => station.id), CABLE_STATIONS[0].id];
+  const curve = useMemo(() => makeCableCurve(), []);
+  const cables = useMemo(() => {
+    const result = [];
+    for (const offset of [-.82, .82, 0]) {
+      const pathPoints = curve.getSpacedPoints(420).map((point, index, points) => {
+        const tangent = curve.getTangent(index / 420);
+        const side = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
+        return point.clone().addScaledVector(side, offset).add(new THREE.Vector3(0, 6.65, 0));
+      });
+      const cableCurve = new THREE.CatmullRomCurve3(pathPoints, true, "centripetal", .5);
+      result.push(new THREE.TubeGeometry(cableCurve, 520, offset === 0 ? .065 : .11, 8, true));
+    }
+    return result;
+  }, [curve]);
+  useEffect(() => () => cables.forEach((geometry) => geometry.dispose()), [cables]);
+
   useFrame(({ clock }) => {
     for (let i = 0; i < 3; i++) {
       const node = autonomous.current[i];
       if (!node) continue;
-      const progress = (clock.elapsedTime * .018 + i / 3) % 1, point = sampleCableRoute(loop, progress);
+      const progress = (clock.elapsedTime * .018 + i / 3) % 1, point = sampleCableRoute(loop, progress, curve);
       node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
     }
     const node = passengerCabin.current, current = ride.current;
     if (node) {
       node.visible = !!current?.active;
       if (current?.active && current.route?.length > 1) {
-        const point = sampleCableRoute(current.route, current.progress);
+        const point = sampleCableRoute(current.route, current.progress, curve);
         node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
       }
     }
   });
+
   const stationVisuals = CABLE_STATIONS.map((station) => {
     const support = [];
     for (const dx of [-3.45, 3.45]) for (const dz of [-3.0, 3.0]) {
@@ -150,12 +218,13 @@ function Cableway({ ride }) {
       ));
     }
     const ladderX = station.x - 5.2;
+    const ladderCount = Math.ceil(station.y / 2.3);
     const ladder = [
       ...[-.58, .58].map((dz) => h("mesh", { key: "ladder-rail-" + dz, position: [ladderX, station.y / 2, station.z + dz] },
         h("boxGeometry", { args: [.16, station.y, .16] }),
         h("meshStandardMaterial", { color: "#d0ae70", metalness: .78, roughness: .28 })
       )),
-      ...Array.from({ length: 21 }, (_, i) => h("mesh", { key: "rung-" + i, position: [ladderX, .9 + i * 2.3, station.z] },
+      ...Array.from({ length: ladderCount }, (_, i) => h("mesh", { key: "rung-" + i, position: [ladderX, station.y * (i + 1) / (ladderCount + 1), station.z] },
         h("boxGeometry", { args: [.17, .12, 1.22] }),
         h("meshStandardMaterial", { color: "#d8bd84", metalness: .72, roughness: .3 })
       ))
@@ -168,8 +237,15 @@ function Cableway({ ride }) {
         h("boxGeometry", { args: [.12, 1.5, .12] }), h("meshStandardMaterial", { color: "#57676b", metalness: .74, roughness: .3 })
       )))
     ];
+    const top = station.y + 6.65;
+    const stationPulleys = [-1.15, 0, 1.15].map((offset) =>
+      h("mesh", { key: "station-pulley-" + offset, position: [station.x + offset, top, station.z], rotation: [Math.PI / 2, 0, 0] },
+        h("torusGeometry", { args: [.48, .09, 9, 22] }),
+        h("meshStandardMaterial", { color: "#c5a66c", metalness: .86, roughness: .24 })
+      )
+    );
     return h("group", { key: station.id },
-      ...support, ...mast,
+      ...support, ...mast, ...stationPulleys,
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [2.5, .2, .2] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [.2, .2, 2.5] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
       h("mesh", { position: [station.x, station.y + .035, station.z] }, h("boxGeometry", { args: [8.5, .06, 7.5] }), h("meshStandardMaterial", { color: "#4b5a5e", metalness: .78, roughness: .3 })),
@@ -178,8 +254,11 @@ function Cableway({ ride }) {
       h("mesh", { position: [station.x + 4.86, station.y + 2.0, station.z] }, h("boxGeometry", { args: [.035, 1.35, 2.8] }), h("meshStandardMaterial", { color: "#c9aa6d", emissive: "#8b6b2f", emissiveIntensity: .16, metalness: .78, roughness: .28 }))
     );
   });
+
+  const pylonPoints = CABLE_BENDS.flat();
   return h(React.Fragment, null,
-    cables.flat().map((geometry, i) => h("mesh", { key: "cable-" + i, geometry, castShadow: false }, h("meshStandardMaterial", { color: "#343f43", metalness: .86, roughness: .28 }))),
+    cables.map((geometry, i) => h("mesh", { key: "cable-" + i, geometry, castShadow: false }, h("meshStandardMaterial", { color: i === 2 ? "#8c999a" : "#343f43", metalness: .9, roughness: .23 }))),
+    ...pylonPoints.map((point, i) => h(CablePylon, { key: "bend-pylon-" + i, point, id: i })),
     ...stationVisuals,
     ...[0, 1, 2].map((i) => h("group", { key: "gondola-" + i, ref: (node) => { autonomous.current[i] = node; } }, h(CableCabin))),
     h("group", { ref: passengerCabin, visible: false }, h(CableCabin))

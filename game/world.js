@@ -2,9 +2,9 @@ export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 36, GRID = 7, CITY_HALF = (GRID 
 
 export const CABLE_STATIONS = [
   { id: 0, name: "תחנת צפון־מערב", x: -90, z: -90, y: 48 },
-  { id: 1, name: "תחנת צפון־מזרח", x: 90, z: -90, y: 48 },
-  { id: 2, name: "תחנת דרום־מזרח", x: 90, z: 90, y: 48 },
-  { id: 3, name: "תחנת דרום־מערב", x: -90, z: 90, y: 48 }
+  { id: 1, name: "תחנת צפון־מזרח", x: 90, z: -90, y: 53 },
+  { id: 2, name: "תחנת דרום־מזרח", x: 90, z: 90, y: 49 },
+  { id: 3, name: "תחנת דרום־מערב", x: -90, z: 90, y: 55 }
 ];
 export const WALKABLE_HILLS = [
   { x: -78, z: -80, rx: 6.5, rz: 6.5, height: 2.8 },

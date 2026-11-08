@@ -5,7 +5,8 @@ import * as THREE from "three";
 /** A light lift car with synchronized floor landing doors. */
 export function ElevatorModel({ layout, y, moving }) {
     const cab = useRef(null);
-    const railHeight = Math.max(2.5, (layout.floors - 1) * 4 + 2.5), railCenter = railHeight / 2;
+    const railBottom = layout.basement ? -4 : 0, railTop = (layout.floors - 1) * 4 + 2.5;
+    const railHeight = Math.max(2.5, railTop - railBottom), railCenter = (railTop + railBottom) / 2;
     useFrame(() => { if (cab.current) cab.current.position.y = y.current; });
     return _jsxs(_Fragment, { children: [
         _jsxs("mesh", { position: [layout.x - 1.38, railCenter, layout.z - 1.35], children: [_jsx("boxGeometry", { args: [.12, railHeight, .12] }), _jsx("meshStandardMaterial", { color: "#596a75", metalness: .78, roughness: .28 })] }),
@@ -20,7 +21,8 @@ export function ElevatorModel({ layout, y, moving }) {
             _jsxs("mesh", { position: [1.035, 1.65, -.58], children: [_jsx("boxGeometry", { args: [.025, .45, .35] }), _jsx("meshStandardMaterial", { color: "#43d4c5", emissive: "#147d79", emissiveIntensity: .7 })] }),
             _jsxs("mesh", { position: [-.35, 2.72, 0], children: [_jsx("boxGeometry", { args: [1.2, .025, .025] }), _jsx("meshBasicMaterial", { color: "#e3f7ff" })] })
         ] }),
-        Array.from({ length: layout.floors }, (_, floor) => _jsx(LandingDoors, { x: layout.doorX, z: layout.z, floor: floor, y: y, moving: moving }, floor))
+        ...(layout.basement ? [_jsx(LandingDoors, { x: layout.doorX, z: layout.z, floor: -1, y: y, moving: moving }, "basement")] : []),
+        ...Array.from({ length: layout.floors }, (_, floor) => _jsx(LandingDoors, { x: layout.doorX, z: layout.z, floor: floor, y: y, moving: moving }, floor))
     ] });
 }
 function LandingDoors({ x, z, floor, y, moving }) {

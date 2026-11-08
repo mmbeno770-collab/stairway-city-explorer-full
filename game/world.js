@@ -182,7 +182,17 @@ export function generateWorld(seed = 7) {
         add(x0 - .3, 0, sz1, x1 + .3, .12, z1 + .3, "#9a948a");
 
         const basementBottom = -4.24, basementFloorY = -4, basementWallTop = -.06;
-        add(x0 + t, basementBottom, z0 + t, x1 - t, basementFloorY, z1 - t, "#595c5a", "solid", true, false, { basementGround: true });
+        if (id === 0) {
+            const liftX = x1 - 1.65, liftZ = z0 + 4.15, hx = 1.42, hz = 1.42;
+            const fx0 = x0 + t, fx1 = x1 - t, fz0 = z0 + t, fz1 = z1 - t;
+            const shaftX0 = liftX - hx, shaftX1 = Math.min(fx1, liftX + hx), shaftZ0 = liftZ - hz, shaftZ1 = liftZ + hz;
+            add(fx0, basementBottom, fz0, shaftX0, basementFloorY, fz1, "#595c5a", "solid", true, false, { basementGround: true });
+            add(shaftX1, basementBottom, fz0, fx1, basementFloorY, fz1, "#595c5a", "solid", true, false, { basementGround: true });
+            add(shaftX0, basementBottom, fz0, shaftX1, basementFloorY, shaftZ0, "#595c5a", "solid", true, false, { basementGround: true });
+            add(shaftX0, basementBottom, shaftZ1, shaftX1, basementFloorY, fz1, "#595c5a", "solid", true, false, { basementGround: true });
+        } else {
+            add(x0 + t, basementBottom, z0 + t, x1 - t, basementFloorY, z1 - t, "#595c5a", "solid", true, false, { basementGround: true });
+        }
         add(x0, basementBottom, z0, x1, basementWallTop, z0 + t, "#77756e", "solid", true);
         add(x0, basementBottom, z1 - t, x1, basementWallTop, z1, "#77756e", "solid", true);
         add(x0, basementBottom, z0 + t, x0 + t, basementWallTop, z1 - t, "#77756e", "solid", true);
@@ -227,12 +237,13 @@ export function generateWorld(seed = 7) {
         add(sx1 + .18, -1.2, sz0 + 4.5, sx1 + .43, -1.08, sz0 + 5.8, "#d0ad70", "glow", false);
         if (id === 0) {
             const ex = x1 - 1.65, ez = z0 + 4.15;
-            elevator = { x: ex, z: ez, doorX: ex - 1.35, approachX: ex - 2.2, floors: nFloors + 1 };
+            elevator = { x: ex, z: ez, doorX: ex - 1.35, approachX: ex - 2.2, floors: nFloors + 1, basement: true };
+            inter.push({ type: "elevator", x: elevator.approachX, y: -FLOOR_H, z: ez, face: Math.PI / 2, floor: -1 });
             for (let ef = 0; ef <= nFloors; ef++) inter.push({ type: "elevator", x: elevator.approachX, y: ef * FLOOR_H, z: ez, face: Math.PI / 2, floor: ef });
-            const shaftTop = nFloors * FLOOR_H + .25;
-            add(ex + 1.28, .15, ez - 1.42, ex + 1.42, shaftTop, ez + 1.42, "#9bb8c4", "glass", true);
-            add(ex - 1.42, .15, ez - 1.42, ex + 1.42, shaftTop, ez - 1.28, "#9bb8c4", "glass", true);
-            add(ex - 1.42, .15, ez + 1.28, ex + 1.42, shaftTop, ez + 1.42, "#9bb8c4", "glass", true);
+            const shaftTop = nFloors * FLOOR_H + .25, shaftBottom = basementBottom;
+            add(ex + 1.28, shaftBottom, ez - 1.42, ex + 1.42, shaftTop, ez + 1.42, "#9bb8c4", "glass", true);
+            add(ex - 1.42, shaftBottom, ez - 1.42, ex + 1.42, shaftTop, ez - 1.28, "#9bb8c4", "glass", true);
+            add(ex - 1.42, shaftBottom, ez + 1.28, ex + 1.42, shaftTop, ez + 1.42, "#9bb8c4", "glass", true);
         }
         for (let f = 0; f <= nFloors; f++) {
             const y = f * FLOOR_H, th = f === 0 ? null : THEMES.find(q => q.theme === floors[f]?.theme), floorCol = f === 0 ? "#d8d0c0" : f === nFloors ? "#8c8a86" : th?.floor ?? "#ccc", sy = f === 0 ? .12 : y, sb = f === 0 ? 0 : y - .25;

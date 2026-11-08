@@ -3,7 +3,7 @@ export const ELEVATOR_SPEED = 3.5;
 export const ELEVATOR_MIN_TRAVEL_SECONDS = 1.15;
 export function floorHeight(floor, floorCount) {
     const last = Math.max(0, Math.floor(floorCount) - 1);
-    const safeFloor = Math.max(0, Math.min(last, Math.floor(floor)));
+    const safeFloor = Math.max(-1, Math.min(last, Math.floor(floor)));
     return safeFloor * ELEVATOR_FLOOR_HEIGHT;
 }
 export function makeElevatorTrip(from, to, phase) {

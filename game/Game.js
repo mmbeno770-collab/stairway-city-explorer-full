@@ -393,11 +393,11 @@ function Boxes({ world, kind }) {
 
 function Ground({ quality, wet, buildings }) {
   const data = useMemo(() => {
-    const size = quality === "low" ? 768 : quality === "balanced" ? 1024 : 1280;
+    const size = quality === "low" ? 1024 : quality === "balanced" ? 1536 : 2048;
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
     const ctx = canvas.getContext("2d"), total = GRID * BLOCK + 40, p = size / total, to = (v) => (v + total / 2) * p;
     ctx.fillStyle = "#668452"; ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = "#27323a"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
+    ctx.fillStyle = "#303b43"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
       ctx.fillStyle = (i + k) % 2 ? "#b8b1a1" : "#c0b9aa"; ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
@@ -416,25 +416,25 @@ function Ground({ quality, wet, buildings }) {
     }
     ctx.save();
     ctx.lineCap = "butt";
-    ctx.strokeStyle = "#f4d66f";
-    ctx.lineWidth = Math.max(1.4, p * .19);
-    ctx.setLineDash([p * 2.35, p * 1.25]);
+    ctx.strokeStyle = "#ffe27a";
+    ctx.lineWidth = Math.max(2.6, p * .48);
+    ctx.setLineDash([p * 2.65, p * 1.45]);
     for (let i = 0; i <= GRID; i++) {
       const road = -CITY_HALF + i * BLOCK;
       for (const offset of [-.13, .13]) {
         ctx.beginPath(); ctx.moveTo(to(road + offset), to(-CITY_HALF + 1)); ctx.lineTo(to(road + offset), to(CITY_HALF - 1)); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(to(-CITY_HALF + 1), to(road + offset)); ctx.lineTo(to(CITY_HALF - 1), to(road + offset)); ctx.stroke();
       }
-      ctx.strokeStyle = "#e7e6df";
-      ctx.lineWidth = Math.max(1.1, p * .14);
+      ctx.strokeStyle = "#fbfbf5";
+      ctx.lineWidth = Math.max(2.1, p * .34);
       ctx.setLineDash([]);
       for (const edge of [-3.72, 3.72]) {
         ctx.beginPath(); ctx.moveTo(to(road + edge), to(-CITY_HALF)); ctx.lineTo(to(road + edge), to(CITY_HALF)); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(to(-CITY_HALF), to(road + edge)); ctx.lineTo(to(CITY_HALF), to(road + edge)); ctx.stroke();
       }
-      ctx.strokeStyle = "#f4d66f";
-      ctx.lineWidth = Math.max(1.4, p * .19);
-      ctx.setLineDash([p * 2.35, p * 1.25]);
+      ctx.strokeStyle = "#ffe27a";
+      ctx.lineWidth = Math.max(2.6, p * .48);
+      ctx.setLineDash([p * 2.65, p * 1.45]);
     }
     ctx.fillStyle = "#f3f0e7";
     for (let gx = 0; gx <= GRID; gx++) for (let gz = 0; gz <= GRID; gz++) {
@@ -442,8 +442,8 @@ function Ground({ quality, wet, buildings }) {
       for (const sign of [-1, 1]) for (let stripe = 0; stripe < 5; stripe++) {
         const z = rz + sign * (2.35 + stripe * .34);
         const x = rx + sign * (2.35 + stripe * .34);
-        ctx.fillRect(to(rx - 3.35), to(z), 6.7 * p, .16 * p);
-        ctx.fillRect(to(x), to(rz - 3.35), .16 * p, 6.7 * p);
+        ctx.fillRect(to(rx - 3.35), to(z), 6.7 * p, Math.max(2, .22 * p));
+        ctx.fillRect(to(x), to(rz - 3.35), Math.max(2, .22 * p), 6.7 * p);
       }
     }
     ctx.restore();
@@ -459,7 +459,7 @@ function Ground({ quality, wet, buildings }) {
       if (!opening) continue;
       ctx.clearRect(to(opening.x0 + .025), to(opening.z0 + .025), (opening.x1 - opening.x0 - .05) * p, (opening.z1 - opening.z0 - .05) * p);
     }
-    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = quality === "high" ? 8 : 2;
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = quality === "high" ? 8 : 4; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = true;
     return { texture, total };
   }, [quality]);
   useEffect(() => () => data.texture.dispose(), [data]);
@@ -527,7 +527,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     const p = s.p, root = rig.root;
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
-      if (chosen < 0) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
+      if (chosen === -2) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
       else {
         const from = elevatorY.current, to = floorHeight(chosen, world.elevator.floors);
         s.elevatorFloor = chosen;
@@ -715,7 +715,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
           onPrompt(entering ? "נכנסתם למחסן · F ליד המדרגות לחזרה" : "חזרתם לקומת הקרקע");
           s.lastPrompt = entering ? "נכנסתם למחסן" : "";
         }
-        else if (it.type === "elevator" && world.elevator) { s.elevatorFloor = Math.max(0, Math.min(world.elevator.floors - 1, Math.floor(it.floor || 0))); p.set(world.elevator.x, s.elevatorFloor * 4 + .22, world.elevator.z); elevatorY.current = s.elevatorFloor * 4; s.mode = "elevator"; onMode("elevator"); onElevatorMenu({ floors: world.elevator.floors, current: s.elevatorFloor }); }
+        else if (it.type === "elevator" && world.elevator) { s.elevatorFloor = Math.max(-1, Math.min(world.elevator.floors - 1, Math.floor(it.floor ?? 0))); p.set(world.elevator.x, s.elevatorFloor * 4 + .22, world.elevator.z); elevatorY.current = s.elevatorFloor * 4; s.mode = "elevator"; onMode("elevator"); onElevatorMenu({ floors: world.elevator.floors, current: s.elevatorFloor }); }
         else if (it.type === "cable") {
           s.cableStation = Math.max(0, Math.min(CABLE_STATIONS.length - 1, it.stationId || 0));
           s.cableDescending = false; p.set(it.x, 0, it.z); s.mode = "cable-ladder"; s.v.set(0, 0, 0);
@@ -885,8 +885,8 @@ export default function Game() {
     hud && (mode === "heli" || mode === "car" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     elevatorMenu && h("div", { className: "elevator-dialog", role: "dialog", "aria-label": "בחירת קומה במעלית" },
       h("h3", null, "מעלית · בחירת קומה"),
-      h("div", { className: "elevator-floor-grid" }, Array.from({ length: elevatorMenu.floors }, (_, floor) => h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`))),
-      h("button", { className: "elevator-cancel", onClick: () => { input.current.action = true; } }, "ביטול")
+      h("div", { className: "elevator-floor-grid" }, [h("button", { key: -1, className: elevatorMenu.current === -1 ? "selected" : "", onClick: () => { input.current.elevatorFloor = -1; } }, "מחסן ‎-1"), ...Array.from({ length: elevatorMenu.floors }, (_, index) => { const floor = index; return h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`); })]),
+      h("button", { className: "elevator-cancel", onClick: () => { input.current.action = true; } }, "יציאה מהמעלית")
     ),
     h("section", { className: `hud-panel hud-help ${help ? "" : "hud-collapsed"}` }, h("button", { className: "hud-btn", onClick: () => setHelp((v) => !v) }, help ? "הסתר" : "עזרה"),
       help && h("ul", null,
@@ -899,7 +899,7 @@ export default function Game() {
         h("li", null, "רכב: W/S נסיעה, A פנייה שמאלה, D פנייה ימינה, Shift בלימה"),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
-        h("li", null, "מחסן בכל בניין: ניגשים לפתח המדרגות ולוחצים F כדי לרדת לקומה -1; בתוך המחסן F ליד המדרגות כדי לחזור."),
+        h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),
         h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
       )

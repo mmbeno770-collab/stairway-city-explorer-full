@@ -37,6 +37,102 @@ function ScenicHills() {
 }
 
 
+
+const BIRD_WING_GEOMETRY = (() => {
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  shape.lineTo(-0.34, 0.075);
+  shape.lineTo(-0.61, 0.02);
+  shape.lineTo(-0.46, -0.025);
+  shape.lineTo(-0.37, -0.105);
+  shape.lineTo(-0.28, -0.06);
+  shape.lineTo(-0.2, -0.12);
+  shape.lineTo(-0.1, -0.045);
+  shape.closePath();
+  const geometry = new THREE.ShapeGeometry(shape, 1);
+  geometry.rotateX(Math.PI / 2);
+  return geometry;
+})();
+const BIRD_WING_RIGHT_GEOMETRY = (() => {
+  const geometry = BIRD_WING_GEOMETRY.clone();
+  geometry.scale(-1, 1, 1);
+  return geometry;
+})();
+const BIRD_BODY_GEOMETRY = new THREE.SphereGeometry(1, 16, 12);
+const BIRD_HEAD_GEOMETRY = new THREE.SphereGeometry(1, 14, 10);
+const BIRD_BEAK_GEOMETRY = new THREE.ConeGeometry(0.014, 0.05, 5);
+BIRD_BEAK_GEOMETRY.rotateX(Math.PI / 2);
+const BIRD_TAIL_GEOMETRY = new THREE.SphereGeometry(1, 10, 8);
+const BIRD_MATERIAL = new THREE.MeshStandardMaterial({ color: "#263640", roughness: 0.92, side: THREE.DoubleSide });
+
+function BirdFlocks() {
+  const flockRefs = useRef([]);
+  const wingRefs = useRef([]);
+  const formation = useMemo(() => {
+    const points = [[0, 0, 0]];
+    for (let row = 1; row <= 4; row++) {
+      for (const side of [-1, 1]) points.push([side * row * 1.72, Math.sin(row * 1.4 + side) * 0.16, -row * 1.82]);
+    }
+    return points;
+  }, []);
+  const setWingRef = (flockIndex, birdIndex, side) => (node) => {
+    if (!wingRefs.current[flockIndex]) wingRefs.current[flockIndex] = [];
+    if (!wingRefs.current[flockIndex][birdIndex]) wingRefs.current[flockIndex][birdIndex] = [];
+    wingRefs.current[flockIndex][birdIndex][side] = node;
+  };
+
+  useFrame(({ clock }) => {
+    const time = clock.elapsedTime;
+    for (let index = 0; index < 3; index++) {
+      const group = flockRefs.current[index];
+      if (!group) continue;
+      const cycle = (time + index * 30) % 90;
+      const active = cycle >= 8 && cycle < 30;
+      group.visible = active;
+      if (!active) continue;
+      const progress = (cycle - 8) / 22;
+      const bob = Math.sin(progress * Math.PI * 2) * 2.2;
+      if (index === 0) {
+        group.position.set(-165 + progress * 330, 31 + bob, -68 + Math.sin(progress * Math.PI) * 12);
+        group.rotation.y = Math.PI / 2;
+      } else if (index === 1) {
+        group.position.set(68 + Math.sin(progress * Math.PI) * 11, 35 + bob, 165 - progress * 330);
+        group.rotation.y = Math.PI;
+      } else {
+        group.position.set(165 - progress * 330, 29 + bob, 76 - Math.sin(progress * Math.PI) * 12);
+        group.rotation.y = -Math.PI / 2;
+      }
+      group.rotation.z = Math.sin(progress * Math.PI * 2) * 0.025;
+      for (let bird = 0; bird < formation.length; bird++) {
+        const wings = wingRefs.current[index]?.[bird];
+        if (!wings) continue;
+        const flap = Math.sin(time * 7.2 + bird * 0.74 + index * 0.9) * 0.55;
+        if (wings[0]) wings[0].rotation.z = -flap;
+        if (wings[1]) wings[1].rotation.z = flap;
+      }
+    }
+  });
+
+  return h(React.Fragment, null, [0, 1, 2].map((flockIndex) =>
+    h("group", { key: `bird-flock-${flockIndex}`, ref: (node) => { flockRefs.current[flockIndex] = node; }, visible: false },
+      ...formation.map((position, birdIndex) =>
+        h("group", { key: `bird-${birdIndex}`, position, scale: 1.08 },
+          h("mesh", { geometry: BIRD_BODY_GEOMETRY, material: BIRD_MATERIAL, scale: [0.075, 0.052, 0.19] }),
+          h("mesh", { geometry: BIRD_HEAD_GEOMETRY, material: BIRD_MATERIAL, position: [0, 0.018, 0.15], scale: [0.052, 0.05, 0.062] }),
+          h("mesh", { geometry: BIRD_BEAK_GEOMETRY, material: BIRD_MATERIAL, position: [0, 0.01, 0.205] }),
+          h("mesh", { geometry: BIRD_TAIL_GEOMETRY, material: BIRD_MATERIAL, position: [0, -0.006, -0.17], scale: [0.034, 0.022, 0.11] }),
+          h("group", { ref: setWingRef(flockIndex, birdIndex, 0), position: [-0.035, 0.018, 0] },
+            h("mesh", { geometry: BIRD_WING_GEOMETRY, material: BIRD_MATERIAL })
+          ),
+          h("group", { ref: setWingRef(flockIndex, birdIndex, 1), position: [0.035, 0.018, 0] },
+            h("mesh", { geometry: BIRD_WING_RIGHT_GEOMETRY, material: BIRD_MATERIAL })
+          )
+        )
+      )
+    )
+  ));
+}
+
 function hillGeometry(hill) {
   const segments = 36, positions = [], indices = [];
   for (let iz = 0; iz <= segments; iz++) {
@@ -716,7 +812,7 @@ export default function Game() {
         h(Sky, { sunPosition: environment.sunPosition, turbidity: environment.turbidity, rayleigh: 1.2 + environment.daylight * .5, mieCoefficient: weather === "fog" ? .012 : .004 }),
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
         h(Environment, { resolution: quality === "high" ? 96 : 64 }, h(Lightformer, { intensity: 1.2 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [20, 20, 1] }), h(Lightformer, { intensity: .6, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [20, 4, 1] })),
-        h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
+        h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { quality, wet: weather === "rain" || weather === "storm" }),
         h(ScenicHills), h(WalkableHills),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
@@ -762,7 +858,7 @@ export default function Game() {
     h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
     (mode === "heli" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
-      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות."),
+      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות, ולהקות ציפורים שחולפות בשמיים מדי פעם."),
       h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך")
     ))
   );

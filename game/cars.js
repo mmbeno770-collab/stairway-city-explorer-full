@@ -14,10 +14,45 @@ function CarModel({ car }) {
     useFrame((_, dt) => {
         if (!root.current) return;
         root.current.position.set(car.x, car.y, car.z); root.current.rotation.y = car.yaw;
-        for (const wheel of wheels.current) wheel.rotation.y -= car.speed * dt / .34;
-        for (const lamp of brakes.current) lamp.material = car.brake || car.speed < -.1 ? tailOn : tailOff;
+        for (const wheel of wheels.current) if (wheel) wheel.rotation.y -= car.speed * dt / .34;
+        for (const lamp of brakes.current) if (lamp) lamp.material = car.brake || car.speed < -.1 ? tailOn : tailOff;
     });
     const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({ color: car.color, metalness: .58, roughness: .3 }), [car.color]);
+    if (car.kind === "bus") {
+        const busWindows = [-2.35, -1.15, .05, 1.25, 2.35].flatMap((z) => [-1, 1].map((side) =>
+            _jsx("mesh", { material: glass, position: [side * 1.235, 1.72, z], children: _jsx("boxGeometry", { args: [.035, .82, .9] }) }, `window-${z}-${side}`)
+        ));
+        const busWheels = [-1, 1].flatMap((side) => [-2.25, 0, 2.25].map((z, i) => {
+            const index = (side < 0 ? 0 : 3) + i;
+            return _jsxs("group", { ref: (el) => { if (el) wheels.current[index] = el; }, position: [side * 1.24, .46, z], "rotation-z": Math.PI / 2, children: [
+                _jsx("mesh", { material: rubber, castShadow: true, children: _jsx("cylinderGeometry", { args: [.44, .44, .25, 18] }) }),
+                _jsx("mesh", { material: rim, children: _jsx("cylinderGeometry", { args: [.27, .27, .26, 14] }) })
+            ] }, `bus-wheel-${side}-${z}`);
+        }));
+        return _jsxs("group", { ref: root, children: [
+            _jsx("mesh", { material: bodyMat, position: [0, 1.2, 0], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", { args: [2.45, 2.05, 6.55] }) }),
+            _jsx("mesh", { material: bodyMat, position: [0, 2.25, -.05], children: _jsx("boxGeometry", { args: [2.38, .15, 6.4] }) }),
+            _jsx("mesh", { material: glass, position: [0, 1.85, 3.29], children: _jsx("boxGeometry", { args: [2.08, .7, .04] }) }),
+            ...busWindows,
+            _jsx("mesh", { material: trim, position: [0, .4, 3.3], children: _jsx("boxGeometry", { args: [2.5, .2, .16] }) }),
+            _jsx("mesh", { material: headlamp, position: [-.82, 1.05, 3.31], children: _jsx("boxGeometry", { args: [.32, .18, .04] }) }),
+            _jsx("mesh", { material: headlamp, position: [.82, 1.05, 3.31], children: _jsx("boxGeometry", { args: [.32, .18, .04] }) }),
+            ...busWheels
+        ] });
+    }
+    const extra = [];
+    if (car.kind === "jeep") extra.push(
+        _jsx("mesh", { material: bodyMat, position: [0, 1.48, -.18], children: _jsx("boxGeometry", { args: [1.62, .86, 2.0] }) }),
+        _jsx("mesh", { material: glass, position: [0, 1.62, .86], children: _jsx("boxGeometry", { args: [1.5, .46, .045] }) }),
+        _jsx("mesh", { material: trim, position: [0, 1.98, -.15], children: _jsx("boxGeometry", { args: [1.74, .09, 2.15] }) }),
+        _jsx("mesh", { material: bodyMat, position: [0, 1.15, -2.28], rotation: [Math.PI / 2, 0, 0], children: _jsx("cylinderGeometry", { args: [.48, .48, .2, 18] }) })
+    );
+    if (car.kind === "race") extra.push(
+        _jsx("mesh", { material: trim, position: [0, 1.0, -1.92], children: _jsx("boxGeometry", { args: [2.2, .09, .18] }) }),
+        _jsx("mesh", { material: bodyMat, position: [-.88, 1.16, -1.92], children: _jsx("boxGeometry", { args: [.1, .62, .12] }) }),
+        _jsx("mesh", { material: bodyMat, position: [.88, 1.16, -1.92], children: _jsx("boxGeometry", { args: [.1, .62, .12] }) }),
+        _jsx("mesh", { material: bodyMat, position: [0, .88, .02], children: _jsx("boxGeometry", { args: [1.94, .12, 3.55] }) })
+    );
     return _jsxs("group", { ref: root, children: [
         _jsx("mesh", { material: bodyMat, position: [0, .62, 0], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", { args: [1.88, .58, 4.15] }) }),
         _jsx("mesh", { material: bodyMat, position: [0, .91, 1.28], scale: [1, .58, 1], castShadow: true, children: _jsx("boxGeometry", { args: [1.78, .56, 1.35] }) }),
@@ -41,7 +76,8 @@ function CarModel({ car }) {
             ] }, `${side}-${axle}`);
         })),
         _jsx("mesh", { material: bodyMat, position: [-1.03, 1.15, .8], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),
-        _jsx("mesh", { material: bodyMat, position: [1.03, 1.15, .8], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) })
+        _jsx("mesh", { material: bodyMat, position: [1.03, 1.15, .8], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),
+        ...extra
     ] });
 }
 export function Cars({ cars }) { return _jsx(_Fragment, { children: cars.map((car, i) => _jsx(CarModel, { car }, i)) }); }

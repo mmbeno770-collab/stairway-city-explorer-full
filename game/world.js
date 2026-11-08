@@ -22,7 +22,7 @@ const THEMES = [
 const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
-    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [];
+    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [];
     let elevator = null;
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
     for (const station of CABLE_STATIONS) {
@@ -60,11 +60,19 @@ export function generateWorld(seed = 7) {
         const cx = -CITY_HALF + gx * BLOCK + BLOCK / 2, cz = -CITY_HALF + gz * BLOCK + BLOCK / 2;
         const lotX0 = -CITY_HALF + gx * BLOCK + 4, lotX1 = lotX0 + BLOCK - 8;
         const lotZ0 = -CITY_HALF + gz * BLOCK + 4, lotZ1 = lotZ0 + BLOCK - 8;
-        const curbHeight = .56, walkWidth = 2.05;
+        const curbHeight = .56, walkWidth = 2.05, isCenterLot = gx === Math.floor(GRID / 2) && gz === Math.floor(GRID / 2);
         add(lotX0, 0, lotZ0, lotX1, .49, lotZ0 + walkWidth, "#85877f", "solid", true);
         add(lotX0, .49, lotZ0, lotX1, curbHeight, lotZ0 + walkWidth - .12, "#c4c0b4", "solid", true);
-        add(lotX0, 0, lotZ1 - walkWidth, lotX1, .49, lotZ1, "#85877f", "solid", true);
-        add(lotX0, .49, lotZ1 - walkWidth + .12, lotX1, curbHeight, lotZ1, "#c4c0b4", "solid", true);
+        if (isCenterLot) {
+            const gateHalf = 2.5;
+            for (const [a, b] of [[lotX0, cx - gateHalf], [cx + gateHalf, lotX1]]) if (b - a > .1) {
+                add(a, 0, lotZ1 - walkWidth, b, .49, lotZ1, "#85877f", "solid", true);
+                add(a, .49, lotZ1 - walkWidth + .12, b, curbHeight, lotZ1, "#c4c0b4", "solid", true);
+            }
+        } else {
+            add(lotX0, 0, lotZ1 - walkWidth, lotX1, .49, lotZ1, "#85877f", "solid", true);
+            add(lotX0, .49, lotZ1 - walkWidth + .12, lotX1, curbHeight, lotZ1, "#c4c0b4", "solid", true);
+        }
         add(lotX0, 0, lotZ0 + walkWidth, lotX0 + walkWidth, .49, lotZ1 - walkWidth, "#85877f", "solid", true);
         add(lotX0, .49, lotZ0 + walkWidth, lotX0 + walkWidth - .12, curbHeight, lotZ1 - walkWidth, "#c4c0b4", "solid", true);
         add(lotX1 - walkWidth, 0, lotZ0 + walkWidth, lotX1, .49, lotZ1 - walkWidth, "#85877f", "solid", true);
@@ -73,16 +81,41 @@ export function generateWorld(seed = 7) {
         add(lotX0, .49, lotZ1 - walkWidth, lotX1, .53, lotZ1 - walkWidth + .1, "#747b78", "solid", false);
         add(lotX0 + walkWidth - .1, .49, lotZ0 + walkWidth, lotX0 + walkWidth, .53, lotZ1 - walkWidth, "#747b78", "solid", false);
         add(lotX1 - walkWidth, .49, lotZ0 + walkWidth, lotX1 - walkWidth + .1, .53, lotZ1 - walkWidth, "#747b78", "solid", false);
-        if (gx === Math.floor(GRID / 2) && gz === Math.floor(GRID / 2)) {
-            add(cx - 11, 0, cz - 11, cx + 11, .02, cz + 11, "#6fa25a", "solid", false);
-            add(cx - 4, 0, cz - 4, cx + 4, .25, cz + 4, "#c9c2b0");
-            add(cx - 2.5, .25, cz - 2.5, cx + 2.5, .35, cz + 2.5, "#5aa9d6", "glow", false);
-            add(cx - .4, .25, cz - .4, cx + .4, 2.2, cz + .4, "#e6e0d0");
-            for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + (r() - .5) * .62, radius = 7.6 + r() * 2.1; trees.push({ x: cx + Math.cos(a) * radius, z: cz + Math.sin(a) * radius, s: .82 + r() * .34 }); }
-            for (const [bx, bz] of [[-6, 0], [6, 0], [0, -6], [0, 6]]) {
-                add(cx + bx - 1, 0, cz + bz - .3, cx + bx + 1, .5, cz + bz + .3, "#8a5a3a");
-                inter.push({ type: "sofa", x: cx + bx, y: 0, z: cz + bz, face: bz > 0 ? Math.PI : 0 });
+        if (isCenterLot) {
+            add(cx - 11.6, 0, cz - 11.6, cx + 11.6, .02, cz + 11.6, "#515a60", "solid", true);
+            add(cx - 2.5, 0, cz + 11.45, cx + 2.5, .02, cz + 14.1, "#515a60", "solid", true);
+            const paint = (x0, z0, x1, z1, color = "#e9e6dc") => add(x0, .025, z0, x1, .05, z1, color, "solid", false);
+            for (const x of [-11.1, -5.65, -.2, 4.6, 11.35]) paint(cx + x, cz - 10.7, cx + x + .09, cz - 4.6);
+            paint(cx - 11.1, cz - 10.7, cx + 11.35, cz - 10.61);
+            paint(cx - 11.1, cz - 4.69, cx + 11.35, cz - 4.6);
+            for (const [x, z, width, depth, color] of [[-5, 4.1, 9.7, 10.5, "#9ab2bc"], [5, 4.5, 8.2, 9.6, "#8ea3a8"], [-8.2, 8.3, 4.8, 5.8, "#a88f65"], [9, -2.2, 4.8, 5.4, "#6f9dbe"]]) {
+                paint(cx + x - width / 2, cz + z - depth / 2, cx + x + width / 2, cz + z - depth / 2 + .08, color);
+                paint(cx + x - width / 2, cz + z + depth / 2 - .08, cx + x + width / 2, cz + z + depth / 2, color);
+                paint(cx + x - width / 2, cz + z - depth / 2, cx + x - width / 2 + .08, cz + z + depth / 2, color);
+                paint(cx + x + width / 2 - .08, cz + z - depth / 2, cx + x + width / 2, cz + z + depth / 2, color);
             }
+            for (const [x, z] of [[-11, -11], [11, -11], [-11, 11], [11, 11]]) {
+                add(cx + x - .18, .02, cz + z - .18, cx + x + .18, 3.4, cz + z + .18, "#65747a", "solid", true);
+                add(cx + x - .28, 3.35, cz + z - .28, cx + x + .28, 3.52, cz + z + .28, "#c5a56c", "solid", false);
+            }
+            add(cx - 4.8, 3.45, cz + 11.05, cx + 4.8, 4.65, cz + 11.3, "#273b46", "solid", false);
+            add(cx - 4.15, 3.78, cz + 11.31, cx + 4.15, 4.3, cz + 11.34, "#dfc184", "glow", false);
+            const bays = [
+                { x: cx - 8.35, z: cz - 7.65, face: 0, color: "#cbd4d8", kind: "sedan" },
+                { x: cx - 3.15, z: cz - 7.65, face: 0, color: "#d43a32", kind: "race" },
+                { x: cx + 2.15, z: cz - 7.65, face: 0, color: "#667c4a", kind: "jeep" },
+                { x: cx + 8.0, z: cz - 7.65, face: Math.PI / 2, color: "#e8c35a", kind: "bus" }
+            ];
+            for (const bay of bays) inter.push({ type: "car", x: bay.x, y: .12, z: bay.z, face: bay.face, color: bay.color, kind: bay.kind, parking: true });
+            const plane = { id: "plane", x: cx - 5, y: 0, z: cz + 4.1, yaw: Math.PI / 2 };
+            const tank = { id: "tank", x: cx - 8.2, y: 0, z: cz + 8.3, yaw: 0 };
+            const tesla = { id: "tesla", x: cx + 9, y: .82, z: cz - 2.2, yaw: 0 };
+            parkingVehicles.push(plane, tank, tesla);
+            add(plane.x - 4.25, .12, plane.z - .68, plane.x + 4.25, 1.35, plane.z + .68, "#000000", "collision", true);
+            add(plane.x - .62, .12, plane.z - 5.0, plane.x + .62, 1.0, plane.z + 5.0, "#000000", "collision", true);
+            add(tank.x - 2.15, .12, tank.z - 2.65, tank.x + 2.15, 1.85, tank.z + 2.65, "#000000", "collision", true);
+            add(tesla.x - 1.25, tesla.y - .15, tesla.z - 2.25, tesla.x + 1.25, tesla.y + 1.7, tesla.z + 2.25, "#000000", "collision", true);
+            inter.push({ type: "heli", x: cx + 5, y: .12, z: cz + 4.5, face: 0, parking: true });
             continue;
         }
         if (gx === 1 && gz === 1) {
@@ -334,7 +367,7 @@ export function generateWorld(seed = 7) {
     add(-E, 0, -E - .5, E, 1.2, -E, "#9a948a"); add(-E, 0, E, E, 1.2, E + .5, "#9a948a");
     add(-E - .5, 0, -E, -E, 1.2, E, "#9a948a"); add(E, 0, -E, E + .5, 1.2, E, "#9a948a");
     const b0 = buildings[0];
-    return { boxes, buildings, trees, lamps, interactables: inter, elevator, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    return { boxes, buildings, trees, lamps, interactables: inter, parkingVehicles, elevator, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

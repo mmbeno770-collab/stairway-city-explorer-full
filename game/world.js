@@ -178,9 +178,10 @@ export function generateWorld(seed = 7) {
             add(sx1 - .02, y + FLOOR_H + .9, sz0, sx1 + .14, y + FLOOR_H + 1.05, sz1, "#d9b26a", "solid", false);
             furnish(add, inter, r, floors[f].theme, sx1 + .6, id === 0 ? x1 - 3.5 : x1 - t - .4, z0 + t + .4, z1 - t - .4, y + (f === 0 ? .15 : 0), f === 0);
         }
-        for (let i = 0; i < 3; i++) {
-            trees.push({ x: cx - 10 + i * 10, z: cz - BLOCK / 2 + 3, s: .8 + r() * .5 });
-            trees.push({ x: cx - 10 + i * 10, z: cz + BLOCK / 2 - 3, s: .72 + r() * .42 });
+        // Fewer, more widely spaced avenue trees leave open sightlines around each building.
+        for (const tx of [-11, 11]) {
+            trees.push({ x: cx + tx, z: cz - BLOCK / 2 + 3, s: .9 + r() * .42 });
+            trees.push({ x: cx + tx, z: cz + BLOCK / 2 - 3, s: .84 + r() * .38 });
         }
         for (const side of [-1, 1]) {
             const px = cx + side * 12.8, pz = cz + BLOCK / 2 - 3.1;

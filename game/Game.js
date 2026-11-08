@@ -19,6 +19,23 @@ const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב" };
 
+function ScenicHills() {
+  const hills = [
+    { p: [0, -4.5, -157], s: [78, 10, 30], c: "#78945f" },
+    { p: [0, -5, 157], s: [72, 11, 34], c: "#6f8e58" },
+    { p: [-160, -4.5, 0], s: [30, 10, 78], c: "#829b65" },
+    { p: [160, -5, 0], s: [32, 11, 72], c: "#718d57" },
+    { p: [-145, -6, -145], s: [40, 8, 34], c: "#8da36c" },
+    { p: [145, -6, 145], s: [42, 8, 36], c: "#81995f" }
+  ];
+  return h(React.Fragment, null, hills.map((hill, i) =>
+    h("mesh", { key: i, position: hill.p, scale: hill.s, receiveShadow: true },
+      h("sphereGeometry", { args: [1, 28, 18] }),
+      h("meshStandardMaterial", { color: hill.c, roughness: 1 })
+    )
+  ));
+}
+
 function Boxes({ world, kind }) {
   const ref = useRef(null);
   const list = useMemo(() => world.boxes.filter((b) => b.kind === kind), [world, kind]);
@@ -361,6 +378,7 @@ export default function Game() {
         h(Environment, { resolution: quality === "high" ? 96 : 64 }, h(Lightformer, { intensity: 1.2 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [20, 20, 1] }), h(Lightformer, { intensity: .6, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [20, 4, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { quality, wet: weather === "rain" || weather === "storm" }),
+        h(ScenicHills),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),

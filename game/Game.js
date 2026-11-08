@@ -17,7 +17,7 @@ import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./enviro
 
 const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לתחנת הרכבל" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל" };
 
 function ScenicHills() {
   const hills = [
@@ -71,10 +71,9 @@ function WalkableHills() {
   ));
 }
 
-function cableRouteBetween(from, to) {
-  const count = CABLE_STATIONS.length, clockwise = (to - from + count) % count, counter = (from - to + count) % count;
-  const step = clockwise <= counter ? 1 : -1, route = [from];
-  while (route[route.length - 1] !== to && route.length <= count) route.push((route[route.length - 1] + step + count) % count);
+function cableLoopRoute(from) {
+  const count = CABLE_STATIONS.length, route = [from];
+  for (let i = 1; i <= count; i++) route.push((from + i) % count);
   return route;
 }
 const CABLE_BENDS = [
@@ -129,10 +128,13 @@ function CablePylon({ point, id }) {
   );
 }
 
-function CableCabin() {
-  const wheels = useRef([]);
+function CableCabin({ doorsRef = null }) {
+  const wheels = useRef([]), doors = useRef([]);
   useFrame((_, dt) => {
     wheels.current.forEach((wheel) => { if (wheel) wheel.rotation.z += dt * 2.1; });
+    const gap = doorsRef?.current?.doorsOpen ? .82 : .36;
+    if (doors.current[0]) doors.current[0].position.x = THREE.MathUtils.damp(doors.current[0].position.x, -gap, 9, dt);
+    if (doors.current[1]) doors.current[1].position.x = THREE.MathUtils.damp(doors.current[1].position.x, gap, 9, dt);
   });
   const glass = h("meshPhysicalMaterial", { color: "#a9d9df", transparent: true, opacity: .22, roughness: .1, metalness: .16, clearcoat: 1, clearcoatRoughness: .06, depthWrite: false });
   const gold = h("meshPhysicalMaterial", { color: "#d6b477", roughness: .22, metalness: .88, clearcoat: .6 });
@@ -162,6 +164,10 @@ function CableCabin() {
       h("mesh", { position: [0, 1.15, .18] }, h("boxGeometry", { args: [1.5, .045, .025] }), gold)
     )),
     ...[-1, 1].map((x) => h("mesh", { key: "lamp-" + x, position: [x * 1.25, 1.03, 1.12] }, h("sphereGeometry", { args: [.12, 12, 10] }), h("meshBasicMaterial", { color: "#ffe4a8" }))),
+    ...[-1, 1].map((side) => h("mesh", { key: "sliding-door-" + side, ref: (node) => { doors.current[side === -1 ? 0 : 1] = node; }, position: [side * .36, 1.45, 1.18] },
+      h("boxGeometry", { args: [.72, 1.42, .065] }),
+      h("meshPhysicalMaterial", { color: "#a9d9df", transparent: true, opacity: .5, roughness: .14, metalness: .22, clearcoat: 1, depthWrite: false })
+    )),
     h("mesh", { position: [0, .58, 1.19] }, h("boxGeometry", { args: [.74, .1, .04] }), gold)
   );
 }
@@ -184,7 +190,7 @@ function Cableway({ ride, curve }) {
   }, [curve]);
   useEffect(() => () => cables.forEach((geometry) => geometry.dispose()), [cables]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
     for (let i = 0; i < 3; i++) {
       const node = autonomous.current[i];
       if (!node) continue;
@@ -192,13 +198,24 @@ function Cableway({ ride, curve }) {
       node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
     }
     const node = passengerCabin.current, current = ride.current;
-    if (node) {
-      node.visible = !!current?.active;
-      if (current?.active && current.route?.length > 1) {
-        const point = sampleCableRoute(current.route, current.progress, curve);
-        node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
-      }
-    }
+    if (!node) return;
+    if (current?.approaching && current.route?.length > 1) {
+      current.progress = Math.min(1, (current.progress ?? .91) + dt * .04);
+      const point = sampleCableRoute(current.route, current.progress, curve);
+      node.visible = true;
+      node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
+      if (current.progress >= 1) { current.approaching = false; current.docked = true; current.doorsOpen = true; }
+    } else if (current?.active && current.route?.length > 1) {
+      const point = sampleCableRoute(current.route, current.progress, curve);
+      node.visible = true;
+      node.position.set(point.x, point.y, point.z); node.rotation.y = point.yaw;
+    } else if (current?.docked && Number.isInteger(current.station)) {
+      const station = CABLE_STATIONS[current.station];
+      const previous = (current.station + CABLE_STATIONS.length - 1) % CABLE_STATIONS.length;
+      const point = sampleCableRoute([previous, current.station], 1, curve);
+      node.visible = true;
+      node.position.set(station.x, station.y, station.z); node.rotation.y = point.yaw;
+    } else node.visible = false;
   });
 
   const stationVisuals = CABLE_STATIONS.map((station) => {
@@ -260,7 +277,7 @@ function Cableway({ ride, curve }) {
     ...pylonPoints.map((point, i) => h(CablePylon, { key: "bend-pylon-" + i, point, id: i })),
     ...stationVisuals,
     ...[0, 1, 2].map((i) => h("group", { key: "gondola-" + i, ref: (node) => { autonomous.current[i] = node; } }, h(CableCabin))),
-    h("group", { ref: passengerCabin, visible: false }, h(CableCabin))
+    h("group", { ref: passengerCabin, visible: false }, h(CableCabin, { doorsRef: ride }))
   );
 }
 
@@ -363,7 +380,7 @@ function DoorSet({ world, doorStates }) {
   return h(React.Fragment, null, world.interactables.map((item, index) => item.type === "door" ? h(DoorLeaf, { key: index, item, open: !!doorStates[index] }) : null));
 }
 
-function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, onCableMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
+function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
@@ -383,26 +400,6 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
     const p = s.p, root = rig.root;
-    if (inp.cableDestination !== null && s.cableStation >= 0) {
-      const destination = inp.cableDestination;
-      inp.cableDestination = null; onCableMenu(null);
-      if (destination < 0) {
-        const station = CABLE_STATIONS[s.cableStation];
-        p.set(station.x - 5.2, station.y, station.z);
-        s.cableDescending = true; s.mode = "cable-ladder"; onMode("cable-ladder");
-        onPrompt("החזיקו ↓ / S כדי לרדת בסולם");
-      } else if (destination !== s.cableStation) {
-        const route = cableRouteBetween(s.cableStation, destination);
-        let distance = 0;
-        for (let i = 0; i < route.length - 1; i++) {
-          const a = CABLE_STATIONS[route[i]], b = CABLE_STATIONS[route[i + 1]];
-          distance += Math.hypot(b.x - a.x, b.z - a.z, b.y - a.y);
-        }
-        s.cableTrip = { route, elapsed: 0, duration: Math.max(5, distance / 22) };
-        cableRide.current = { active: true, route, progress: 0 };
-        s.mode = "cable"; onMode("cable"); onPrompt("הרכבל יוצא לדרך");
-      }
-    }
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       if (chosen < 0) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
@@ -447,35 +444,73 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
         if (p.y >= station.y - .03) {
           p.set(station.x - 5.2, station.y, station.z);
           s.mode = "cable-platform"; onMode("cable-platform");
-          onPrompt("הגעתם לתחנה — F לבחירת יעד או ירידה בסולם");
+          const previous = (s.cableStation + CABLE_STATIONS.length - 1) % CABLE_STATIONS.length;
+          cableRide.current = { active: false, approaching: true, docked: false, station: s.cableStation, route: [previous, s.cableStation], progress: .91, doorsOpen: false };
+          s.lastPrompt = ""; onPrompt("הגעתם לרציף — הקרונית מתקרבת");
         }
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z); camDist = 7;
     } else if (s.mode === "cable-platform") {
-      if (act) { onCableMenu({ current: s.cableStation }); onPrompt(""); }
+      const station = CABLE_STATIONS[s.cableStation] || CABLE_STATIONS[0];
+      const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+      const wx = fx * moveZ - fz * moveX, wz = fz * moveZ + fx * moveX;
+      const blend = 1 - Math.exp(-ACCEL * dt);
+      s.v.x += (wx * WALK - s.v.x) * blend; s.v.z += (wz * WALK - s.v.z) * blend;
+      p.x = THREE.MathUtils.clamp(p.x + s.v.x * dt, station.x - 5.8, station.x + 5.8);
+      p.z = THREE.MathUtils.clamp(p.z + s.v.z * dt, station.z - 3.25, station.z + 3.25);
+      p.y = station.y; s.v.y = 0; s.onGround = true;
+      if (Math.hypot(wx, wz) > .1) { const target = Math.atan2(wx, wz); let d = target - s.face; d = Math.atan2(Math.sin(d), Math.cos(d)); s.face += d * (1 - Math.exp(-12 * dt)); }
+      const currentRide = cableRide.current, doorDistance = Math.hypot(p.x - station.x, p.z - station.z);
+      const atDoor = !!currentRide?.docked && currentRide.station === station.id && doorDistance < 2.8;
+      const atLadder = Math.hypot(p.x - (station.x - 5.2), p.z - station.z) < 1.7;
+      const platformPrompt = atDoor ? "F — להיכנס לקרונית" : currentRide?.approaching ? "הקרונית בדרך — התקרבו לדלת" : currentRide?.docked ? "גשו לקרונית; ליד הדלת לחצו F" : "הרכבל מתקרב לרציף";
+      if (platformPrompt !== s.lastPrompt) { s.lastPrompt = platformPrompt; onPrompt(platformPrompt); }
+      if (act) {
+        if (atDoor) {
+          const route = cableLoopRoute(station.id);
+          s.cableTrip = { route, progress: 0 };
+          cableRide.current = { active: true, route, progress: 0, doorsOpen: true };
+          s.v.set(0, 0, 0); s.mode = "cable"; s.lastPrompt = ""; s.hudTimer = 0;
+          onMode("cable"); onPrompt("↑ / W — קדימה · ↓ / S — אחורה · F — יציאה ליד תחנה");
+          onHud("רכבל · ↑ קדימה · ↓ אחורה · F יציאה בתחנה");
+        } else if (atLadder) {
+          s.cableDescending = true; s.mode = "cable-ladder"; s.v.set(0, 0, 0); s.lastPrompt = "";
+          onMode("cable-ladder"); onPrompt("החזיקו ↓ / S כדי לרדת בסולם");
+        } else if (currentRide?.approaching) onPrompt("הקרונית עדיין מתקרבת — המתינו ליד הרציף");
+        else onPrompt("התקרבו לדלת הקרונית כדי להיכנס");
+      }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
-      poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
+      s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
+      poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: false, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z); camDist = 7;
     } else if (s.mode === "cable") {
       const trip = s.cableTrip;
       if (trip) {
-        trip.elapsed += dt;
-        const progress = THREE.MathUtils.clamp(trip.elapsed / trip.duration, 0, 1);
-        const point = sampleCableRoute(trip.route, progress, cableCurve);
-        // Place the avatar just above the gondola floor so the feet are inside the cabin, not below its deck.
+        const drive = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0) + inp.joy.y;
+        if (Math.abs(drive) > .05) trip.progress = ((trip.progress + drive * dt * .018) % 1 + 1) % 1;
+        const point = sampleCableRoute(trip.route, trip.progress, cableCurve);
+        let nearestStation = -1, nearestDistance = Infinity;
+        CABLE_STATIONS.forEach((station, index) => {
+          const distance = Math.hypot(point.x - station.x, point.y - station.y, point.z - station.z);
+          if (distance < nearestDistance) { nearestDistance = distance; nearestStation = index; }
+        });
+        const atStation = nearestDistance < 6.2;
+        // The player stays attached to the cabin; the cabin follows the exact same point on the cable.
         p.set(point.x, point.y + .2, point.z); s.face = point.yaw;
-        cableRide.current = { active: true, route: trip.route, progress };
-        if (progress >= 1) {
-          const destination = trip.route[trip.route.length - 1], station = CABLE_STATIONS[destination];
-          s.cableStation = destination; s.cableTrip = null; cableRide.current = { active: false, route: trip.route, progress: 1 };
-          p.set(station.x - 5.2, station.y, station.z); s.mode = "cable-platform"; onMode("cable-platform");
-          onPrompt("הגעתם לתחנה — F לבחירת יעד או ירידה בסולם"); onHud("");
-        } else {
-          s.hudTimer -= dt;
-          if (s.hudTimer <= 0) { s.hudTimer = .4; onHud("רכבל מעל העיר · בדרך ל" + CABLE_STATIONS[trip.route[trip.route.length - 1]].name); }
+        cableRide.current = { active: true, route: trip.route, progress: trip.progress, doorsOpen: atStation, nearStation: atStation ? nearestStation : -1 };
+        if (act) {
+          if (atStation) {
+            const station = CABLE_STATIONS[nearestStation], previous = (nearestStation + CABLE_STATIONS.length - 1) % CABLE_STATIONS.length;
+            s.cableStation = nearestStation; s.cableTrip = null; s.v.set(0, 0, 0);
+            cableRide.current = { active: false, docked: true, station: nearestStation, route: [previous, nearestStation], progress: 1, doorsOpen: true };
+            p.set(station.x - 2.6, station.y, station.z); s.mode = "cable-platform"; s.lastPrompt = "";
+            onMode("cable-platform"); onPrompt("הגעתם לתחנה — אפשר להיכנס שוב או לרדת בסולם"); onHud("");
+          } else onPrompt("אפשר לצאת רק כשמתקרבים לרציף של תחנה");
         }
+        s.hudTimer -= dt;
+        if (s.hudTimer <= 0) { s.hudTimer = .4; onHud("רכבל · ↑ קדימה · ↓ אחורה · F יציאה בתחנה"); }
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
@@ -638,11 +673,11 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
 export default function Game() {
   const world = useMemo(() => generateWorld(7), []);
   const cableCurve = useMemo(() => makeCableCurve(), []);
-  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, elevatorFloor: null, cableDestination: null });
+  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, elevatorFloor: null });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("high");
-  const [elevatorMenu, setElevatorMenu] = useState(null), [cableMenu, setCableMenu] = useState(null), [doorStates, setDoorStates] = useState({});
+  const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const doorRef = useRef({}), elevatorY = useRef(0), elevatorMoving = useRef(false), cableRide = useRef({ active: false, route: [], progress: 0 });
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
@@ -654,7 +689,7 @@ export default function Game() {
   useEffect(() => {
     const down = (event) => {
       if (!started) return;
-      if (event.target instanceof HTMLElement && event.target.closest(".climate-panel, .elevator-dialog, .cable-dialog")) return;
+      if (event.target instanceof HTMLElement && event.target.closest(".climate-panel, .elevator-dialog")) return;
       input.current.keys.add(event.code);
       if (event.code === "KeyF" && !event.repeat) input.current.action = true;
       if (event.code === "Space" || event.code.startsWith("Arrow")) event.preventDefault();
@@ -686,7 +721,7 @@ export default function Game() {
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
         h(Helicopters, { helis }), h(Cars, { cars }),
-        h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, onCableMenu: setCableMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
+        h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -697,17 +732,8 @@ export default function Game() {
       h("input", { id: "game-time", className: "climate-range", type: "range", min: "0", max: "23.75", step: ".25", value: hour, onChange: (e) => setHour(Number(e.target.value)) }),
       h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
-    prompt && !elevatorMenu && !cableMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
+    prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
     hud && (mode === "heli" || mode === "car" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
-    cableMenu && h("div", { className: "cable-dialog", role: "dialog", "aria-label": "בחירת יעד ברכבל" },
-      h("h3", null, "רכבל עירוני · בחירת תחנה"),
-      h("p", null, CABLE_STATIONS[cableMenu.current]?.name || "התחנה הנוכחית"),
-      h("div", { className: "cable-stop-grid" }, CABLE_STATIONS.filter((station) => station.id !== cableMenu.current).map((station) =>
-        h("button", { key: station.id, onClick: () => { input.current.cableDestination = station.id; } }, station.name)
-      )),
-      h("button", { className: "cable-descend", onClick: () => { input.current.cableDestination = -1; } }, "ירידה למטה בסולם"),
-      h("button", { className: "cable-cancel", onClick: () => { setCableMenu(null); setPrompt("F — בחירת יעד או ירידה בסולם"); } }, "סגירה")
-    ),
     elevatorMenu && h("div", { className: "elevator-dialog", role: "dialog", "aria-label": "בחירת קומה במעלית" },
       h("h3", null, "מעלית · בחירת קומה"),
       h("div", { className: "elevator-floor-grid" }, Array.from({ length: elevatorMenu.floors }, (_, floor) => h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`))),
@@ -720,7 +746,7 @@ export default function Game() {
         h("li", null, h("b", null, "גרירת עכבר"), " — סיבוב מצלמה · ", h("b", null, "גלגלת"), " — זום"),
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
         h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות, מעלית ורכבל"),
-        h("li", null, "רכבל: ניגשים לסולם, לוחצים F ומחזיקים ↑ / W לטיפוס; בתחנה לוחצים F ובוחרים יעד. ↓ / S מוריד בסולם."),
+        h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
         h("li", null, "רכב: W/S נסיעה, A פנייה שמאלה, D פנייה ימינה, Shift בלימה"),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
@@ -729,8 +755,8 @@ export default function Game() {
       )
     ),
     h("div", { ref: joyRef, className: "joy", onPointerDown: (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }, onPointerMove: joyMove, onPointerUp: joyEnd, onPointerCancel: joyEnd }, h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
-    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" ? "ArrowUp" : "Space"); } }, mode === "heli" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : "קפיצה"),
-    (mode === "heli" || mode === "cable-ladder") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, "ירידה"),
+    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
+    (mode === "heli" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
       h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות."),
       h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך")

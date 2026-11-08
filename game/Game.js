@@ -7,6 +7,7 @@ import { Human, poseHuman, BARBELL } from "./human.js";
 import { Helicopters } from "./helicopter.js";
 import { makeHeli, stepHeli, canExitHeli } from "./heli-sim.js";
 import { CityDetails } from "./CityDetails.js";
+import { AnimatedWorld } from "./animated-world.js";
 import { Cars } from "./cars.js";
 import { makeCar, stepCar, resolveCarObstacles } from "./car-sim.js";
 import { ElevatorModel } from "./elevator-system.js";
@@ -362,6 +363,7 @@ export default function Game() {
         h(Ground, { quality, wet: weather === "rain" || weather === "storm" }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength }),
+        h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
         h(Helicopters, { helis }), h(Cars, { cars }),
         h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, elevatorY, elevatorMoving, quality })

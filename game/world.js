@@ -51,7 +51,7 @@ export function generateWorld(seed = 7) {
             for (const dx of [-1, 1]) {
                 add(cx + dx - .025, .9, cz + 3.05, cx + dx + .025, 2.95, cz + 3.1, "#9ca9ad", "solid", false);
                 add(cx + dx - .025, .9, cz + 4.55, cx + dx + .025, 2.95, cz + 4.6, "#9ca9ad", "solid", false);
-                add(cx + dx - .55, .78, cz + 3.0, cx + dx + .55, .95, cz + 4.68, "#d0a74e", "solid", false);
+                add(cx + dx - .55, .78, cz + 3.0, cx + dx + .55, .95, cz + 4.68, "#d0a74e", "animatedSwingSeat", false);
                 inter.push({ type: "swing", x: cx + dx, y: .82, z: cz + 3.85, face: Math.PI });
             }
 
@@ -259,7 +259,7 @@ function furnish(add, inter, r, theme, x0, x1, z0, z1, y, ground) {
             rug(x0, z0, x1, z1, "#263238");
             for (let i = 0; i < Math.floor(W / 2); i++) {
                 const tx = x0 + 1 + i * 2;
-                add(tx - .4, y, z0 + .8, tx + .4, y + .25, z0 + 2.6, "#212121");
+                add(tx - .4, y, z0 + .8, tx + .4, y + .25, z0 + 2.6, "#212121", "treadmillDeck", false);
                 add(tx - .4, y, z0 + .8, tx + .4, y + 1.4, z0 + 1, "#90a4ae");
                 add(tx - .3, y + 1.3, z0 + .95, tx + .3, y + 1.6, z0 + 1, "#00e676", "glow", false);
                 inter.push({ type: "treadmill", x: tx, y, z: z0 + 3.2, face: Math.PI });

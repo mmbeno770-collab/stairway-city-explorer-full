@@ -245,14 +245,6 @@ function Cableway({ ride, curve }) {
         h("meshStandardMaterial", { color: "#d8bd84", metalness: .72, roughness: .3 })
       ))
     ];
-    const railings = [
-      ...[-3.8, 3.8].map((dx) => h("mesh", { key: "rail-side-" + dx, position: [station.x + dx, station.y + .75, station.z] },
-        h("boxGeometry", { args: [.12, 1.5, 7.8] }), h("meshStandardMaterial", { color: "#c7a66b", metalness: .78, roughness: .28 })
-      )),
-      ...[-3.8, 3.8].flatMap((dx) => [-3.5, 0, 3.5].map((dz) => h("mesh", { key: "post-" + dx + "-" + dz, position: [station.x + dx, station.y + .75, station.z + dz] },
-        h("boxGeometry", { args: [.12, 1.5, .12] }), h("meshStandardMaterial", { color: "#57676b", metalness: .74, roughness: .3 })
-      )))
-    ];
     const top = station.y + 6.65;
     const stationPulleys = [-1.15, 0, 1.15].map((offset) =>
       h("mesh", { key: "station-pulley-" + offset, position: [station.x + offset, top, station.z], rotation: [Math.PI / 2, 0, 0] },
@@ -265,9 +257,7 @@ function Cableway({ ride, curve }) {
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [2.5, .2, .2] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [.2, .2, 2.5] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
       h("mesh", { position: [station.x, station.y + .035, station.z] }, h("boxGeometry", { args: [13.8, .06, 8.4] }), h("meshStandardMaterial", { color: "#4b5a5e", metalness: .78, roughness: .3 })),
-      ...ladder, ...railings,
-      h("mesh", { position: [station.x + 5.0, station.y + 2.0, station.z] }, h("boxGeometry", { args: [.22, 2.0, 3.5] }), h("meshStandardMaterial", { color: "#31444a", metalness: .52, roughness: .35 })),
-      h("mesh", { position: [station.x + 4.86, station.y + 2.0, station.z] }, h("boxGeometry", { args: [.035, 1.35, 2.8] }), h("meshStandardMaterial", { color: "#c9aa6d", emissive: "#8b6b2f", emissiveIntensity: .16, metalness: .78, roughness: .28 }))
+      ...ladder
     );
   });
 
@@ -458,14 +448,23 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       const wx = fx * moveZ - fz * moveX, wz = fz * moveZ + fx * moveX;
       const blend = 1 - Math.exp(-ACCEL * dt);
       s.v.x += (wx * WALK - s.v.x) * blend; s.v.z += (wz * WALK - s.v.z) * blend;
-      p.x = THREE.MathUtils.clamp(p.x + s.v.x * dt, station.x - 5.8, station.x + 5.8);
-      p.z = THREE.MathUtils.clamp(p.z + s.v.z * dt, station.z - 3.25, station.z + 3.25);
-      p.y = station.y; s.v.y = 0; s.onGround = true;
       if (Math.hypot(wx, wz) > .1) { const target = Math.atan2(wx, wz); let d = target - s.face; d = Math.atan2(Math.sin(d), Math.cos(d)); s.face += d * (1 - Math.exp(-12 * dt)); }
+      // Use real platform physics: rails stop ordinary walking, while a jump can clear them and lead to a fall.
+      if (jump && s.onGround) { s.v.y = JUMP; s.onGround = false; }
+      s.v.y -= GRAVITY * dt;
+      const next = { x: p.x + s.v.x * dt, z: p.z + s.v.z * dt };
+      col.resolve(next, p.y + STEP, p.y + HEIGHT, RAD);
+      p.x = next.x; p.z = next.z;
+      let ny = p.y + s.v.y * dt;
+      const ground = col.groundAt(p.x, p.z, p.y, STEP, RAD);
+      if (ny <= ground || (s.onGround && s.v.y <= 0 && ny - ground < STEP)) {
+        ny = ground; s.v.y = 0; s.onGround = true;
+      } else s.onGround = false;
+      p.y = ny;
       const currentRide = cableRide.current, doorDistance = Math.hypot(p.x - station.x, p.z - station.z);
       const atDoor = !!currentRide?.docked && currentRide.station === station.id && doorDistance < 2.8;
-      const atLadder = Math.hypot(p.x - (station.x - 5.2), p.z - station.z) < 1.7;
-      const platformPrompt = atDoor ? "F — להיכנס לקרונית" : currentRide?.approaching ? "הקרונית בדרך — התקרבו לדלת" : currentRide?.docked ? "גשו לקרונית; ליד הדלת לחצו F" : "הרכבל מתקרב לרציף";
+      const atLadder = Math.hypot(p.x - (station.x - 5.2), p.z - station.z) < 1.7 && Math.abs(p.y - station.y) < .8;
+      const platformPrompt = atDoor ? "F — להיכנס לקרונית" : currentRide?.approaching ? "הקרונית בדרך — התקרבו לדלת" : atLadder ? "F — לרדת בסולם" : currentRide?.docked ? "גשו לקרונית או לסולם" : "הרכבל מתקרב לרציף";
       if (platformPrompt !== s.lastPrompt) { s.lastPrompt = platformPrompt; onPrompt(platformPrompt); }
       if (act) {
         if (atDoor) {
@@ -479,11 +478,16 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
           s.cableDescending = true; s.mode = "cable-ladder"; s.v.set(0, 0, 0); s.lastPrompt = "";
           onMode("cable-ladder"); onPrompt("החזיקו ↓ / S כדי לרדת בסולם");
         } else if (currentRide?.approaching) onPrompt("הקרונית עדיין מתקרבת — המתינו ליד הרציף");
-        else onPrompt("התקרבו לדלת הקרונית כדי להיכנס");
+        else onPrompt("התקרבו לדלת הקרונית או לסולם");
+      }
+      if (s.onGround && p.y < station.y - .25) {
+        s.cableStation = -1; s.mode = "walk"; s.v.set(0, 0, 0);
+        cableRide.current = { active: false, route: [], progress: 0 };
+        s.lastPrompt = ""; onMode("walk"); onPrompt("ירדתם מהתחנה"); onHud("");
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
-      poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: false, t: s.t, dt });
+      poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: !s.onGround, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z); camDist = 7;
     } else if (s.mode === "cable") {
       const trip = s.cableTrip;

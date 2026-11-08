@@ -166,10 +166,9 @@ function CableCabin() {
   );
 }
 
-function Cableway({ ride }) {
+function Cableway({ ride, curve }) {
   const autonomous = useRef([]), passengerCabin = useRef(null);
   const loop = [...CABLE_STATIONS.map((station) => station.id), CABLE_STATIONS[0].id];
-  const curve = useMemo(() => makeCableCurve(), []);
   const cables = useMemo(() => {
     const result = [];
     for (const offset of [-.82, .82, 0]) {
@@ -364,7 +363,7 @@ function DoorSet({ world, doorStates }) {
   return h(React.Fragment, null, world.interactables.map((item, index) => item.type === "door" ? h(DoorLeaf, { key: index, item, open: !!doorStates[index] }) : null));
 }
 
-function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, onCableMenu, cableRide, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
+function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, onCableMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
@@ -464,8 +463,9 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       if (trip) {
         trip.elapsed += dt;
         const progress = THREE.MathUtils.clamp(trip.elapsed / trip.duration, 0, 1);
-        const point = sampleCableRoute(trip.route, progress);
-        p.set(point.x, point.y, point.z); s.face = point.yaw;
+        const point = sampleCableRoute(trip.route, progress, cableCurve);
+        // Place the avatar just above the gondola floor so the feet are inside the cabin, not below its deck.
+        p.set(point.x, point.y + .2, point.z); s.face = point.yaw;
         cableRide.current = { active: true, route: trip.route, progress };
         if (progress >= 1) {
           const destination = trip.route[trip.route.length - 1], station = CABLE_STATIONS[destination];
@@ -479,7 +479,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
-      camTarget.set(p.x, p.y + 2.35, p.z); camDist = 8; followYaw = s.face;
+      camTarget.set(p.x, p.y + 2.2, p.z); camDist = 6.4; followYaw = s.face;
     } else if (s.mode === "walk") {
       const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw), wx = fx * moveZ - fz * moveX, wz = fz * moveZ + fx * moveX, speed = shift ? RUN : WALK, blend = 1 - Math.exp(-ACCEL * dt);
       s.v.x += (wx * speed - s.v.x) * blend; s.v.z += (wz * speed - s.v.z) * blend;
@@ -637,6 +637,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
 
 export default function Game() {
   const world = useMemo(() => generateWorld(7), []);
+  const cableCurve = useMemo(() => makeCableCurve(), []);
   const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, elevatorFloor: null, cableDestination: null });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
@@ -679,13 +680,13 @@ export default function Game() {
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { quality, wet: weather === "rain" || weather === "storm" }),
         h(ScenicHills), h(WalkableHills),
-        h(Cableway, { ride: cableRide }),
+        h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
         h(Helicopters, { helis }), h(Cars, { cars }),
-        h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, onCableMenu: setCableMenu, cableRide, elevatorY, elevatorMoving, quality })
+        h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, onCableMenu: setCableMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),

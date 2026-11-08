@@ -14,36 +14,39 @@ const G = {
     shoulder: sphere(0.073, 0.078, 0.074, 24), sleeve: downCapsule(0.059, 0.16, 18), upperArm: downCapsule(0.045, 0.25, 18), elbow: sphere(0.039, 0.042, 0.04, 18), forearm: downCapsule(0.034, 0.22, 18), wrist: sphere(0.027, 0.03, 0.03, 16), palm: sphere(0.041, 0.058, 0.027, 18),
     finger: downCapsule(0.0076, 0.026, 12), fingerMid: downCapsule(0.0066, 0.019, 12), fingerDistal: downCapsule(0.0058, 0.015, 12), fingerTip: sphere(0.007, 0.009, 0.007, 12), fingernail: sphere(0.0048, 0.007, 0.0018, 12), knuckle: sphere(0.0085, 0.0085, 0.008, 12), thumb: downCapsule(0.01, 0.031, 12), thumbTip: sphere(0.009, 0.011, 0.009, 12),
     neck: new THREE.CylinderGeometry(0.047, 0.057, 0.13, 20, 1), collar: new THREE.TorusGeometry(0.052, 0.008, 8, 32), skull: sphere(0.098, 0.116, 0.094, 40), jaw: sphere(0.079, 0.064, 0.079, 32), chin: sphere(0.045, 0.027, 0.044, 20),
-    hairCap: new THREE.SphereGeometry(0.104, 36, 24, 0, Math.PI * 2, 0, Math.PI * 0.57), hairSide: sphere(0.025, 0.061, 0.07, 18), hairLock: downCapsule(0.016, 0.065, 12), ear: sphere(0.022, 0.038, 0.014, 20), earInner: sphere(0.009, 0.022, 0.006, 16),
-    eyeSocket: sphere(0.024, 0.019, 0.012, 20), eye: sphere(0.0165, 0.0125, 0.012, 24), iris: sphere(0.008, 0.0085, 0.0045, 18), pupil: sphere(0.0038, 0.0048, 0.0024, 14), eyeGlint: sphere(0.0022, 0.0022, 0.0015, 10), eyelid: new THREE.TorusGeometry(0.017, 0.0028, 7, 24),
+    hairCap: new THREE.SphereGeometry(0.108, 40, 28, 0, Math.PI * 2, 0, Math.PI * 0.59), hairSide: sphere(0.027, 0.064, 0.072, 20), hairLock: downCapsule(0.016, 0.065, 14), hairStrand: downCapsule(0.0042, 0.052, 8), ear: sphere(0.022, 0.038, 0.014, 20), earInner: sphere(0.009, 0.022, 0.006, 16),
+    eyeSocket: sphere(0.025, 0.02, 0.012, 22), eye: sphere(0.0182, 0.0142, 0.013, 26), iris: sphere(0.009, 0.0095, 0.0048, 20), pupil: sphere(0.0042, 0.0052, 0.0026, 16), eyeGlint: sphere(0.0031, 0.0031, 0.0018, 12), eyelid: new THREE.TorusGeometry(0.0185, 0.0028, 7, 26),
     brow: (() => { const g = new THREE.CapsuleGeometry(0.0055, 0.027, 4, 10); g.rotateZ(Math.PI / 2); return g; })(),
-    noseBridge: sphere(0.012, 0.026, 0.014, 20), noseTip: sphere(0.014, 0.012, 0.015, 20), nostril: sphere(0.0045, 0.003, 0.003, 12), lipUpper: sphere(0.019, 0.0045, 0.0045, 20), lipLower: sphere(0.018, 0.0042, 0.004, 20), mouth: new THREE.BoxGeometry(0.031, 0.0028, 0.0028), philtrum: downCapsule(0.0025, 0.012, 8),
-    shirtHem: new THREE.TorusGeometry(0.144, 0.0032, 7, 40), shirtFold: downCapsule(0.0028, 0.075, 8), shoulderSeam: new THREE.TorusGeometry(0.054, 0.002, 6, 24), pocket: new THREE.BoxGeometry(0.047, 0.06, 0.006), button: new THREE.SphereGeometry(0.004, 10, 8), cuff: new THREE.CylinderGeometry(0.039, 0.044, 0.025, 18), pantSeam: downCapsule(0.0022, 0.27, 8),
+    noseBridge: sphere(0.012, 0.026, 0.014, 20), noseTip: sphere(0.014, 0.012, 0.015, 20), nostril: sphere(0.0045, 0.003, 0.003, 12), lipUpper: sphere(0.019, 0.0045, 0.0045, 20), lipLower: sphere(0.018, 0.0042, 0.004, 20), smile: (() => { const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(-0.021, -0.064, 0.104), new THREE.Vector3(-0.012, -0.072, 0.108), new THREE.Vector3(0, -0.075, 0.109), new THREE.Vector3(0.012, -0.072, 0.108), new THREE.Vector3(0.021, -0.064, 0.104)]); return new THREE.TubeGeometry(curve, 24, 0.0028, 8, false); })(), dimple: sphere(0.004, 0.003, 0.002, 12), philtrum: downCapsule(0.0025, 0.012, 8),
+    shirtHem: new THREE.TorusGeometry(0.144, 0.0032, 7, 40), shirtFold: downCapsule(0.0028, 0.075, 8), shoulderSeam: new THREE.TorusGeometry(0.054, 0.002, 6, 24), pocket: new THREE.BoxGeometry(0.047, 0.06, 0.006), button: new THREE.SphereGeometry(0.004, 10, 8), cuff: new THREE.CylinderGeometry(0.039, 0.044, 0.025, 18), pantSeam: downCapsule(0.0022, 0.27, 8), zipTrack: new THREE.BoxGeometry(0.006, 0.22, 0.008), zipPull: sphere(0.006, 0.013, 0.004, 12), drawstring: downCapsule(0.003, 0.075, 8), backpack: sphere(0.112, 0.16, 0.07, 28), backpackPocket: sphere(0.079, 0.065, 0.022, 22), backpackStrap: downCapsule(0.012, 0.27, 10), strapClip: new THREE.BoxGeometry(0.026, 0.018, 0.008), shoeStripe: new THREE.BoxGeometry(0.072, 0.012, 0.008), shoeHeel: sphere(0.042, 0.029, 0.022, 16),
     shoe: sphere(0.055, 0.038, 0.112, 24), shoeToe: sphere(0.052, 0.032, 0.065, 20), sole: new THREE.BoxGeometry(0.11, 0.016, 0.235), shoeTongue: sphere(0.026, 0.019, 0.04, 16), lace: downCapsule(0.0025, 0.021, 8),
     bar: (() => { const g = new THREE.CylinderGeometry(0.014, 0.014, 1.6, 12); g.rotateZ(Math.PI / 2); return g; })(), plate: (() => { const g = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 28); g.rotateZ(Math.PI / 2); return g; })(),
 };
 const M = {
-    skin: new THREE.MeshStandardMaterial({ color: "#bd8063", roughness: 0.72, metalness: 0, envMapIntensity: 0.65 }), skinLight: new THREE.MeshStandardMaterial({ color: "#ca8e70", roughness: 0.68 }), skinShadow: new THREE.MeshStandardMaterial({ color: "#8f5847", roughness: 0.8 }),
-    shirt: new THREE.MeshStandardMaterial({ color: "#263f56", roughness: 0.88 }), shirtLight: new THREE.MeshStandardMaterial({ color: "#345a74", roughness: 0.84 }), shirtSeam: new THREE.MeshStandardMaterial({ color: "#7893a2", roughness: 0.9 }),
+    skin: new THREE.MeshPhysicalMaterial({ color: "#bd8063", roughness: 0.68, metalness: 0, envMapIntensity: 0.72, clearcoat: 0.08, clearcoatRoughness: 0.5 }), skinLight: new THREE.MeshStandardMaterial({ color: "#d39a7d", roughness: 0.66 }), skinShadow: new THREE.MeshStandardMaterial({ color: "#8f5847", roughness: 0.8 }),
+    shirt: new THREE.MeshPhysicalMaterial({ color: "#294c62", roughness: 0.82, metalness: 0.015, sheen: 0.24, sheenColor: "#8aa8b6", sheenRoughness: 0.92 }), shirtLight: new THREE.MeshStandardMaterial({ color: "#52788b", roughness: 0.82 }), shirtSeam: new THREE.MeshStandardMaterial({ color: "#a9c0c7", roughness: 0.88 }),
     pants: new THREE.MeshStandardMaterial({ color: "#242b35", roughness: 0.92 }), pantsLight: new THREE.MeshStandardMaterial({ color: "#394451", roughness: 0.92 }), belt: new THREE.MeshStandardMaterial({ color: "#35271f", roughness: 0.65 }), buckle: new THREE.MeshStandardMaterial({ color: "#9da7ae", metalness: 0.72, roughness: 0.35 }),
     shoe: new THREE.MeshStandardMaterial({ color: "#303944", roughness: 0.76 }), sole: new THREE.MeshStandardMaterial({ color: "#171c22", roughness: 0.94 }), lace: new THREE.MeshStandardMaterial({ color: "#c2c8ca", roughness: 0.85 }),
-    hair: new THREE.MeshStandardMaterial({ color: "#241a16", roughness: 0.94 }), hairLight: new THREE.MeshStandardMaterial({ color: "#39251d", roughness: 0.9 }),
+    hair: new THREE.MeshStandardMaterial({ color: "#241a16", roughness: 0.92 }), hairLight: new THREE.MeshStandardMaterial({ color: "#503326", roughness: 0.86 }),
     eyeWhite: new THREE.MeshStandardMaterial({ color: "#eee9df", roughness: 0.28 }), iris: new THREE.MeshStandardMaterial({ color: "#68462e", roughness: 0.28 }), pupil: new THREE.MeshBasicMaterial({ color: "#171310" }), glint: new THREE.MeshBasicMaterial({ color: "#ffffff" }),
-    lip: new THREE.MeshStandardMaterial({ color: "#985d51", roughness: 0.65 }), nail: new THREE.MeshStandardMaterial({ color: "#d9b6a3", roughness: 0.62 }), mouth: new THREE.MeshStandardMaterial({ color: "#4a2c28", roughness: 0.85 }), steel: new THREE.MeshStandardMaterial({ color: "#c9ccd1", metalness: 0.9, roughness: 0.3 }), plate: new THREE.MeshStandardMaterial({ color: "#1d1d1f", roughness: 0.6 }),
+    lip: new THREE.MeshStandardMaterial({ color: "#985d51", roughness: 0.65 }), nail: new THREE.MeshStandardMaterial({ color: "#d9b6a3", roughness: 0.62 }), mouth: new THREE.MeshStandardMaterial({ color: "#653b35", roughness: 0.78 }), backpack: new THREE.MeshStandardMaterial({ color: "#b18a58", roughness: 0.9 }), backpackLight: new THREE.MeshStandardMaterial({ color: "#d1ae73", roughness: 0.86 }), zipper: new THREE.MeshStandardMaterial({ color: "#d5c8a4", metalness: 0.72, roughness: 0.32 }), strap: new THREE.MeshStandardMaterial({ color: "#172c38", roughness: 0.9 }), strapClip: new THREE.MeshStandardMaterial({ color: "#c3a66c", metalness: 0.78, roughness: 0.3 }), shoeAccent: new THREE.MeshStandardMaterial({ color: "#92b9c2", roughness: 0.68 }), steel: new THREE.MeshStandardMaterial({ color: "#c9ccd1", metalness: 0.9, roughness: 0.3 }), plate: new THREE.MeshStandardMaterial({ color: "#1d1d1f", roughness: 0.6 }),
 };
 export const BARBELL = { bar: G.bar, plate: G.plate, steel: M.steel, plateMat: M.plate };
 function Face({ r, S }) {
     return _jsxs("group", { ref: r("head"), "position-y": 0.21, children: [
         _jsx("mesh", { geometry: G.skull, material: M.skin, ...S }), _jsx("mesh", { geometry: G.jaw, material: M.skin, position: [0, -0.052, 0.018] }), _jsx("mesh", { geometry: G.chin, material: M.skinLight, position: [0, -0.093, 0.05] }),
-        [-1, 1].map((side) => _jsx("mesh", { geometry: sphere(0.029, 0.022, 0.014, 18), material: M.skinLight, position: [side * 0.057, -0.035, 0.072] }, `cheek-${side}`)),
+        [-1, 1].map((side) => _jsx("mesh", { geometry: sphere(0.029, 0.022, 0.014, 20), material: M.skinLight, position: [side * 0.057, -0.035, 0.072] }, `cheek-${side}`)),
+        [-1, 1].map((side) => _jsx("mesh", { geometry: G.dimple, material: M.skinShadow, position: [side * 0.021, -0.064, 0.101] }, `smile-dimple-${side}`)),
         _jsx("mesh", { geometry: G.hairCap, material: M.hair, position: [0, 0.016, -0.006], "rotation-x": -0.28, scale: [1, 1.06, 1.08], ...S }),
         [-1, 1].map((side) => _jsxs("group", { children: [_jsx("mesh", { geometry: G.hairSide, material: M.hair, position: [side * 0.081, -0.005, 0.008] }), _jsx("mesh", { geometry: G.hairLock, material: M.hairLight, position: [side * 0.061, 0.068, 0.036], "rotation-z": side * -0.65, "rotation-x": -0.18 }), _jsx("mesh", { geometry: G.ear, material: M.skin, position: [side * 0.096, 0.002, -0.004] }), _jsx("mesh", { geometry: G.earInner, material: M.skinShadow, position: [side * 0.101, 0.003, 0.007] })] }, side)),
+        [-1, 0, 1].map((part) => _jsx("mesh", { geometry: G.hairLock, material: part === 0 ? M.hair : M.hairLight, position: [part * 0.039, 0.084 - Math.abs(part) * 0.006, 0.058], rotation: [-0.12, 0, part * -0.24], scale: [0.82, 0.92, 0.85] }, `fringe-${part}`)),
+        [-1, 1].map((side) => _jsx("mesh", { geometry: G.hairStrand, material: M.hairLight, position: [side * 0.049, 0.095, 0.035], rotation: [0.08, 0, side * -0.48] }, `hair-highlight-${side}`)),
         _jsx("group", { ref: r("eyes"), position: [0, 0.018, 0.087], children: [-1, 1].map((side) => _jsxs("group", { position: [side * 0.036, 0, 0], children: [
             _jsx("mesh", { geometry: G.eyeSocket, material: M.skinShadow, "position-z": -0.001 }), _jsx("mesh", { geometry: G.eye, material: M.eyeWhite }), _jsx("mesh", { geometry: G.iris, material: M.iris, position: [0, -0.0005, 0.010] }), _jsx("mesh", { geometry: G.pupil, material: M.pupil, position: [0, -0.0005, 0.014] }), _jsx("mesh", { geometry: G.eyeGlint, material: M.glint, position: [-0.0025, 0.003, 0.016] }), _jsx("mesh", { geometry: G.eyelid, material: M.skinLight, "position-z": 0.001 }), _jsx("mesh", { geometry: G.brow, material: M.hair, position: [0, 0.027, 0.006], "rotation-z": side * -0.09 })
         ] }, side)) }),
         _jsx("mesh", { geometry: G.noseBridge, material: M.skinLight, position: [0, -0.005, 0.101] }), _jsx("mesh", { geometry: G.noseTip, material: M.skin, position: [0, -0.026, 0.113] }),
         [-1, 1].map((side) => _jsx("mesh", { geometry: G.nostril, material: M.skinShadow, position: [side * 0.008, -0.032, 0.121] }, side)),
-        _jsx("mesh", { geometry: G.philtrum, material: M.skinShadow, position: [0, -0.041, 0.095] }), _jsx("mesh", { geometry: G.lipUpper, material: M.lip, position: [0, -0.064, 0.094] }), _jsx("mesh", { geometry: G.lipLower, material: M.lip, position: [0, -0.071, 0.094] }), _jsx("mesh", { geometry: G.mouth, material: M.mouth, position: [0, -0.067, 0.097] })
+        _jsx("mesh", { geometry: G.philtrum, material: M.skinShadow, position: [0, -0.041, 0.095] }), _jsx("mesh", { geometry: G.lipUpper, material: M.lip, position: [0, -0.064, 0.097] }), _jsx("mesh", { geometry: G.lipLower, material: M.lip, position: [0, -0.073, 0.097] }), _jsx("mesh", { geometry: G.smile, material: M.mouth })
     ] });
 }
 export function Human({ rig }) {
@@ -59,12 +62,26 @@ export function Human({ rig }) {
                     _jsx("mesh", { geometry: G.knee, material: M.pants, ...S }), _jsx("mesh", { geometry: G.shin, material: M.pants, ...S }), _jsx("mesh", { geometry: G.calf, material: M.pants, position: [0, -0.22, -0.005], scale: [0.96, 1.05, 0.94] }), _jsx("mesh", { geometry: G.pantSeam, material: M.pantsLight, position: [side * -0.017, -0.13, 0.039] }),
                     _jsxs("group", { ref: r("ankle" + i), "position-y": -0.42, children: [
                         _jsx("mesh", { geometry: G.ankle, material: M.skin }), _jsx("mesh", { geometry: G.sole, material: M.sole, position: [0, -0.066, 0.043], ...S }), _jsx("mesh", { geometry: G.shoe, material: M.shoe, position: [0, -0.032, 0.038], ...S }), _jsx("mesh", { geometry: G.shoeToe, material: M.shoe, position: [0, -0.023, 0.091] }), _jsx("mesh", { geometry: G.shoeTongue, material: M.pantsLight, position: [0, 0.001, 0.022] }),
+                        _jsx("mesh", { geometry: G.shoeHeel, material: M.shoeAccent, position: [0, -0.002, -0.045] }),
+                        _jsx("mesh", { geometry: G.shoeStripe, material: M.shoeAccent, position: [0, 0.003, 0.052] }),
                         [-0.012, 0.012].map((x, j) => _jsx("mesh", { geometry: G.lace, material: M.lace, position: [x, 0.012, 0.035 + j * 0.026], "rotation-x": Math.PI / 2, "rotation-z": x * 8 }, j))
                     ] })
                 ] })
             ] }, side)),
             _jsxs("group", { ref: r("spine"), "position-y": 0.05, children: [
                 _jsx("mesh", { ref: r("chest"), geometry: G.torso, material: M.shirt, scale: [1, 1, 0.68], ...S }),
+                // A compact travel backpack with stitched pocket, top flap and shoulder straps.
+                _jsx("mesh", { geometry: G.backpack, material: M.backpack, position: [0, 0.24, -0.105], scale: [1.0, 1.0, 0.88], ...S }),
+                _jsx("mesh", { geometry: G.backpackPocket, material: M.backpackLight, position: [0, 0.17, -0.164], scale: [1.0, 1.0, 0.72] }),
+                _jsx("mesh", { geometry: G.zipTrack, material: M.zipper, position: [0, 0.29, -0.18] }),
+                _jsx("mesh", { geometry: G.backpackPocket, material: M.backpackLight, position: [0, 0.392, -0.105], scale: [0.72, 0.35, 0.58] }),
+                [-1, 1].map((side) => _jsxs("group", { children: [
+                    _jsx("mesh", { geometry: G.backpackStrap, material: M.strap, position: [side * 0.122, 0.42, 0.086], rotation: [0, 0, side * -0.12] }),
+                    _jsx("mesh", { geometry: G.strapClip, material: M.strapClip, position: [side * 0.12, 0.235, 0.108] })
+                ] }, `bag-strap-${side}`)),
+                _jsx("mesh", { geometry: G.zipTrack, material: M.zipper, position: [0, 0.262, 0.124] }),
+                _jsx("mesh", { geometry: G.zipPull, material: M.zipper, position: [0, 0.154, 0.129] }),
+                [-1, 1].map((side) => _jsx("mesh", { geometry: G.drawstring, material: M.shirtSeam, position: [side * 0.024, 0.465, 0.109], rotation: [0, 0, side * -0.08] }, `hood-string-${side}`)),
                 _jsx("mesh", { geometry: G.pocket, material: M.shirtLight, position: [-0.092, 0.29, 0.105], scale: [0.72, 0.72, 0.7] }), _jsx("mesh", { geometry: G.pocket, material: M.shirtSeam, position: [-0.092, 0.29, 0.110], scale: [0.62, 0.62, 0.45] }),
                 [0.19, 0.25, 0.31].map((y) => _jsx("mesh", { geometry: G.button, material: M.buckle, position: [0, y, 0.112] }, y)),
                 _jsx("mesh", { geometry: G.collar, material: M.shirtLight, position: [0, 0.495, 0], "rotation-x": Math.PI / 2 }), _jsx("mesh", { geometry: G.shirtHem, material: M.shirtLight, "position-y": 0.018, "rotation-x": Math.PI / 2, scale: [1, 0.68, 1] }),
@@ -112,7 +129,9 @@ export function poseHuman(R, P) {
             el[i].rotation.x = -(0.12 + 0.22 * amp + 0.72 * run);
         }
         R.spine.rotation.x = 0.025 * amp + 0.12 * run; R.spine.rotation.y = swing * 0.065 * amp;
-        R.head.rotation.x = -R.spine.rotation.x * 0.45 + Math.sin(P.t * 1.2) * 0.012; R.head.rotation.y = Math.sin(P.t * 0.55) * 0.025;
+        R.head.rotation.x = -R.spine.rotation.x * 0.45 + Math.sin(P.t * 1.2) * 0.012;
+        R.head.rotation.y = Math.sin(P.t * 0.55) * 0.025;
+        R.head.rotation.z = Math.sin(P.t * 0.72) * 0.018 * (1 - amp);
         R.hips.position.y = 0.95 - Math.abs(Math.cos(P.phase)) * 0.026 * amp - run * 0.025;
     } else if (P.mode === "walk" && P.air) {
         th[0].rotation.x = -0.7; kn[0].rotation.x = 0.95; th[1].rotation.x = -0.12; kn[1].rotation.x = 0.42;

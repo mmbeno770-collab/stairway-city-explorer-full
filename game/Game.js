@@ -795,7 +795,8 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     if (followYaw !== null && performance.now() / 1000 - inp.lastDrag > 1.2) { let d = followYaw - s.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); s.yaw += d * (1 - Math.exp(-2.5 * dt)); }
     const back = new THREE.Vector3(-Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), -Math.cos(s.yaw) * Math.cos(s.pitch));
     let distance = camDist;
-    for (let t = .3; t <= camDist; t += .3) { const test = camTarget.clone().addScaledVector(back, t); if (col.pointInside(test.x, test.y, test.z, .2) || test.y < .2) { distance = Math.max(.3, t - .25); break; } }
+    const underground = p.y < -.5;
+    for (let t = .3; t <= camDist; t += .3) { const test = camTarget.clone().addScaledVector(back, t); if (col.pointInside(test.x, test.y, test.z, .2) || (!underground && test.y < .2)) { distance = Math.max(.3, t - .25); break; } }
     const desired = camTarget.clone().addScaledVector(back, distance);
     if (!s.cameraReady) { camera.position.copy(desired); s.cameraReady = true; }
     camera.position.lerp(desired, 1 - Math.exp(-6 * dt)); camera.lookAt(camTarget);

@@ -288,7 +288,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       if (!heli) { s.mode = "walk"; onMode("walk"); }
       else {
         const lift = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
-        stepHeli(heli, { fwd: moveZ, turn: moveX, lift, piloted: true }, dt, heliEnv);
+        stepHeli(heli, { fwd: moveZ, turn: -moveX, lift, piloted: true }, dt, heliEnv);
         if (act && canExitHeli(heli)) { p.set(heli.x + Math.cos(heli.yaw) * 2.6, 0, heli.z - Math.sin(heli.yaw) * 2.6); p.y = col.groundAt(p.x, p.z, heli.y + .5, .6); s.face = heli.yaw; s.mode = "walk"; onMode("walk"); s.target = -1; onPrompt(""); }
         else {
           temp.e.set(heli.pitch, heli.yaw, heli.roll, "YXZ"); temp.q.setFromEuler(temp.e);
@@ -392,7 +392,7 @@ export default function Game() {
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
         h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות ומעלית"),
         h("li", null, "רכב: W/S נסיעה, A פנייה שמאלה, D פנייה ימינה, Shift בלימה"),
-        h("li", null, "מסוק: W/S תנועה, A פנייה שמאלה, D פנייה ימינה, רווח עלייה, Shift ירידה"),
+        h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
         h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")

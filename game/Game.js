@@ -49,6 +49,8 @@ function hillGeometry(hill) {
     }
   }
   for (let iz = 0; iz < segments; iz++) for (let ix = 0; ix < segments; ix++) {
+    const centerX = (ix + .5) / segments * 2 - 1, centerZ = (iz + .5) / segments * 2 - 1;
+    if (centerX * centerX + centerZ * centerZ > 1.02) continue;
     const a = iz * (segments + 1) + ix, b = a + 1, c = a + segments + 1, d = c + 1;
     indices.push(a, d, b, a, c, d);
   }

@@ -10,6 +10,7 @@ import { CityDetails } from "./CityDetails.js";
 import { AnimatedWorld } from "./animated-world.js";
 import { Cars } from "./cars.js";
 import { makeCar, stepCar, resolveCarObstacles } from "./car-sim.js";
+import { makeAirVehicle, stepAirVehicle, canExitAirVehicle, resolveAirVehicleObstacles } from "./air-vehicle-sim.js";
 import { ElevatorModel } from "./elevator-system.js";
 import { advanceElevatorTrip, floorHeight, makeElevatorTrip } from "./elevator-sim.js";
 import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./environment.js";
@@ -17,7 +18,7 @@ import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./enviro
 
 const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
 function ScenicHills() {
   const hills = [
@@ -527,45 +528,68 @@ function resolveHelicopterObstacles(point, yLo, yHi, radius, helis) {
     point.x = heli.x + lx * c + lz * s; point.z = heli.z - lx * s + lz * c;
   }
 }
-function ParkingModels({ vehicles }) {
-  const tesla = useRef(null);
-  const plane = vehicles.find((v) => v.id === "plane"), tank = vehicles.find((v) => v.id === "tank"), floatCar = vehicles.find((v) => v.id === "tesla");
-  useFrame(({ clock }) => { if (tesla.current) tesla.current.position.y = floatCar.y + Math.sin(clock.elapsedTime * 2.1) * .12; });
+function ParkingModels({ airVehicles }) {
+  const planeRef = useRef(null), teslaRef = useRef(null), smokeRefs = useRef([]);
+  const plane = airVehicles.find((vehicle) => vehicle.id === "plane");
+  const floatCar = airVehicles.find((vehicle) => vehicle.id === "tesla");
+  useFrame(({ clock }) => {
+    const time = clock.elapsedTime;
+    if (planeRef.current && plane) {
+      planeRef.current.position.set(plane.x, plane.y, plane.z);
+      planeRef.current.rotation.set(plane.pitch || 0, plane.yaw, plane.roll || 0, "YXZ");
+    }
+    if (teslaRef.current && floatCar) {
+      teslaRef.current.position.set(floatCar.x, floatCar.y, floatCar.z);
+      teslaRef.current.rotation.set(floatCar.pitch || 0, floatCar.yaw, floatCar.roll || 0, "YXZ");
+    }
+    const smokeActive = !!floatCar && (Math.abs(floatCar.speed) > .9 || !floatCar.grounded);
+    smokeRefs.current.forEach((particle, index) => {
+      if (!particle) return;
+      particle.visible = smokeActive;
+      if (!smokeActive) return;
+      const phase = (time * 1.65 + index * .16) % 1;
+      particle.position.set(Math.sin(time * 1.1 + index) * .08, .48 + phase * .58, -2.24 - phase * .72);
+      particle.scale.setScalar(.45 + phase * .45);
+      if (particle.material) particle.material.opacity = (1 - phase) * .34;
+    });
+  });
   return h(React.Fragment, null,
-    plane && h("group", { position: [plane.x, plane.y, plane.z], rotation: [0, plane.yaw, 0] },
+    plane && h("group", { ref: planeRef },
       h("mesh", { position: [0, .86, 0], castShadow: true }, h("boxGeometry", { args: [.92, .72, 7.6] }), h("meshStandardMaterial", { color: "#d9e1e4", metalness: .48, roughness: .34 })),
       h("mesh", { position: [0, .9, 0], castShadow: true }, h("boxGeometry", { args: [9.8, .17, 1.35] }), h("meshStandardMaterial", { color: "#e8edf0", metalness: .4, roughness: .32 })),
       h("mesh", { position: [0, 1.2, 1.35], scale: [.46, .48, .92] }, h("sphereGeometry", { args: [1, 20, 14] }), h("meshPhysicalMaterial", { color: "#6ca6c8", roughness: .16, metalness: .18, transparent: true, opacity: .82 })),
       h("mesh", { position: [0, .94, -3.1] }, h("boxGeometry", { args: [3.9, .14, .72] }), h("meshStandardMaterial", { color: "#e8edf0", metalness: .4, roughness: .34 })),
       h("mesh", { position: [0, 1.48, -3.22] }, h("boxGeometry", { args: [.18, 1.12, .86] }), h("meshStandardMaterial", { color: "#2e647f", metalness: .32, roughness: .4 })),
       ...[-2.45, 2.45].map((x) => h("mesh", { key: x, position: [x, .58, .1] }, h("boxGeometry", { args: [.72, .42, 1.35] }), h("meshStandardMaterial", { color: "#7d8f99", metalness: .72, roughness: .3 }))),
-      ...[-1, 1].map((x) => h("mesh", { key: "light" + x, position: [x * .24, .68, 3.78] }, h("boxGeometry", { args: [.22, .1, .06] }), h("meshBasicMaterial", { color: "#fff0ba" })))
+      ...[-1, 1].map((x) => h("mesh", { key: "light" + x, position: [x * .24, .68, 3.78] }, h("boxGeometry", { args: [.22, .1, .06] }), h("meshBasicMaterial", { color: "#fff0ba" }))),
+      h("group", { position: [0, .22, 0] },
+        ...[-1, 1].map((side) => h("mesh", { key: "wing-wheel-" + side, position: [side * 2.1, 0, .1], rotation: [0, 0, Math.PI / 2] }, h("cylinderGeometry", { args: [.24, .24, .13, 14] }), h("meshStandardMaterial", { color: "#20262c", roughness: .9 }))),
+        h("mesh", { position: [0, 0, 2.0], rotation: [0, 0, Math.PI / 2] }, h("cylinderGeometry", { args: [.2, .2, .15, 14] }), h("meshStandardMaterial", { color: "#20262c", roughness: .9 }))
+      )
     ),
-    tank && h("group", { position: [tank.x, tank.y, tank.z], rotation: [0, tank.yaw, 0] },
-      h("mesh", { position: [0, .8, 0], castShadow: true }, h("boxGeometry", { args: [3.65, 1.18, 5.0] }), h("meshStandardMaterial", { color: "#526347", metalness: .28, roughness: .78 })),
-      ...[-1, 1].map((side) => h(React.Fragment, { key: side },
-        h("mesh", { position: [side * 1.82, .55, 0] }, h("boxGeometry", { args: [.28, .9, 5.35] }), h("meshStandardMaterial", { color: "#343d34", roughness: .94 })),
-        ...[-1.8, -.6, .6, 1.8].map((z) => h("mesh", { key: z, position: [side * 1.98, .55, z], rotation: [Math.PI / 2, 0, Math.PI / 2] }, h("cylinderGeometry", { args: [.34, .34, .16, 14] }), h("meshStandardMaterial", { color: "#202722", roughness: .9 })))
-      )),
-      h("mesh", { position: [0, 1.48, -.15], castShadow: true }, h("cylinderGeometry", { args: [1.05, 1.2, .48, 18] }), h("meshStandardMaterial", { color: "#687b59", metalness: .28, roughness: .72 })),
-      h("mesh", { position: [0, 1.77, -.15], scale: [1, .38, 1] }, h("sphereGeometry", { args: [1, 20, 12] }), h("meshStandardMaterial", { color: "#78886b", metalness: .25, roughness: .72 }))
-    ),
-    floatCar && h("group", { ref: tesla, position: [floatCar.x, floatCar.y, floatCar.z], rotation: [0, floatCar.yaw, 0] },
+    floatCar && h("group", { ref: teslaRef },
       h("mesh", { position: [0, .08, 0], rotation: [-Math.PI / 2, 0, 0] }, h("torusGeometry", { args: [2.25, .055, 8, 48] }), h("meshBasicMaterial", { color: "#49d5f2" })),
       h("mesh", { position: [0, .76, 0], castShadow: true }, h("boxGeometry", { args: [1.95, .52, 4.35] }), h("meshStandardMaterial", { color: "#b8c7d0", metalness: .82, roughness: .2 })),
       h("mesh", { position: [0, 1.12, -.15] }, h("boxGeometry", { args: [1.55, .55, 2.15] }), h("meshPhysicalMaterial", { color: "#82b7ce", transparent: true, opacity: .68, metalness: .22, roughness: .12 })),
       h("mesh", { position: [0, .45, 0] }, h("boxGeometry", { args: [1.72, .1, 3.8] }), h("meshBasicMaterial", { color: "#7de6f5" })),
-      ...[-1, 1].flatMap((side) => [-1, 1].map((axle) => h("mesh", { key: side + ":" + axle, position: [side * .98, .5, axle * 1.35], rotation: [0, 0, Math.PI / 2] }, h("cylinderGeometry", { args: [.34, .34, .22, 16] }), h("meshStandardMaterial", { color: "#171c21", roughness: .9 }))))
+      ...[-1, 1].flatMap((side) => [-1, 1].map((axle) => h("mesh", { key: side + ":" + axle, position: [side * .98, .5, axle * 1.35], rotation: [0, 0, Math.PI / 2] }, h("cylinderGeometry", { args: [.34, .34, .22, 16] }), h("meshStandardMaterial", { color: "#171c21", roughness: .9 })))),
+      ...Array.from({ length: 6 }, (_, index) => h("mesh", {
+        key: "tesla-smoke-" + index,
+        ref: (node) => { smokeRefs.current[index] = node; },
+        position: [0, .5, -2.1],
+        visible: false
+      }, h("sphereGeometry", { args: [.22, 10, 8] }), h("meshBasicMaterial", { color: "#89949b", transparent: true, opacity: .28, depthWrite: false })))
     )
   );
 }
-function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
+function Player({ world, helis, cars, airVehicles, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, hudTimer: 0, cameraReady: false, lastPrompt: "" });
-  const heliEnv = useMemo(() => ({ ground: (x, z, y) => col.groundAt(x, z, y, .6, 1), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStates]);
-  const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis]);
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const heliEnv = useMemo(() => ({ ground: (x, z, y) => col.groundAt(x, z, y, .6, 1), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStates, airVehicles]);
+  const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
+  const airEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignoreVehicle) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles, ignoreVehicle); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
   const temp = useMemo(() => ({ e: new THREE.Euler(), q: new THREE.Quaternion(), v: new THREE.Vector3() }), []);
   const weightList = useMemo(() => world.interactables.filter((x) => x.type === "weights"), [world]);
   const heliList = useMemo(() => world.interactables.filter((x) => x.type === "heli"), [world]);
@@ -573,6 +597,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
   const weightIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((x, i) => { if (x.type === "weights") map.set(i, n++); }); return map; }, [world]);
   const heliIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((x, i) => { if (x.type === "heli") map.set(i, n++); }); return map; }, [world]);
   const carIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((x, i) => { if (x.type === "car") map.set(i, n++); }); return map; }, [world]);
+  const airVehicleIndices = useMemo(() => new Map(airVehicles.map((vehicle, index) => [vehicle.id, index])), [airVehicles]);
   const bar = useRef(-1);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
@@ -592,6 +617,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     s.yaw -= inp.drag.dx * .005; s.pitch = THREE.MathUtils.clamp(s.pitch + inp.drag.dy * .004, -.35, 1.25); inp.drag.dx = inp.drag.dy = 0;
     if (s.mode === "heli") s.heliDist = THREE.MathUtils.clamp(s.heliDist + inp.zoom * 2, 7, 30);
     else if (s.mode === "car") s.carDist = THREE.MathUtils.clamp(s.carDist + inp.zoom * 1.4, 5, 20);
+    else if (s.mode === "airVehicle") s.airDist = THREE.MathUtils.clamp(s.airDist + inp.zoom * 1.6, 7, 26);
     else s.dist = THREE.MathUtils.clamp(s.dist + inp.zoom, 2.5, 14);
     inp.zoom = 0;
     const mx = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) + inp.joy.x;
@@ -715,7 +741,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       if (jump && s.onGround) { s.v.y = JUMP; s.onGround = false; }
       s.v.y -= GRAVITY * dt;
       const next = { x: p.x + s.v.x * dt, z: p.z + s.v.z * dt };
-      col.resolve(next, p.y + STEP, p.y + HEIGHT, RAD); resolveCarObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, cars); resolveHelicopterObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, helis); resolveClosedDoors(next, p.y + STEP, p.y + HEIGHT, RAD, world, doorStates); p.x = next.x; p.z = next.z;
+      col.resolve(next, p.y + STEP, p.y + HEIGHT, RAD); resolveCarObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, cars); resolveHelicopterObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, helis); resolveAirVehicleObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, airVehicles); resolveClosedDoors(next, p.y + STEP, p.y + HEIGHT, RAD, world, doorStates); p.x = next.x; p.z = next.z;
       let ny = p.y + s.v.y * dt, ceiling = col.ceilingAt(p.x, p.z, p.y + HEIGHT - .05);
       if (ny + HEIGHT > ceiling && s.v.y > 0) { ny = ceiling - HEIGHT; s.v.y = 0; }
       const ground = col.groundAt(p.x, p.z, p.y, STEP);
@@ -726,10 +752,11 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       if (s.timer <= 0) {
         s.timer = .14; let best = -1, bestD = Infinity;
         world.interactables.forEach((it, i) => {
-          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "car" ? 3.5 : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : 1.8;
+          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : 1.8;
           if (it.type === "heli") { const item = helis[heliIndices.get(i)]; x = item.x; y = item.y; z = item.z; if (!item.grounded) return; }
           if (it.type === "car") { const item = cars[carIndices.get(i)]; x = item.x; y = item.y; z = item.z; }
-          if (Math.abs(p.y - y) > (it.type === "car" ? 1.6 : 1.2)) return;
+          if (it.type === "airVehicle") { const item = airVehicles[airVehicleIndices.get(it.id)]; if (!item) return; x = item.x; y = item.y; z = item.z; }
+          if (Math.abs(p.y - y) > (it.type === "car" || it.type === "airVehicle" ? 1.8 : 1.2)) return;
           const d = Math.hypot(p.x - x, p.z - z); if (d < radius && d < bestD) { best = i; bestD = d; }
         });
         s.near = best;
@@ -759,6 +786,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
         }
         else if (it.type === "heli") { s.target = heliIndices.get(s.near); s.mode = "heli"; onMode("heli"); }
         else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
+        else if (it.type === "airVehicle") { s.target = airVehicleIndices.get(it.id); s.mode = "airVehicle"; onMode("airVehicle"); onPrompt(it.id === "plane" ? "מטוס · W/S תנועה · רווח להמראה · Shift להנמכה" : "טסלה מעופפת · W/S נסיעה · רווח לעלייה נמוכה · Shift לירידה"); }
         else if (it.type === "door") { toggleDoor(s.near); onPrompt(doorStates[s.near] ? "F — לפתוח דלת" : "F — לסגור דלת"); }
         else if (it.type === "basement" || it.type === "basementExit") {
           // Guaranteed F-key access complements the visible switchback staircase.
@@ -834,7 +862,39 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
           if (root) { root.position.copy(temp.v.set(-.34, .52, .22).applyQuaternion(temp.q).add(new THREE.Vector3(car.x, car.y, car.z))); root.rotation.set(0, car.yaw, 0); }
           poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
           p.set(car.x, car.y, car.z); camTarget.set(car.x, car.y + 1.65, car.z); camDist = s.carDist; followYaw = car.yaw;
-          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud(`רכב · ${Math.round(Math.abs(car.speed) * 3.6)} קמ״ש · W/S נסיעה · A/D היגוי · Shift בלימה`); }
+          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud(`רכב · ${Math.round(Math.abs(car.speed) * 3.6)} קמ״ש · W קדימה · S אחורה · A שמאלה · D ימינה · Shift בלימה`); }
+        }
+      }
+    } else if (s.mode === "airVehicle") {
+      const vehicle = airVehicles[s.target];
+      if (!vehicle) { s.mode = "walk"; onMode("walk"); }
+      else {
+        const lift = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
+        stepAirVehicle(vehicle, { throttle: moveZ, steer: moveX, lift, piloted: true }, dt, airEnv);
+        const canExit = canExitAirVehicle(vehicle, airEnv.ground);
+        if (act && canExit) {
+          const offset = new THREE.Vector3(-2.8, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), vehicle.yaw);
+          p.set(vehicle.x + offset.x, 0, vehicle.z + offset.z);
+          p.y = col.groundAt(p.x, p.z, vehicle.y, .8);
+          col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
+          resolveCarObstacles(p, p.y + STEP, p.y + HEIGHT, RAD, cars);
+          resolveHelicopterObstacles(p, p.y + STEP, p.y + HEIGHT, RAD, helis);
+          resolveAirVehicleObstacles(p, p.y + STEP, p.y + HEIGHT, RAD, airVehicles, vehicle);
+          s.face = vehicle.yaw; s.mode = "walk"; s.target = -1; s.v.set(0, 0, 0);
+          onMode("walk"); onPrompt(""); onHud("");
+        } else {
+          temp.e.set(vehicle.pitch || 0, vehicle.yaw, vehicle.roll || 0, "YXZ"); temp.q.setFromEuler(temp.e);
+          if (root) { root.position.copy(temp.v.set(0, .7, .18).applyQuaternion(temp.q).add(new THREE.Vector3(vehicle.x, vehicle.y, vehicle.z))); root.quaternion.copy(temp.q); }
+          poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
+          p.set(vehicle.x, vehicle.y, vehicle.z);
+          camTarget.set(vehicle.x, vehicle.y + 2.35, vehicle.z); camDist = s.airDist; followYaw = vehicle.yaw;
+          s.hudTimer -= dt;
+          if (s.hudTimer <= 0) {
+            s.hudTimer = .2;
+            const label = vehicle.id === "plane" ? "מטוס" : "טסלה מעופפת";
+            onHud(label + " · " + Math.round(Math.abs(vehicle.speed) * 3.6) + " קמ״ש · W/S קדימה ואחורה · A/D היגוי · רווח עלייה · Shift הנמכה");
+          }
+          onPrompt(canExit ? "F / פעולה — לצאת מכלי הטיס" : "כדי לצאת: להנמיך ולעצור");
         }
       }
     } else if (s.mode === "heli") {
@@ -855,6 +915,7 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
       }
     }
     helis.forEach((heli, i) => { if (!(s.mode === "heli" && i === s.target) && heli.rotor > 0) stepHeli(heli, { fwd: 0, turn: 0, lift: 0, piloted: false }, dt, heliEnv); });
+    airVehicles.forEach((vehicle, i) => { if (!(s.mode === "airVehicle" && i === s.target)) stepAirVehicle(vehicle, { throttle: 0, steer: 0, lift: 0, piloted: false }, dt, airEnv); });
     if (followYaw !== null && performance.now() / 1000 - inp.lastDrag > 1.2) { let d = followYaw - s.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); s.yaw += d * (1 - Math.exp(-2.5 * dt)); }
     const back = new THREE.Vector3(-Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), -Math.cos(s.yaw) * Math.cos(s.pitch));
     let distance = camDist;
@@ -863,8 +924,8 @@ function Player({ world, helis, cars, input, onLoc, onPrompt, onMode, onHud, doo
     const desired = camTarget.clone().addScaledVector(back, distance);
     if (!s.cameraReady) { camera.position.copy(desired); s.cameraReady = true; }
     camera.position.lerp(desired, 1 - Math.exp(-6 * dt)); camera.lookAt(camTarget);
-    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : locate(world, p.x, p.y, p.z);
-    const label = s.mode === "heli" || s.mode === "cable" ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
+    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : locate(world, p.x, p.y, p.z);
+    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
@@ -887,6 +948,7 @@ export default function Game() {
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
   const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => makeHeli(item.x, item.y, item.z, item.face)), [world]);
   const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => makeCar(item.x, item.y, item.z, item.face, item.color, item.kind)), [world]);
+  const airVehicles = useMemo(() => (world.parkingVehicles || []).map(makeAirVehicle), [world]);
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
   const toggleDoor = useCallback((index) => { const next = { ...doorRef.current, [index]: !doorRef.current[index] }; doorRef.current = next; setDoorStates(next); }, []);
   useEffect(() => {
@@ -923,8 +985,8 @@ export default function Game() {
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
-        h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { vehicles: world.parkingVehicles || [] }),
-        h(Player, { world, helis, cars, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
+        h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
+        h(Player, { world, helis, cars, airVehicles, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -936,7 +998,7 @@ export default function Game() {
       h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "heli" || mode === "car" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    hud && (mode === "heli" || mode === "car" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     elevatorMenu && h("div", { className: "elevator-dialog", role: "dialog", "aria-label": "בחירת קומה במעלית" },
       h("h3", null, "מעלית · בחירת קומה"),
       h("div", { className: "elevator-floor-grid" }, [h("button", { key: -1, className: elevatorMenu.current === -1 ? "selected" : "", onClick: () => { input.current.elevatorFloor = -1; } }, "מחסן ‎-1"), ...Array.from({ length: elevatorMenu.floors }, (_, index) => { const floor = index; return h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`); })]),
@@ -950,7 +1012,8 @@ export default function Game() {
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
         h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות, מעלית ורכבל"),
         h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
-        h("li", null, "חניון מרכז העיר: F ליד מכונית, ג׳יפ, מכונית מרוץ או אוטובוס כדי להיכנס. W/S נסיעה, A/D היגוי, Shift בלימה. המטוס והטנק הם דגמי תצוגה והטסלה מרחפת בחניון."),
+        h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A שמאלה ו־D ימינה; Shift בלימה ברכב."),
+        h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
         h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),
@@ -959,8 +1022,8 @@ export default function Game() {
       )
     ),
     h("div", { ref: joyRef, className: "joy", onPointerDown: (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }, onPointerMove: joyMove, onPointerUp: joyEnd, onPointerCancel: joyEnd }, h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
-    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
-    (mode === "heli" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
+    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
+    (mode === "heli" || mode === "airVehicle" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
       h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות, ולהקות ציפורים שחולפות בשמיים מדי פעם."),
       h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך")

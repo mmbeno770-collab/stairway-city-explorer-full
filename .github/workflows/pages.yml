@@ -1,4 +1,4 @@
-name: Deploy Stairway City Explorer
+name: Build and deploy Stairway City Explorer
 on:
   push:
     branches: [main]
@@ -20,16 +20,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Check JavaScript syntax
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r -d '' file; do
-            echo "Checking $file"
-            node --input-type=module --check < "$file"
-          done < <(find . -type f -name '*.js' -not -path './.git/*' -print0)
-      - name: Check undefined identifiers and unsafe patterns
-        run: npx --yes eslint@9.35.0 --config eslint.config.mjs main.js "game/**/*.js"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Lint application
+        run: npm run lint
+      - name: Build web app and generate icons
+        run: npm run build
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+          name: stairway-site
   deploy:
     needs: validate
     runs-on: ubuntu-latest
@@ -41,17 +42,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-          name: stairway-site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

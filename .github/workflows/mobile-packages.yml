@@ -1,0 +1,74 @@
+name: Build mobile app packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    name: Android project and test APK
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate Android project and assets
+        run: npm run mobile:prepare:android
+      - name: Build Android test APK and unsigned release bundle
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug bundleRelease
+      - name: Package Android project source
+        run: tar -czf android-project.tar.gz android --exclude='android/.gradle' --exclude='android/**/build'
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stairway-city-android
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/bundle/release/*.aab
+            android-project.tar.gz
+          if-no-files-found: error
+  ios:
+    name: iOS Xcode project and simulator build
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate iOS project and assets
+        run: npm run mobile:prepare:ios
+      - name: Verify Xcode version
+        run: xcodebuild -version
+      - name: Build iOS Simulator app
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Package iOS project source
+        run: tar -czf ios-project.tar.gz ios --exclude='ios/Pods' --exclude='ios/DerivedData'
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stairway-city-ios
+          path: |
+            ios-project.tar.gz
+            build/ios/Build/Products/Release-iphonesimulator/*.app
+          if-no-files-found: error

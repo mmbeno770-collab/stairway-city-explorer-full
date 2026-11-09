@@ -1,6 +1,20 @@
 name: Build mobile app packages
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'capacitor.config.json'
+      - 'vite.config.js'
+      - 'game/**'
+      - 'main.js'
+      - 'index.html'
+      - 'styles.css'
+      - 'scripts/**'
+      - 'assets/**'
+      - 'public/**'
+      - '.github/workflows/mobile-packages.yml'
 permissions:
   contents: read
 jobs:

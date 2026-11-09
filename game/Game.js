@@ -1138,7 +1138,8 @@ export default function Game() {
     (mode === "heli" || mode === "airVehicle" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
       h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות, ולהקות ציפורים שחולפות בשמיים מדי פעם."),
-      h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך")
+      h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך"),
+      h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
     ))
   );
 }

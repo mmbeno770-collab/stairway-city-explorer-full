@@ -167,3 +167,19 @@ button { font: inherit; }
   background: rgba(9, 24, 33, .93); border-right: 1px solid rgba(223,193,132,.62);
   border-bottom: 1px solid rgba(223,193,132,.62); transform: translateX(-50%) rotate(45deg);
 }
+
+
+/* App store / mobile launch privacy link. */
+.privacy-note {
+  display: inline-block;
+  margin-top: 14px;
+  color: #c8d7df;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.privacy-note:focus-visible {
+  outline: 2px solid #dfc184;
+  outline-offset: 4px;
+  border-radius: 3px;
+}

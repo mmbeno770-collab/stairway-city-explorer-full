@@ -264,7 +264,7 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
       const speed = person.visiting ? 1.55 : person.speed;
       const nx = dx / Math.max(distance, .001), nz = dz / Math.max(distance, .001);
       const next = { x: person.x + nx * speed * dt, z: person.z + nz * speed * dt };
-      collider.resolve(next, person.y + .12, person.y + 1.72, .31);
+      collider.resolve(next, person.y + .35, person.y + 1.72, .31);
       resolveCarObstacles(next, person.y + .12, person.y + 1.72, .31, cars);
       resolveHelicopterBodies(next, person.y + .12, person.y + 1.72, .31, helis);
       resolveAirVehicleObstacles(next, person.y + .12, person.y + 1.72, .31, airVehicles);

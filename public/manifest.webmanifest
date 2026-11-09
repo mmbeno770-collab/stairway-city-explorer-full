@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "Stairway City Explorer",
+  "short_name": "Stairway City",
+  "description": "עיר תלת־ממדית פתוחה לחקירה, נהיגה וטיסה.",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0b1720",
+  "theme_color": "#0c1822",
+  "icons": [
+    {"src":"./icons/app-icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"./icons/app-icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"}
+  ]
+}

@@ -41,7 +41,7 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug bundleRelease
       - name: Package Android project source
-        run: tar -czf android-project.tar.gz android --exclude='android/.gradle' --exclude='android/**/build'
+        run: tar --exclude='android/.gradle' --exclude='android/**/build' -czf android-project.tar.gz android
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -77,7 +77,7 @@ jobs:
             -derivedDataPath build/ios \
             CODE_SIGNING_ALLOWED=NO build
       - name: Package iOS project source
-        run: tar -czf ios-project.tar.gz ios --exclude='ios/Pods' --exclude='ios/DerivedData'
+        run: tar --exclude='ios/Pods' --exclude='ios/DerivedData' -czf ios-project.tar.gz ios
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:

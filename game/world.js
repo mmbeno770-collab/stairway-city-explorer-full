@@ -355,13 +355,15 @@ export function generateWorld(seed = 7) {
     for (let i = 0; i < GRID * 6; i++) {
         const road = Math.floor(r() * (GRID - 1)) + 1, along = -CITY_HALF + 10 + r() * (GRID * BLOCK - 20), horiz = r() > .5, rx = -CITY_HALF + road * BLOCK + (r() > .5 ? 2.2 : -2.2), color = carCols[i % carCols.length], [x, z] = horiz ? [along, rx] : [rx, along], [hx, hz] = horiz ? [2.1, .9] : [.9, 2.1], face = horiz ? (r() > .5 ? Math.PI / 2 : -Math.PI / 2) : (r() > .5 ? 0 : Math.PI);
         const driveable = i % 4 === 0;
-        if (driveable) inter.push({ type: "car", x, y: .12, z, face, vehicleId: i, color });
+        if (driveable) inter.push({ type: "car", x, y: .12, z, face, vehicleId: i, color, npcControlled: [4, 20, 36].includes(i) });
         else {
             add(x - hx, .3, z - hz, x + hx, 1, z + hz, color);
             add(x - hx * .6, 1, z - hz * .6, x + hx * .6, 1.55, z + hz * .6, "#2c3e50", "glass", true);
             add(x - hx * .8, 0, z - hz * .95, x + hx * .8, .35, z + hz * .95, "#1b1b1b", "solid", false);
         }
     }
+    const autonomousHelicopter = inter.find((item) => item.type === "heli" && !item.parking);
+    if (autonomousHelicopter) autonomousHelicopter.npcControlled = true;
     const E = CITY_HALF + 4;
     add(-E, 0, -E - .5, E, 1.2, -E, "#9a948a"); add(-E, 0, E, E, 1.2, E + .5, "#9a948a");
     add(-E - .5, 0, -E, -E, 1.2, E, "#9a948a"); add(E, 0, -E, E + .5, 1.2, E, "#9a948a");

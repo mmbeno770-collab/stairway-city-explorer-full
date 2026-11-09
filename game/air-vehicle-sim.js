@@ -1,3 +1,5 @@
+function clampAltitude(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
 const AIR_VEHICLE = {
   plane: { maxSpeed: 30, acceleration: 7.6, drag: 1.15, steer: 1.05, radius: 2.25, halfWidth: 4.9, halfLength: 3.9, height: 1.95, groundOffset: .12, maxAltitude: 34 },
   tesla: { maxSpeed: 21, acceleration: 8.4, drag: 1.45, steer: 1.35, radius: 1.05, halfWidth: 1.12, halfLength: 2.25, height: 1.48, groundOffset: .82, maxAltitude: 5.2 }
@@ -46,7 +48,11 @@ export function stepAirVehicle(vehicle, controls, dt, env) {
   const floor = env.ground(vehicle.x, vehicle.z, vehicle.y);
   const baseY = floor + spec.groundOffset;
   if (vehicle.id === "tesla") {
-    if (piloted) {
+    if (piloted && Number.isFinite(controls.altitudeTarget)) {
+      const targetVerticalSpeed = clampAltitude((controls.altitudeTarget - vehicle.y) * 1.45, -2.6, 2.6);
+      vehicle.verticalSpeed += (targetVerticalSpeed - vehicle.verticalSpeed) * (1 - Math.exp(-3.2 * dt));
+      vehicle.y += vehicle.verticalSpeed * dt;
+    } else if (piloted) {
       const targetVerticalSpeed = lift * 3.15;
       vehicle.verticalSpeed += (targetVerticalSpeed - vehicle.verticalSpeed) * (1 - Math.exp(-5.5 * dt));
       vehicle.y += vehicle.verticalSpeed * dt;
@@ -59,12 +65,25 @@ export function stepAirVehicle(vehicle, controls, dt, env) {
       vehicle.y = baseY + Math.sin(vehicle.idleTime * 2.1) * .1;
       vehicle.grounded = true;
     }
+    if (piloted) {
+      vehicle.y = clampAltitude(vehicle.y, baseY, floor + spec.maxAltitude);
+      if (vehicle.y <= baseY + .001 && vehicle.verticalSpeed < 0) vehicle.verticalSpeed = 0;
+      if (vehicle.y >= floor + spec.maxAltitude - .001 && vehicle.verticalSpeed > 0) vehicle.verticalSpeed = 0;
+      vehicle.grounded = vehicle.y <= baseY + .03;
+    }
     vehicle.pitch = Math.max(-.16, Math.min(.16, -vehicle.verticalSpeed * .025 + Math.max(-.04, Math.min(.04, vehicle.speed * .001))));
     vehicle.roll = -steer * .12 * (piloted ? 1 : 0);
     return;
   }
 
-  if (piloted) {
+  if (piloted && Number.isFinite(controls.altitudeTarget)) {
+    const targetVerticalSpeed = clampAltitude((controls.altitudeTarget - vehicle.y) * .62, -4.2, 4.2);
+    vehicle.verticalSpeed += (targetVerticalSpeed - vehicle.verticalSpeed) * (1 - Math.exp(-2.6 * dt));
+    vehicle.y += vehicle.verticalSpeed * dt;
+    if (vehicle.y <= baseY) { vehicle.y = baseY; vehicle.verticalSpeed = 0; }
+    if (vehicle.y >= floor + spec.maxAltitude) { vehicle.y = floor + spec.maxAltitude; vehicle.verticalSpeed = Math.min(0, vehicle.verticalSpeed); }
+    vehicle.grounded = vehicle.y <= baseY + .04;
+  } else if (piloted) {
     const airborne = vehicle.y > baseY + .16;
     if (lift > .05 && vehicle.speed > 6.5) vehicle.verticalSpeed += (5.2 + Math.min(2.4, vehicle.speed * .05)) * lift * dt;
     else if (lift < -.05) vehicle.verticalSpeed += 7.4 * lift * dt;

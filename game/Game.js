@@ -4,6 +4,7 @@ import { Environment, Lightformer, Sky } from "@react-three/drei";
 import * as THREE from "three";
 import { Collider, generateWorld, locate, CITY_HALF, BLOCK, GRID, CABLE_STATIONS, WALKABLE_HILLS } from "./world.js";
 import { Human, poseHuman, BARBELL } from "./human.js";
+import { Citizens } from "./citizens.js";
 import { Helicopters } from "./helicopter.js";
 import { makeHeli, stepHeli, canExitHeli } from "./heli-sim.js";
 import { CityDetails } from "./CityDetails.js";
@@ -582,7 +583,7 @@ function ParkingModels({ airVehicles }) {
     )
   );
 }
-function Player({ world, helis, cars, airVehicles, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
+function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
@@ -601,6 +602,7 @@ function Player({ world, helis, cars, airVehicles, input, onLoc, onPrompt, onMod
   const bar = useRef(-1);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
+    activeVehicleRef.current.mode = s.mode; activeVehicleRef.current.target = s.target;
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
     const p = s.p, root = rig.root;
@@ -946,9 +948,10 @@ export default function Game() {
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
-  const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => makeHeli(item.x, item.y, item.z, item.face)), [world]);
-  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => makeCar(item.x, item.y, item.z, item.face, item.color, item.kind)), [world]);
+  const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => Object.assign(makeHeli(item.x, item.y, item.z, item.face), { npcControlled: !!item.npcControlled })), [world]);
+  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled })), [world]);
   const airVehicles = useMemo(() => (world.parkingVehicles || []).map(makeAirVehicle), [world]);
+  const activeVehicleRef = useRef({ mode: "walk", target: -1 });
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
   const toggleDoor = useCallback((index) => { const next = { ...doorRef.current, [index]: !doorRef.current[index] }; doorRef.current = next; setDoorStates(next); }, []);
   useEffect(() => {
@@ -986,7 +989,8 @@ export default function Game() {
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
-        h(Player, { world, helis, cars, airVehicles, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
+        h(Citizens, { world, cars, helis, airVehicles, activeVehicleRef }),
+        h(Player, { world, helis, cars, airVehicles, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -1014,6 +1018,7 @@ export default function Game() {
         h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
         h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A שמאלה ו־D ימינה; Shift בלימה ברכב."),
         h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),
+        h("li", null, "תושבי העיר הם דמויות AI: הם מטיילים, עוצרים ומסתכלים סביב, נכנסים למכוניות, נוסעים ומטיסים מסוק, מטוס וטסלה. אפשר להשתלט על כלי רכב שה-AI נוהג בהם כשמתקרבים ולוחצים F."),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
         h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),

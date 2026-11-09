@@ -10,13 +10,19 @@ export function stepAirVehicle(vehicle, controls, dt, env) {
   const throttle = Math.max(-1, Math.min(1, controls.throttle || 0));
   const steer = Math.max(-1, Math.min(1, controls.steer || 0));
   const lift = Math.max(-1, Math.min(1, controls.lift || 0));
-  const floorY = env.ground(vehicle.x, vehicle.z, vehicle.y) + limits.groundOffset;
   if (Math.abs(throttle) > .02) vehicle.speed += throttle * limits.acceleration * dt;
   else vehicle.speed *= Math.exp(-limits.drag * dt);
   vehicle.speed = Math.max(-7, Math.min(limits.maxSpeed, vehicle.speed));
   if (Math.abs(vehicle.speed) < .04) vehicle.speed = 0;
   const turnBlend = Math.min(1, Math.abs(vehicle.speed) / 4);
   vehicle.yaw += steer * limits.turnRate * turnBlend * dt * Math.sign(vehicle.speed || 1);
+  // Both aircraft taxi and the flying car drive along the ground before/after lift-off.
+  const move = { x: vehicle.x + Math.sin(vehicle.yaw) * vehicle.speed * dt, z: vehicle.z + Math.cos(vehicle.yaw) * vehicle.speed * dt };
+  const beforeX = move.x, beforeZ = move.z;
+  env.resolve(move, vehicle.y + .1, vehicle.y + (vehicle.id === "plane" ? 2.1 : 1.85), limits.radius, vehicle);
+  if (Math.hypot(move.x - beforeX, move.z - beforeZ) > .03) vehicle.speed *= .3;
+  vehicle.x = move.x; vehicle.z = move.z;
+  const floorY = env.ground(vehicle.x, vehicle.z, vehicle.y) + limits.groundOffset;
   if (vehicle.grounded) {
     vehicle.y = floorY; vehicle.vy = 0; vehicle.altitude = 0;
     if ((vehicle.id === "tesla" && lift > .08) || (vehicle.id === "plane" && lift > .08 && vehicle.speed >= limits.takeoffSpeed)) {
@@ -25,17 +31,11 @@ export function stepAirVehicle(vehicle, controls, dt, env) {
   } else {
     const targetVertical = lift > .08 ? limits.climbRate : lift < -.08 ? -limits.climbRate : (vehicle.id === "plane" ? -.22 : -.12);
     vehicle.vy += (targetVertical - vehicle.vy) * (1 - Math.exp(-2.8 * dt));
-    const move = { x: vehicle.x + Math.sin(vehicle.yaw) * vehicle.speed * dt, z: vehicle.z + Math.cos(vehicle.yaw) * vehicle.speed * dt };
-    const beforeX = move.x, beforeZ = move.z;
-    env.resolve(move, vehicle.y + .1, vehicle.y + (vehicle.id === "plane" ? 2.1 : 1.85), limits.radius, vehicle);
-    if (Math.hypot(move.x - beforeX, move.z - beforeZ) > .03) vehicle.speed *= .3;
-    vehicle.x = move.x; vehicle.z = move.z;
-    const newGround = env.ground(vehicle.x, vehicle.z, vehicle.y) + limits.groundOffset;
     vehicle.y += vehicle.vy * dt;
-    const ceiling = newGround + limits.maxAltitude;
+    const ceiling = floorY + limits.maxAltitude;
     if (vehicle.y > ceiling) { vehicle.y = ceiling; vehicle.vy = Math.min(0, vehicle.vy); }
-    if (vehicle.y <= newGround) { vehicle.y = newGround; vehicle.vy = 0; vehicle.grounded = true; vehicle.speed *= .9; }
-    vehicle.altitude = Math.max(0, vehicle.y - newGround);
+    if (vehicle.y <= floorY) { vehicle.y = floorY; vehicle.vy = 0; vehicle.grounded = true; vehicle.speed *= .9; }
+    vehicle.altitude = Math.max(0, vehicle.y - floorY);
   }
   const speedFactor = Math.min(1, Math.abs(vehicle.speed) / (vehicle.id === "plane" ? 22 : 12));
   const pitchTarget = vehicle.grounded ? 0 : lift > .08 ? -.1 : lift < -.08 ? .08 : vehicle.id === "plane" ? -.025 : 0;

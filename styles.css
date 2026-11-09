@@ -117,3 +117,36 @@ button { font: inherit; }
 .cable-stop-grid button:hover, .cable-descend:hover { background: rgba(192,157,95,.2); border-color: rgba(223,193,132,.56); }
 .cable-descend { width: 100%; margin-top: 12px; color: #f3dfb4; background: rgba(183,145,76,.16); }
 .cable-cancel { width: 100%; margin-top: 8px; background: transparent; border-color: rgba(255,255,255,.12); }
+
+
+/* NPC conversation panel with separate player and citizen speech bubbles. */
+.npc-chat-panel {
+  position: absolute; z-index: 55; right: 16px; bottom: max(18px, env(safe-area-inset-bottom));
+  width: min(390px, calc(100vw - 32px)); max-height: min(54vh, 460px);
+  padding: 13px; display: grid; grid-template-rows: auto minmax(70px, 1fr) auto; gap: 10px;
+  direction: rtl; pointer-events: auto; background: rgba(7, 19, 29, .96);
+  border-color: rgba(223,193,132,.42);
+}
+.npc-chat-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.npc-chat-header strong { display: block; color: #f3e4c4; font-size: 15px; }
+.npc-chat-header span { display: block; margin-top: 3px; color: #aebfc8; font-size: 11px; }
+.npc-chat-close, .npc-chat-form button {
+  min-height: 36px; padding: 7px 12px; border-radius: 9px; cursor: pointer;
+  color: #f4ead6; background: rgba(183,145,76,.18); border: 1px solid rgba(223,193,132,.34);
+}
+.npc-chat-messages { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 70px; max-height: 285px; padding: 4px 2px; }
+.npc-chat-bubble { max-width: 88%; padding: 8px 12px; border: 1px solid rgba(255,255,255,.11); border-radius: 14px; box-shadow: 0 3px 9px rgba(0,0,0,.16); }
+.npc-chat-bubble small { display: block; color: #d9c49d; font-size: 10px; font-weight: 700; }
+.npc-chat-bubble p { margin: 4px 0 0; color: #f1f6f6; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.npc-chat-bubble.player { align-self: flex-start; background: rgba(106,77,40,.48); border-bottom-left-radius: 4px; }
+.npc-chat-bubble.npc { align-self: flex-end; background: rgba(27,73,88,.72); border-bottom-right-radius: 4px; }
+.npc-chat-form { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+.npc-chat-form input { width: 100%; min-width: 0; min-height: 40px; padding: 8px 11px; color: #f2f8fa; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); border-radius: 9px; outline: none; direction: rtl; font: inherit; }
+.npc-chat-form input:focus { border-color: rgba(223,193,132,.72); }
+.npc-chat-form input::placeholder { color: #aebfc8; }
+.npc-chat-form button:disabled { opacity: .42; cursor: default; }
+@media (max-width: 700px) {
+  .npc-chat-panel { right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width: min(430px, calc(100vw - 20px)); max-height: 48vh; padding: 10px; }
+  .npc-chat-messages { max-height: 155px; }
+  .npc-chat-form input { font-size: 13px; }
+}

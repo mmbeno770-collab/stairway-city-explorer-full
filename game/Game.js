@@ -21,6 +21,21 @@ const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
+function makeNpcReply(name, message, turnCount = 0) {
+  const text = String(message || "").trim().toLocaleLowerCase("he");
+  if (!text) return "לא שמעתי אותך. מה רצית לשאול?";
+  if (/(שלום|היי|אהלן|בוקר טוב|ערב טוב)/.test(text)) return "שלום! נחמד לפגוש אותך כאן בעיר.";
+  if (/(איך קוראים לך|מה השם שלך|מי אתה)/.test(text)) return "קוראים לי " + name + ". אני אוהב להסתובב ולגלות מקומות בעיר.";
+  if (/(מה אתה עושה|מה מעשיך|מה קורה)/.test(text)) return "אני מטייל בעיר, לפעמים נכנס לבניינים, עולה לקומות ופוגש אנשים.";
+  if (/(איפה|מיקום|בניין|קומה)/.test(text)) return "אנחנו בעיר עם הרבה בניינים. אפשר להיכנס דרך הדלתות ולעלות במדרגות עד הגג.";
+  if (/(מכונית|רכב|אוטובוס|ג'יפ)/.test(text)) return "יש כאן חניון גדול. לפעמים אני לוקח רכב ונוסע ברחובות.";
+  if (/(מטוס|מסוק|טס|טיסה|טסלה)/.test(text)) return "יש בעיר גם כלי טיס! אני אוהב לראות אותם עוברים מעל הבניינים.";
+  if (/(תודה|מעולה|יופי)/.test(text)) return "בשמחה! שיהיה לך יום נעים בעיר.";
+  if (/(להתראות|ביי|שלום לך)/.test(text)) return "להתראות! אולי ניפגש שוב ברחוב.";
+  if (text.includes("?") || /(למה|איך|מתי|האם|כמה)/.test(text)) return "שאלה מעניינת. אני עוד מגלה דברים בעיר הזאת, אבל אשמח להמשיך לדבר איתך.";
+  return turnCount % 2 === 0 ? "מעניין! אני בדיוק מטייל כאן ומכיר את העיר. ספר לי עוד." : "אני מבין. יש בעיר הרבה מה לראות, במיוחד בבניינים ובחניון.";
+}
+
 function ScenicHills() {
   const hills = [
     { p: [0, -4.5, -157], s: [78, 10, 30], c: "#78945f" },
@@ -583,11 +598,11 @@ function ParkingModels({ airVehicles }) {
     )
   );
 }
-function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality }) {
+function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, onTalk }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, hudTimer: 0, cameraReady: false, lastPrompt: "" });
   const heliEnv = useMemo(() => ({ ground: (x, z, y) => col.groundAt(x, z, y, .6, 1), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStates, airVehicles]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
   const airEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignoreVehicle) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles, ignoreVehicle); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
@@ -605,7 +620,12 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
     activeVehicleRef.current.mode = s.mode; activeVehicleRef.current.target = s.target;
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
+    if (inp.closeTalk) {
+      inp.closeTalk = false;
+      if (s.mode === "talk") { s.mode = "walk"; s.talkTarget = null; s.nearPerson = -1; s.v.set(0, 0, 0); onMode("walk"); onPrompt(""); }
+    }
     const p = s.p, root = rig.root;
+    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       if (chosen === -2) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
@@ -761,12 +781,31 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
           if (Math.abs(p.y - y) > (it.type === "car" || it.type === "airVehicle" ? 1.8 : 1.2)) return;
           const d = Math.hypot(p.x - x, p.z - z); if (d < radius && d < bestD) { best = i; bestD = d; }
         });
+        let nearestPerson = -1, nearestPersonD = 3.35;
+        if (s.mode === "walk") {
+          (citizensRef?.current || []).forEach((person, index) => {
+            if (person.hidden || Math.abs(p.y - person.y) > 2.0) return;
+            const d = Math.hypot(p.x - person.x, p.z - person.z);
+            if (d < nearestPersonD) { nearestPerson = index; nearestPersonD = d; }
+          });
+        }
+        s.nearPerson = nearestPerson;
+        if (nearestPerson >= 0 && nearestPersonD < bestD) best = -1;
         s.near = best;
+        const person = nearestPerson >= 0 && best < 0 ? citizensRef.current[nearestPerson] : null;
         const it = best >= 0 ? world.interactables[best] : null, actionText = it ? (it.type === "door" && doorStates[best] ? "לסגור דלת" : PROMPTS[it.type]) : "";
-        const text = it ? `F / פעולה — ${actionText}` : "";
+        const text = person ? `F / פעולה — לדבר עם ${person.name}` : it ? `F / פעולה — ${actionText}` : "";
         if (text !== s.lastPrompt) { s.lastPrompt = text; onPrompt(text); }
       }
-      if (act && s.near >= 0 && s.onGround) {
+      if (act && s.nearPerson >= 0 && s.mode === "walk" && s.onGround) {
+        const person = citizensRef?.current?.[s.nearPerson];
+        if (person) {
+          s.talkTarget = person.id; s.mode = "talk"; s.v.set(0, 0, 0); s.near = -1; s.nearPerson = -1;
+          inp.keys.clear(); inp.joy = { x: 0, y: 0 };
+          onPrompt(""); onHud(""); onMode("talk"); onTalk?.(person);
+        }
+      }
+      if (act && s.near >= 0 && s.onGround && s.mode === "walk") {
         const it = world.interactables[s.near]; s.target = s.near; s.v.set(0, 0, 0); s.lastPrompt = ""; onPrompt("");
         if (it.type === "sofa" || it.type === "swing") {
           p.set(it.x, it.y, it.z); s.sitY = it.y; s.face = it.face ?? 0; s.mode = "sit"; onMode("sit");
@@ -810,6 +849,17 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
       s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
       poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: !s.onGround, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z);
+    } else if (s.mode === "talk") {
+      const person = (citizensRef?.current || []).find((item) => item.id === s.talkTarget);
+      s.v.set(0, 0, 0);
+      if (!person) {
+        s.mode = "walk"; s.talkTarget = null; onMode("walk");
+      } else {
+        s.face = Math.atan2(person.x - p.x, person.z - p.z);
+        if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+        poseHuman(rig, { mode: "walk", phase: s.phase, speed: 0, air: false, t: s.t, dt });
+        camTarget.set(p.x, p.y + 1.55, p.z); camDist = 4.8;
+      }
     } else if (s.mode === "slide") {
       const activity = s.activity;
       s.slideElapsed += dt;
@@ -904,7 +954,7 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
       if (!heli) { s.mode = "walk"; onMode("walk"); }
       else {
         const lift = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
-        stepHeli(heli, { fwd: moveZ, turn: -moveX, lift, piloted: true }, dt, heliEnv);
+        stepHeli(heli, { fwd: moveZ, turn: moveX, lift, piloted: true }, dt, heliEnv);
         if (act && canExitHeli(heli)) { p.set(heli.x + Math.cos(heli.yaw) * 2.6, 0, heli.z - Math.sin(heli.yaw) * 2.6); p.y = col.groundAt(p.x, p.z, heli.y + .5, .6); s.face = heli.yaw; s.mode = "walk"; onMode("walk"); s.target = -1; onPrompt(""); }
         else {
           temp.e.set(heli.pitch, heli.yaw, heli.roll, "YXZ"); temp.q.setFromEuler(temp.e);
@@ -939,12 +989,14 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
 export default function Game() {
   const world = useMemo(() => generateWorld(7), []);
   const cableCurve = useMemo(() => makeCableCurve(), []);
-  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, elevatorFloor: null });
+  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("high");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
+  const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
   const doorRef = useRef({}), elevatorY = useRef(0), elevatorMoving = useRef(false), cableRide = useRef({ active: false, route: [], progress: 0 });
+  const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
@@ -954,9 +1006,35 @@ export default function Game() {
   const activeVehicleRef = useRef({ mode: "walk", target: -1 });
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
   const toggleDoor = useCallback((index) => { const next = { ...doorRef.current, [index]: !doorRef.current[index] }; doorRef.current = next; setDoorStates(next); }, []);
+  const beginConversation = useCallback((person) => {
+    conversationRef.current = { personId: person.id };
+    setConversation({ personId: person.id, npcName: person.name, messages: [{ from: "npc", text: "שלום! נחמד לפגוש אותך. מה תרצה לדעת על העיר?" }] });
+    setChatDraft("");
+  }, []);
+  const closeConversation = useCallback(() => {
+    conversationRef.current = null;
+    input.current.closeTalk = true;
+    setConversation(null);
+    setChatDraft("");
+  }, []);
+  const sendChatMessage = (event) => {
+    event.preventDefault();
+    const message = chatDraft.trim().slice(0, 220);
+    if (!message || !conversation) return;
+    const reply = makeNpcReply(conversation.npcName, message, conversation.messages.length);
+    setConversation((current) => current ? ({
+      ...current,
+      messages: [...current.messages, { from: "player", text: message }, { from: "npc", text: reply }].slice(-12)
+    }) : current);
+    setChatDraft("");
+  };
   useEffect(() => {
     const down = (event) => {
       if (!started) return;
+      if (event.target instanceof HTMLElement && event.target.closest(".npc-chat-panel")) {
+        if (event.code === "Escape") { closeConversation(); event.preventDefault(); }
+        return;
+      }
       if (event.target instanceof HTMLElement && event.target.closest(".climate-panel, .elevator-dialog")) return;
       input.current.keys.add(event.code);
       if (event.code === "KeyF" && !event.repeat) input.current.action = true;
@@ -965,7 +1043,7 @@ export default function Game() {
     const up = (event) => input.current.keys.delete(event.code), blur = () => input.current.keys.clear();
     window.addEventListener("keydown", down); window.addEventListener("keyup", up); window.addEventListener("blur", blur);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); };
-  }, [started]);
+  }, [started, closeConversation]);
   useEffect(() => { if (!clockRunning) return; const timer = window.setInterval(() => setHour((v) => (v + .25) % 24), 8000); return () => window.clearInterval(timer); }, [clockRunning]);
   const pointer = useRef(null), lastPointer = useRef({ x: 0, y: 0 });
   const onPointerDown = (event) => { pointer.current = event.pointerId; lastPointer.current = { x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture(event.pointerId); };
@@ -989,8 +1067,8 @@ export default function Game() {
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
-        h(Citizens, { world, cars, helis, airVehicles, activeVehicleRef }),
-        h(Player, { world, helis, cars, airVehicles, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality })
+        h(Citizens, { world, cars, helis, airVehicles, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor }),
+        h(Player, { world, helis, cars, airVehicles, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -1003,6 +1081,22 @@ export default function Game() {
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
     hud && (mode === "heli" || mode === "car" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    conversation && h("section", { className: "npc-chat-panel hud-panel", role: "dialog", "aria-label": "שיחה עם תושב" },
+      h("div", { className: "npc-chat-header" },
+        h("div", null, h("strong", null, "שיחה עם " + conversation.npcName), h("span", null, "התושב עוצר ומקשיב לך")),
+        h("button", { type: "button", className: "npc-chat-close", onClick: closeConversation }, "סיום")
+      ),
+      h("div", { className: "npc-chat-messages", "aria-live": "polite" },
+        conversation.messages.map((message, index) => h("div", { key: index, className: "npc-chat-bubble " + (message.from === "player" ? "player" : "npc") },
+          h("small", null, message.from === "player" ? "אתה" : conversation.npcName),
+          h("p", null, message.text)
+        ))
+      ),
+      h("form", { className: "npc-chat-form", onSubmit: sendChatMessage },
+        h("input", { type: "text", value: chatDraft, onChange: (event) => setChatDraft(event.target.value), placeholder: "כתוב הודעה לתושב...", maxLength: 220, autoComplete: "off", autoFocus: true }),
+        h("button", { type: "submit", disabled: !chatDraft.trim() }, "שליחה")
+      )
+    ),
     elevatorMenu && h("div", { className: "elevator-dialog", role: "dialog", "aria-label": "בחירת קומה במעלית" },
       h("h3", null, "מעלית · בחירת קומה"),
       h("div", { className: "elevator-floor-grid" }, [h("button", { key: -1, className: elevatorMenu.current === -1 ? "selected" : "", onClick: () => { input.current.elevatorFloor = -1; } }, "מחסן ‎-1"), ...Array.from({ length: elevatorMenu.floors }, (_, index) => { const floor = index; return h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`); })]),
@@ -1014,7 +1108,7 @@ export default function Game() {
         h("li", null, h("b", null, "Shift"), " — ריצה · ", h("b", null, "רווח"), " — קפיצה"),
         h("li", null, h("b", null, "גרירת עכבר"), " — סיבוב מצלמה · ", h("b", null, "גלגלת"), " — זום"),
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
-        h("li", null, h("b", null, "F"), " — פעולה, ישיבה, דלתות, מעלית ורכבל"),
+        h("li", null, h("b", null, "F"), " — פעולה, פתיחת דלתות, עלייה לכלי רכב ודיבור עם תושבים. התקרבו לתושב ולחצו F כדי לפתוח שיחה."),
         h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
         h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A שמאלה ו־D ימינה; Shift בלימה ברכב."),
         h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),

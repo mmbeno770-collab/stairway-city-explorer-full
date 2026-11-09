@@ -40,6 +40,30 @@ jobs:
       - name: Build Android test APK and unsigned release bundle
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug bundleRelease
+      - name: Sign Android App Bundle when release key secrets are configured
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "No Android signing secrets configured; the release AAB remains unsigned."
+            exit 0
+          fi
+          key_path="$RUNNER_TEMP/stairway-upload-key.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$key_path"
+          input="android/app/build/outputs/bundle/release/app-release.aab"
+          output="android/app/build/outputs/bundle/release/app-release-signed.aab"
+          jarsigner -keystore "$key_path" \
+            -storepass:env ANDROID_KEYSTORE_PASSWORD \
+            -keypass:env ANDROID_KEY_PASSWORD \
+            -digestalg SHA-256 -sigalg SHA256withRSA \
+            -signedjar "$output" "$input" "$ANDROID_KEY_ALIAS"
+          jarsigner -verify "$output" >/dev/null
+          echo "Signed Android App Bundle created and signature verified."
       - name: Package Android project source
         run: tar --exclude='android/.gradle' --exclude='android/**/build' -czf android-project.tar.gz android
       - name: Upload Android artifacts

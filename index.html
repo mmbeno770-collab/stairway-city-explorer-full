@@ -2,6 +2,8 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://esm.sh https://cdn.esm.sh; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0c1822" />
   <meta name="description" content="עיר פתוחה תלת־ממדית לחקירה, נהיגה וטיסה." />
@@ -46,13 +48,35 @@
     (() => {
       const panel = () => document.getElementById('boot-status');
       window.showStairwayBootError = (message) => {
-        const el = panel(); if (!el) return;
-        el.innerHTML = '<div class="boot-card boot-error"><h1>המשחק לא הצליח להיטען</h1>' +
-          '<p>כנראה שהדפדפן לא הצליח להוריד את ספריות התלת־ממד מהאינטרנט.</p>' +
-          '<p>בדוק חיבור לאינטרנט, ואז לחץ על הכפתור לרענון.</p>' +
-          '<button type="button" onclick="location.reload()">נסה שוב</button>' +
-          '<details><summary>פרטי התקלה</summary><pre></pre></details></div>' ;
-        const pre = el.querySelector('pre'); if (pre) pre.textContent = String(message || 'לא התקבל פירוט');
+        const el = panel();
+        if (!el) return;
+
+        const card = document.createElement('div');
+        card.className = 'boot-card boot-error';
+
+        const heading = document.createElement('h1');
+        heading.textContent = 'המשחק לא הצליח להיטען';
+
+        const explanation = document.createElement('p');
+        explanation.textContent = 'הדפדפן לא הצליח להפעיל רכיב של המשחק או לטעון ספרייה נדרשת.';
+
+        const retryHint = document.createElement('p');
+        retryHint.textContent = 'בדוק חיבור לאינטרנט, ואז לחץ על הכפתור לרענון.';
+
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.textContent = 'נסה שוב';
+        retry.addEventListener('click', () => window.location.reload(), { once: true });
+
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = 'פרטי התקלה';
+        const pre = document.createElement('pre');
+        pre.textContent = String(message || 'לא התקבל פירוט');
+        details.append(summary, pre);
+
+        card.append(heading, explanation, retryHint, retry, details);
+        el.replaceChildren(card);
       };
       window.addEventListener('error', (event) => {
         if (event && (event.message || event.target instanceof HTMLScriptElement))
@@ -67,6 +91,6 @@
       }, 18000);
     })();
   </script>
-  <script type="module" src="./main.js" onerror="window.showStairwayBootError('לא ניתן לטעון את קובץ המשחק main.js')"></script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>

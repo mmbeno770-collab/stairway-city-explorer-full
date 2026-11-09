@@ -107,15 +107,14 @@ export function generateWorld(seed = 7) {
                 { x: cx + 8.0, z: cz - 7.65, face: Math.PI / 2, color: "#e8c35a", kind: "bus" }
             ];
             for (const bay of bays) inter.push({ type: "car", x: bay.x, y: .12, z: bay.z, face: bay.face, color: bay.color, kind: bay.kind, parking: true });
-            const plane = { id: "plane", x: cx - 5, y: 0, z: cz + 4.1, yaw: Math.PI / 2 };
-            const tank = { id: "tank", x: cx - 8.2, y: 0, z: cz + 8.3, yaw: 0 };
+            const plane = { id: "plane", x: cx, y: .12, z: cz + 4.2, yaw: 0 };
+            const tank = { id: "tank", x: cx - 8.3, y: .12, z: cz + 8.1, yaw: 0 };
             const tesla = { id: "tesla", x: cx + 9, y: .82, z: cz - 2.2, yaw: 0 };
-            parkingVehicles.push(plane, tank, tesla);
-            add(plane.x - 4.25, .12, plane.z - .68, plane.x + 4.25, 1.35, plane.z + .68, "#000000", "collision", true);
-            add(plane.x - .62, .12, plane.z - 5.0, plane.x + .62, 1.0, plane.z + 5.0, "#000000", "collision", true);
-            add(tank.x - 2.15, .12, tank.z - 2.65, tank.x + 2.15, 1.85, tank.z + 2.65, "#000000", "collision", true);
-            add(tesla.x - 1.25, tesla.y - .15, tesla.z - 2.25, tesla.x + 1.25, tesla.y + 1.7, tesla.z + 2.25, "#000000", "collision", true);
-            inter.push({ type: "heli", x: cx + 5, y: .12, z: cz + 4.5, face: 0, parking: true });
+            parkingVehicles.push(plane, tesla);
+            inter.push({ type: "airVehicle", id: "plane", x: plane.x, y: plane.y, z: plane.z, face: plane.yaw });
+            inter.push({ type: "car", kind: "tank", x: tank.x, y: tank.y, z: tank.z, face: tank.yaw, color: "#526347", parking: true });
+            inter.push({ type: "airVehicle", id: "tesla", x: tesla.x, y: tesla.y, z: tesla.z, face: tesla.yaw });
+            inter.push({ type: "heli", x: cx + 7.5, y: .12, z: cz + 8.8, face: 0, parking: true });
             continue;
         }
         if (gx === 1 && gz === 1) {

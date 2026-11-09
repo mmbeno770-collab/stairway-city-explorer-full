@@ -40,6 +40,17 @@ function CarModel({ car }) {
             ...busWheels
         ] });
     }
+    if (car.kind === "tank") {
+        return _jsxs("group", { ref: root, children: [
+            ...[-1, 1].map((side) => _jsxs("group", { position: [side * 1.75, .55, 0], children: [
+                _jsx("mesh", { material: trim, castShadow: true, children: _jsx("boxGeometry", { args: [.48, .9, 5.35] }) }),
+                ...[-2, -1, 0, 1, 2].map((z) => _jsx("mesh", { material: rubber, position: [0, 0, z], children: _jsx("cylinderGeometry", { args: [.33, .33, .5, 16] }) }, z))
+            ] }, side)),
+            _jsx("mesh", { material: bodyMat, position: [0, .92, 0], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", { args: [3.45, 1.05, 4.95] }) }),
+            _jsx("mesh", { material: bodyMat, position: [0, 1.58, -.25], castShadow: true, children: _jsx("cylinderGeometry", { args: [1.05, 1.2, .48, 18] }) }),
+            _jsx("mesh", { material: trim, position: [0, 1.85, -.25], children: _jsx("boxGeometry", { args: [1.15, .38, 1.35] }) })
+        ] });
+    }
     const extra = [];
     if (car.kind === "jeep") extra.push(
         _jsx("mesh", { material: bodyMat, position: [0, 1.48, -.18], children: _jsx("boxGeometry", { args: [1.62, .86, 2.0] }) }),

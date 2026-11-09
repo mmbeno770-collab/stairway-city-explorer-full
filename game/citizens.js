@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Human, poseHuman } from "./human.js";
-import { Collider } from "./world.js";
+import { Collider, BLOCK } from "./world.js";
 import { stepCar, resolveCarObstacles } from "./car-sim.js";
 import { stepHeli } from "./heli-sim.js";
 import { stepAirVehicle, resolveAirVehicleObstacles } from "./air-vehicle-sim.js";
@@ -16,8 +16,10 @@ const localOffset = (x, z, ox, oz, yaw) => {
 };
 
 function makeWalkRoute(building) {
-  const left = building.x0 + 1.12, right = building.x1 - 1.12;
-  const top = building.z0 + 1.12, bottom = building.z1 - 1.12;
+  const gapX = (BLOCK - (building.x1 - building.x0)) * .5 - 4;
+  const gapZ = (BLOCK - (building.z1 - building.z0)) * .5 - 4;
+  const left = building.x0 - gapX + 1.12, right = building.x1 + gapX - 1.12;
+  const top = building.z0 - gapZ + 1.12, bottom = building.z1 + gapZ - 1.12;
   const midX = (building.x0 + building.x1) * .5, midZ = (building.z0 + building.z1) * .5;
   return [
     { x: midX, z: top }, { x: right, z: top },

@@ -5,7 +5,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { FLOOR_H } from "./world.js";
-const makeBatches = () => ({ stone: [], metal: [], gold: [], wood: [], glass: [], solar: [], glow: [] });
+const makeBatches = () => ({ stone: [], metal: [], gold: [], wood: [], glass: [], solar: [], glow: [], foliage: [] });
 const put = (list, x, y, z, sx, sy, sz, color, rx = 0, ry = 0, rz = 0) => {
     if (![x, y, z, sx, sy, sz, rx, ry, rz].every(Number.isFinite) || sx <= 0 || sy <= 0 || sz <= 0) return;
     list.push({ x, y, z, sx, sy, sz, color, rx, ry, rz });
@@ -39,11 +39,37 @@ function addBench(b, x, z, yaw) {
 function buildBatches(buildings) {
     const b = makeBatches();
     for (const building of buildings) {
-        const { x0, x1, z0, z1, id } = building, width = x1 - x0, depth = z1 - z0;
+        const { x0, x1, z0, z1, id } = building, width = x1 - x0, depth = z1 - z0, cx = (x0 + x1) / 2;
         const roofY = building.floors.length * FLOOR_H, facadeAccent = id % 2 === 0 ? "#d9c39c" : "#94a8a9";
         for (const x of [x0 + 0.12, x1 - 0.12]) for (const z of [z0 + 0.12, z1 - 0.12]) put(b.stone, x, roofY / 2, z, 0.18, roofY, 0.18, facadeAccent);
         for (const z of [z0 + 0.12, z1 - 0.12]) put(b.gold, (x0 + x1) / 2, roofY + 0.06, z, width + 0.28, 0.075, 0.24, "#c8a96b");
         for (const x of [x0 + 0.12, x1 - 0.12]) put(b.gold, x, roofY + 0.06, (z0 + z1) / 2, 0.24, 0.075, depth + 0.28, "#c8a96b");
+        // Layered floor bands, facade fins and illuminated architectural reveals.
+        const centerZ = (z0 + z1) / 2;
+        for (let floor = 0; floor < building.floors.length; floor++) {
+            const bandY = floor * FLOOR_H + 3.78;
+            const bandColor = floor % 2 ? "#9eaaa7" : "#d3c6ad";
+            put(b.stone, cx, bandY, z0 - 0.14, width + 0.18, 0.12, 0.22, bandColor);
+            put(b.stone, cx, bandY, z1 + 0.14, width + 0.18, 0.12, 0.22, bandColor);
+            put(b.stone, x0 - 0.14, bandY, centerZ, 0.22, 0.12, depth + 0.18, bandColor);
+            put(b.stone, x1 + 0.14, bandY, centerZ, 0.22, 0.12, depth + 0.18, bandColor);
+            for (const side of [-1, 1]) {
+                const sideZ = side < 0 ? z0 - 0.19 : z1 + 0.19;
+                put(b.gold, cx, bandY + 0.09, sideZ, width - 0.55, 0.025, 0.035, "#d8bd85");
+                const sideX = side < 0 ? x0 - 0.19 : x1 + 0.19;
+                put(b.gold, sideX, bandY + 0.09, centerZ, 0.035, 0.025, depth - 0.55, "#d8bd85");
+            }
+        }
+        for (const px of [x0 + 0.28, x1 - 0.28]) for (const pz of [z0 + 0.28, z1 - 0.28]) {
+            put(b.stone, px, roofY / 2, pz, 0.3, roofY, 0.3, facadeAccent);
+            put(b.metal, px, roofY / 2, pz, 0.055, roofY, 0.34, "#66777c");
+        }
+        // Subtle vertical accents break up the repeated window grid.
+        for (const ratio of [0.25, 0.75]) {
+            const px = x0 + width * ratio;
+            put(b.metal, px, roofY / 2, z0 - 0.12, 0.055, roofY - 0.5, 0.07, "#65777d");
+            put(b.metal, px, roofY / 2, z1 + 0.12, 0.055, roofY - 0.5, 0.07, "#65777d");
+        }
         for (let floor = 0; floor < building.floors.length; floor++) {
             addWindowFrames(b, building, "x", z0 + 0.075, false, floor, x0, x1, true);
             addWindowFrames(b, building, "x", z1 - 0.075, true, floor, x0, x1, false);
@@ -51,20 +77,35 @@ function buildBatches(buildings) {
             addWindowFrames(b, building, "z", x1 - 0.075, true, floor, z0 + 0.15, z1 - 0.15, false);
         }
         for (let floor = 1; floor < building.floors.length; floor++) {
-            if ((id + floor) % 3 !== 0) continue;
+            if ((id + floor) % 2 !== 0) continue;
             const centerX = (x0 + x1) / 2 + (id % 2 ? -1.9 : 1.9), frontZ = z0 - 0.56, level = floor * FLOOR_H + 1.02;
-            put(b.stone, centerX, level, frontZ, 2.65, 0.09, 0.92, "#c5c5bd");
-            put(b.metal, centerX, level + 0.5, frontZ - 0.42, 2.65, 0.055, 0.055, "#45545b");
-            put(b.metal, centerX - 1.3, level + 0.5, frontZ, 0.055, 0.055, 0.88, "#45545b");
-            put(b.metal, centerX + 1.3, level + 0.5, frontZ, 0.055, 0.055, 0.88, "#45545b");
-            for (let p = -2; p <= 2; p++) put(b.metal, centerX + p * 0.62, level + 0.24, frontZ - 0.42, 0.035, 0.48, 0.035, "#65777d");
+            const balconyWidth = 2.45;
+            put(b.stone, centerX, level, frontZ, balconyWidth, 0.12, 1.05, "#c5c5bd");
+            put(b.gold, centerX, level - 0.08, frontZ - 0.45, balconyWidth + 0.12, 0.035, 0.055, "#d2b47d");
+            put(b.metal, centerX, level + 0.5, frontZ - 0.48, balconyWidth, 0.055, 0.055, "#45545b");
+            put(b.metal, centerX - balconyWidth / 2, level + 0.5, frontZ, 0.055, 0.055, 0.92, "#45545b");
+            put(b.metal, centerX + balconyWidth / 2, level + 0.5, frontZ, 0.055, 0.055, 0.92, "#45545b");
+            for (let p = -2; p <= 2; p++) put(b.metal, centerX + p * 0.52, level + 0.24, frontZ - 0.48, 0.035, 0.48, 0.035, "#65777d");
+            if ((floor + id) % 3 === 0) {
+                put(b.wood, centerX, level + 0.17, frontZ - 0.22, 0.68, 0.26, 0.38, "#805b3d");
+                for (let plant = -2; plant <= 2; plant++) {
+                    put(b.foliage, centerX + plant * 0.12, level + 0.43 + Math.abs(plant) % 2 * 0.08, frontZ - 0.22, 0.14, 0.32, 0.16, "#4c8055");
+                }
+            }
         }
-        const cx = (x0 + x1) / 2;
         put(b.stone, cx, 3.16, z0 - 0.3, 4.25, 0.44, 0.17, id % 2 ? "#364c58" : "#66513f");
         put(b.glass, cx, 3.16, z0 - 0.397, 3.8, 0.25, 0.025, "#dce8e6");
         put(b.glow, cx, 3.16, z0 - 0.418, 1.45, 0.035, 0.018, id % 3 === 0 ? "#ffd27c" : "#9de0ed");
         put(b.metal, cx, 2.96, z0 - 0.58, 4.45, 0.055, 0.62, "#45545b");
         for (const dx of [-1.9, 1.9]) put(b.metal, cx + dx, 2.7, z0 - 0.51, 0.055, 0.5, 0.055, "#45545b");
+        // Deep entrance canopy and a framed luminous lobby marker.
+        put(b.stone, cx, 3.42, z0 - 0.56, 4.7, 0.16, 0.84, "#59666a");
+        put(b.gold, cx, 3.52, z0 - 0.58, 4.48, 0.045, 0.72, "#d3b77f");
+        put(b.glow, cx, 3.43, z0 - 0.997, 2.65, 0.035, 0.025, id % 3 === 0 ? "#f6d391" : "#a6dce6");
+        for (const offset of [-1.8, 1.8]) {
+            put(b.stone, cx + offset, 1.5, z0 - 0.16, 0.16, 3, 0.24, "#c7bda9");
+            put(b.gold, cx + offset, 2.98, z0 - 0.29, 0.2, 0.06, 0.42, "#d4b67d");
+        }
         const unitX = x0 + 1.45, unitZ = z1 - 1.65;
         put(b.metal, unitX, roofY + 0.42, unitZ, 1.35, 0.82, 1.15, "#88969b");
         put(b.stone, unitX, roofY + 0.85, unitZ, 1.43, 0.07, 1.22, "#c2c9c9");
@@ -143,6 +184,7 @@ export function CityDetails({ buildings, trees, windStrength = 1 }) {
         glass: new THREE.MeshPhysicalMaterial({ roughness: 0.055, metalness: 0.18, transparent: true, opacity: 0.76, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 2.1, depthWrite: false }),
         solar: new THREE.MeshPhysicalMaterial({ roughness: 0.16, metalness: 0.58, clearcoat: 0.8, clearcoatRoughness: 0.12, envMapIntensity: 1.8 }),
         glow: new THREE.MeshBasicMaterial({ toneMapped: false }),
+        foliage: new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0 }),
     }), []);
     return _jsxs(_Fragment, { children: [
         _jsx(BoxBatch, { items: batches.stone, material: materials.stone }),
@@ -152,6 +194,7 @@ export function CityDetails({ buildings, trees, windStrength = 1 }) {
         _jsx(BoxBatch, { items: batches.glass, material: materials.glass }),
         _jsx(BoxBatch, { items: batches.solar, material: materials.solar }),
         _jsx(BoxBatch, { items: batches.glow, material: materials.glow }),
+        _jsx(BoxBatch, { items: batches.foliage, material: materials.foliage }),
         _jsx(ExtraFoliage, { trees, windStrength })
     ] });
 }

@@ -21,19 +21,26 @@ const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
-function makeNpcReply(name, message, turnCount = 0) {
+function makeNpcReply(name, message, turnCount = 0, previousTopic = "") {
   const text = String(message || "").trim().toLocaleLowerCase("he");
+  const pick = (choices) => choices[Math.abs(turnCount) % choices.length];
   if (!text) return "לא שמעתי אותך. מה רצית לשאול?";
-  if (/(שלום|היי|אהלן|בוקר טוב|ערב טוב)/.test(text)) return "שלום! נחמד לפגוש אותך כאן בעיר.";
-  if (/(איך קוראים לך|מה השם שלך|מי אתה)/.test(text)) return "קוראים לי " + name + ". אני אוהב להסתובב ולגלות מקומות בעיר.";
-  if (/(מה אתה עושה|מה מעשיך|מה קורה)/.test(text)) return "אני מטייל בעיר, לפעמים נכנס לבניינים, עולה לקומות ופוגש אנשים.";
-  if (/(איפה|מיקום|בניין|קומה)/.test(text)) return "אנחנו בעיר עם הרבה בניינים. אפשר להיכנס דרך הדלתות ולעלות במדרגות עד הגג.";
-  if (/(מכונית|רכב|אוטובוס|ג'יפ)/.test(text)) return "יש כאן חניון גדול. לפעמים אני לוקח רכב ונוסע ברחובות.";
-  if (/(מטוס|מסוק|טס|טיסה|טסלה)/.test(text)) return "יש בעיר גם כלי טיס! אני אוהב לראות אותם עוברים מעל הבניינים.";
-  if (/(תודה|מעולה|יופי)/.test(text)) return "בשמחה! שיהיה לך יום נעים בעיר.";
-  if (/(להתראות|ביי|שלום לך)/.test(text)) return "להתראות! אולי ניפגש שוב ברחוב.";
-  if (text.includes("?") || /(למה|איך|מתי|האם|כמה)/.test(text)) return "שאלה מעניינת. אני עוד מגלה דברים בעיר הזאת, אבל אשמח להמשיך לדבר איתך.";
-  return turnCount % 2 === 0 ? "מעניין! אני בדיוק מטייל כאן ומכיר את העיר. ספר לי עוד." : "אני מבין. יש בעיר הרבה מה לראות, במיוחד בבניינים ובחניון.";
+  if (/(שלום|היי|אהלן|בוקר טוב|ערב טוב)/.test(text)) return pick(["שלום! נחמד לפגוש אותך כאן בעיר.", "אהלן! יצאתי לסיבוב קטן. מה שלומך?", "שלום! אולי ניפגש באחד הבניינים."]);
+  if (/(איך קוראים לך|מה השם שלך|מי אתה)/.test(text)) return "קוראים לי " + name + ". אני תושב וירטואלי שאוהב להסתובב ולגלות מקומות בעיר.";
+  if (/(אתה אמיתי|אתה בן אדם|אתה רובוט|אתה ai|בינה מלאכותית)/.test(text)) return "אני דמות AI במשחק. יש לי מסלולים, הרגלים ותגובות, ואני יכול לשוחח איתך על העיר.";
+  if (/(מה אתה עושה|מה מעשיך|מה קורה|מה התוכניות שלך)/.test(text)) return pick(["אני יוצא לטיול, נכנס מדי פעם לבניין ועולה לקומות.", "אני בודק מה קורה ברחובות, פוגש תושבים ומסתובב בעיר.", "לפעמים אני מטייל ברגל ולפעמים צופה בכלי הרכב שעוברים."]);
+  if (/(איך קוראים לך|מה השם שלך)/.test(text)) return "אני " + name + ". נעים להכיר!";
+  if (/(מה אפשר לעשות|מה יש כאן|מה יש בעיר|אטרקציות|לבקר)/.test(text)) return "אפשר לחקור עשרות בניינים, להיכנס לחנויות ולחדרים, לעלות במדרגות, לנסוע ברכבים, לטוס ולעלות ברכבל.";
+  if (/(איפה|מיקום|בניין|קומה|מדרגות|גג)/.test(text)) return pick(["יש כאן הרבה בניינים. הדלתות מובילות ללובי, ומשם אפשר לעלות במדרגות.", "אני אוהב לעלות לקומות הגבוהות ולראות את העיר מלמעלה.", "אפשר להיכנס לבניינים ולגלות שבכל קומה יש חלל אחר."]);
+  if (/(מכונית|רכב|אוטובוס|ג'יפ|חניון|מירוץ)/.test(text)) return pick(["בחניון המרכזי יש מכוניות, ג'יפ, אוטובוס ומכונית מרוץ.", "אני אוהב לעמוד ליד הכביש ולראות את התנועה. יש כאן כמה כלי רכב מעניינים.", "אפשר לבחור רכב, להיכנס אליו ולנסוע ברחובות העיר."]);
+  if (/(מטוס|מסוק|טס|טיסה|טסלה|רכבל)/.test(text)) return pick(["אפשר להטיס מסוק או מטוס ולראות את העיר מלמעלה.", "הטסלה המעופפת מיוחדת מאוד. היא יכולה לעלות ולרדת באוויר.", "הרכבל עובר בין ארבע תחנות ומציע נוף יפה של כל העיר."]);
+  if (/(מזג אוויר|גשם|שמש|סערה|עננים)/.test(text)) return "אפשר לשנות את מזג האוויר ואת השעה בלוח הסביבה שבצד המסך.";
+  if (/(תודה|מעולה|יופי|נהדר)/.test(text)) return pick(["בשמחה! תמיד נחמד לפגוש תושבים חדשים.", "אין בעד מה. שיהיה לך טיול נעים!", "בכיף! אולי נתראה בהמשך הסיבוב."]);
+  if (/(להתראות|ביי|שלום לך)/.test(text)) return "להתראות! אני ממשיך לטייל בעיר.";
+  if (/(למה|איך|מתי|האם|כמה)/.test(text) && previousTopic === "buildings") return "בדרך כלל אני נכנס דרך הדלת הראשית, ממשיך ללובי ומחפש את גרם המדרגות.";
+  if (/(למה|איך|מתי|האם|כמה)/.test(text) && previousTopic === "vehicles") return "מתקרבים לכלי הרכב ולוחצים F כדי להיכנס. אחר כך משתמשים ב-WASD כדי לנהוג.";
+  if (/(למה|איך|מתי|האם|כמה)/.test(text)) return pick(["זאת שאלה טובה. אני עוד מגלה דברים בעיר, אבל אשמח לעזור לך לחקור.", "ממה שראיתי, יש כאן הרבה מקומות לגלות. לאן נלך עכשיו?", "אני לא בטוח בכל הפרטים, אבל אפשר לבדוק יחד."]);
+  return pick(["מעניין! ספר לי עוד, אני מקשיב.", "אני מבין אותך. מה עוד תרצה לדעת על העיר?", "נחמד לדבר תוך כדי הטיול. יש כאן עוד הרבה מה לראות.", "אולי נגלה משהו חדש בסיבוב הבא שלנו."]);
 }
 
 function ScenicHills() {
@@ -1007,11 +1014,15 @@ export default function Game() {
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
   const toggleDoor = useCallback((index) => { const next = { ...doorRef.current, [index]: !doorRef.current[index] }; doorRef.current = next; setDoorStates(next); }, []);
   const beginConversation = useCallback((person) => {
-    conversationRef.current = { personId: person.id };
-    setConversation({ personId: person.id, npcName: person.name, messages: [{ from: "npc", text: "שלום! נחמד לפגוש אותך. מה תרצה לדעת על העיר?" }] });
+    person.bubbleText = "שלום! מה שלומך?";
+    person.bubbleUntil = Number.POSITIVE_INFINITY;
+    conversationRef.current = { personId: person.id, bubbleText: person.bubbleText };
+    setConversation({ personId: person.id, npcName: person.name, topic: "", messages: [{ from: "npc", text: "שלום! נחמד לפגוש אותך. מה תרצה לדעת על העיר?" }] });
     setChatDraft("");
   }, []);
   const closeConversation = useCallback(() => {
+    const person = citizensRef.current.find((item) => item.id === conversationRef.current?.personId);
+    if (person) { person.bubbleText = ""; person.bubbleUntil = 0; }
     conversationRef.current = null;
     input.current.closeTalk = true;
     setConversation(null);
@@ -1021,9 +1032,11 @@ export default function Game() {
     event.preventDefault();
     const message = chatDraft.trim().slice(0, 220);
     if (!message || !conversation) return;
-    const reply = makeNpcReply(conversation.npcName, message, conversation.messages.length);
+    const topic = /(בניין|קומה|דלת|מדרגות|גג|לובי)/.test(message) ? "buildings" : /(רכב|מכונית|אוטובוס|ג'יפ|חניון)/.test(message) ? "vehicles" : conversation.topic;
+    const reply = makeNpcReply(conversation.npcName, message, conversation.messages.length, conversation.topic);
+    if (conversationRef.current) conversationRef.current = { ...conversationRef.current, bubbleText: reply };
     setConversation((current) => current ? ({
-      ...current,
+      ...current, topic,
       messages: [...current.messages, { from: "player", text: message }, { from: "npc", text: reply }].slice(-12)
     }) : current);
     setChatDraft("");

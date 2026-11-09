@@ -150,3 +150,20 @@ button { font: inherit; }
   .npc-chat-messages { max-height: 155px; }
   .npc-chat-form input { font-size: 13px; }
 }
+
+
+/* World-anchored speech bubbles make ambient citizen reactions visible in the 3D scene. */
+.citizen-world-bubble {
+  position: relative; max-width: 190px; padding: 6px 10px;
+  color: #f7f7f2; background: rgba(9, 24, 33, .93);
+  border: 1px solid rgba(223, 193, 132, .62); border-radius: 11px;
+  box-shadow: 0 5px 22px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.08);
+  font: 700 12px/1.35 "Rubik", system-ui, sans-serif;
+  direction: rtl; text-align: center; white-space: normal; pointer-events: none;
+  backdrop-filter: blur(8px); transform: translateY(-3px);
+}
+.citizen-world-bubble::after {
+  content: ""; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px;
+  background: rgba(9, 24, 33, .93); border-right: 1px solid rgba(223,193,132,.62);
+  border-bottom: 1px solid rgba(223,193,132,.62); transform: translateX(-50%) rotate(45deg);
+}

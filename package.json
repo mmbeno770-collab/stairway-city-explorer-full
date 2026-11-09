@@ -1,0 +1,34 @@
+{
+  "name": "stairway-city-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.16.0" },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "prebuild": "node scripts/generate-assets.mjs",
+    "build": "vite build",
+    "lint": "eslint --config eslint.config.mjs main.js \"game/**/*.js\"",
+    "check": "npm run lint && npm run build",
+    "mobile:prepare": "npm run build && node scripts/prepare-native.mjs",
+    "mobile:prepare:ios": "npm run build && node scripts/prepare-native.mjs ios",
+    "mobile:prepare:android": "npm run build && node scripts/prepare-native.mjs android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/ios": "8.6.0",
+    "@react-three/drei": "10.0.0",
+    "@react-three/fiber": "9.0.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.0",
+    "eslint": "9.35.0",
+    "sharp": "0.35.5",
+    "vite": "8.3.7"
+  }
+}

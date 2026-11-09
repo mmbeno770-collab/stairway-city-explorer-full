@@ -3,14 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://esm.sh https://cdn.esm.sh; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0c1822" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Stairway City" />
+  <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
   <meta name="description" content="עיר פתוחה תלת־ממדית לחקירה, נהיגה וטיסה." />
   <title>Stairway City Explorer — עיר פתוחה</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
   <style>
     #boot-status { position: fixed; inset: 0; z-index: 99999; display: grid; place-items: center; padding: 24px; background: #0b1720; color: #f4f7fa; font-family: Rubik, sans-serif; text-align: center; }
@@ -21,18 +23,6 @@
     .boot-error button { margin: 12px; padding: 11px 22px; border: 0; border-radius: 10px; background: #75c9ff; color: #10202b; font: inherit; font-weight: 700; cursor: pointer; }
     .boot-error details { margin-top: 16px; text-align: right; } .boot-error pre { overflow-wrap: anywhere; white-space: pre-wrap; direction: ltr; text-align: left; color: #ffc7c7; }
   </style>
-  <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@19.2.0",
-      "react/jsx-runtime": "https://esm.sh/react@19.2.0/jsx-runtime",
-      "react-dom/client": "https://esm.sh/react-dom@19.2.0/client?external=react",
-      "three": "https://esm.sh/three@0.187.0",
-      "@react-three/fiber": "https://esm.sh/@react-three/fiber@9.0.0?external=react,react-dom,three",
-      "@react-three/drei": "https://esm.sh/@react-three/drei@10.0.0?external=react,react-dom,three,@react-three/fiber"
-    }
-  }
-  </script>
 </head>
 <body>
   <div id="root"></div>
@@ -41,56 +31,10 @@
       <div class="boot-spinner"></div>
       <h1>טוען את Stairway City Explorer…</h1>
       <p>המשחק טוען רכיבי תלת־ממד. בדרך כלל זה לוקח כמה שניות.</p>
-      <p class="boot-hint">אם המסך נשאר כך, בדוק שיש חיבור לאינטרנט ונסה לרענן את הדף.</p>
+      <p class="boot-hint">אם המסך נשאר כך, ייתכן שהמכשיר חסם רכיב תלת־ממדי. נסה לרענן את הדף.</p>
     </div>
   </div>
-  <script>
-    (() => {
-      const panel = () => document.getElementById('boot-status');
-      window.showStairwayBootError = (message) => {
-        const el = panel();
-        if (!el) return;
-
-        const card = document.createElement('div');
-        card.className = 'boot-card boot-error';
-
-        const heading = document.createElement('h1');
-        heading.textContent = 'המשחק לא הצליח להיטען';
-
-        const explanation = document.createElement('p');
-        explanation.textContent = 'הדפדפן לא הצליח להפעיל רכיב של המשחק או לטעון ספרייה נדרשת.';
-
-        const retryHint = document.createElement('p');
-        retryHint.textContent = 'בדוק חיבור לאינטרנט, ואז לחץ על הכפתור לרענון.';
-
-        const retry = document.createElement('button');
-        retry.type = 'button';
-        retry.textContent = 'נסה שוב';
-        retry.addEventListener('click', () => window.location.reload(), { once: true });
-
-        const details = document.createElement('details');
-        const summary = document.createElement('summary');
-        summary.textContent = 'פרטי התקלה';
-        const pre = document.createElement('pre');
-        pre.textContent = String(message || 'לא התקבל פירוט');
-        details.append(summary, pre);
-
-        card.append(heading, explanation, retryHint, retry, details);
-        el.replaceChildren(card);
-      };
-      window.addEventListener('error', (event) => {
-        if (event && (event.message || event.target instanceof HTMLScriptElement))
-          window.showStairwayBootError(event.message || 'טעינת קובץ JavaScript נכשלה');
-      }, true);
-      window.addEventListener('unhandledrejection', (event) => {
-        window.showStairwayBootError(event.reason?.message || event.reason || 'שגיאת טעינה לא מטופלת');
-      });
-      window.setTimeout(() => {
-        if (!window.__stairwayAppReady && panel())
-          window.showStairwayBootError('הטעינה ארכה יותר מהרגיל. ייתכן שהחיבור ל-CDN חסום או איטי.');
-      }, 18000);
-    })();
-  </script>
+  <script src="%BASE_URL%boot.js" defer></script>
   <script type="module" src="./main.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 36, GRID = 7, CITY_HALF = (GRID * BLOCK) / 2;
+export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 36, GRID = 9, CITY_HALF = (GRID * BLOCK) / 2;
 
 export const CABLE_STATIONS = [
   { id: 0, name: "תחנת צפון־מערב", x: -90, z: -90, y: 48 },
@@ -117,6 +117,29 @@ export function generateWorld(seed = 7) {
             inter.push({ type: "heli", x: cx + 7.5, y: .12, z: cz + 8.8, face: 0, parking: true });
             continue;
         }
+        if (gx === GRID - 2 && gz === GRID - 2) {
+            // A calm garden district in the new outer neighbourhood.
+            add(cx - 12.2, 0, cz - 12.2, cx + 12.2, .12, cz + 12.2, "#758b5d", "solid", false);
+            add(cx - 10.4, .12, cz - 10.4, cx + 10.4, .2, cz + 10.4, "#b8b09b", "solid", false);
+            add(cx - 1.25, .2, cz - 10.2, cx + 1.25, .24, cz + 10.2, "#d8d0bd", "solid", false);
+            add(cx - 10.2, .2, cz - 1.25, cx + 10.2, .24, cz + 1.25, "#d8d0bd", "solid", false);
+            for (const [dx, dz] of [[-6.4,-6.4],[6.4,-6.4],[-6.4,6.4],[6.4,6.4]]) {
+                add(cx + dx - 2.1, .2, cz + dz - 2.1, cx + dx + 2.1, .38, cz + dz + 2.1, "#607c4e", "solid", false);
+                add(cx + dx - 1.65, .38, cz + dz - 1.65, cx + dx + 1.65, .52, cz + dz + 1.65, "#8fa86a", "solid", false);
+                trees.push({ x: cx + dx, z: cz + dz, s: 1.0 + r() * .25 });
+            }
+            add(cx - 2.45, .2, cz - 2.45, cx + 2.45, .48, cz + 2.45, "#8c948e", "solid", false);
+            add(cx - 2.15, .48, cz - 2.15, cx + 2.15, .58, cz + 2.15, "#c9c4b8", "solid", false);
+            add(cx - 1.82, .59, cz - 1.82, cx + 1.82, .66, cz + 1.82, "#58aabd", "glow", false);
+            add(cx - .34, .66, cz - .34, cx + .34, 1.55, cz + .34, "#d1b173", "solid", false);
+            add(cx - .72, 1.48, cz - .72, cx + .72, 1.62, cz + .72, "#8bbbc5", "glow", false);
+            for (const dx of [-8.6, 8.6]) {
+                add(cx + dx - 1.15, .32, cz - .22, cx + dx + 1.15, .5, cz + .22, "#795a42", "solid", false);
+                add(cx + dx - 1.15, .5, cz - .22, cx + dx + 1.15, 1.12, cz - .02, "#795a42", "solid", false);
+            }
+            lamps.push({ x: cx - 10.2, z: cz - 10.2 }, { x: cx + 10.2, z: cz + 10.2 });
+            continue;
+        }
         if (gx === 1 && gz === 1) {
             // A dedicated recreation square with rubber safety surfacing and accessible clear paths.
             add(cx - 12, 0, cz - 12, cx + 12, .08, cz + 12, "#678455", "solid", false);
@@ -205,7 +228,7 @@ export function generateWorld(seed = 7) {
         const basementEntry = { x: sx0 + 1.05, y: .15, z: sz0 + .28 };
         // Place the lower exit right at the end of the final tread, clear of the next step.
         const basementExit = { x: sx0 + 3.05, y: -4, z: sz0 + .08 };
-        buildings.push({ id, name: NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : ""), x0, z0, x1, z1, floors, basementStairwell, basementFloor: -1 });
+        buildings.push({ id, gridX: gx, gridZ: gz, name: NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : ""), x0, z0, x1, z1, floors, basementStairwell, basementFloor: -1 });
         inter.push({ type: "basement", x: basementEntry.x, y: basementEntry.y, z: basementEntry.z, buildingId: id, toX: basementExit.x, toY: basementExit.y, toZ: basementExit.z });
         inter.push({ type: "basementExit", x: basementExit.x, y: basementExit.y, z: basementExit.z, buildingId: id, toX: basementEntry.x, toY: basementEntry.y, toZ: basementEntry.z });
         add(x0 - .3, 0, z0 - .3, x1 + .3, .12, sz0, "#9a948a");

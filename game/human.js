@@ -125,7 +125,21 @@ export function poseHuman(R, P) {
     R.chest.scale.set(1 + breath * 0.009, 1 + breath * 0.004, 0.68 + breath * 0.009);
     R.head.rotation.set(0, 0, 0); R.spine.rotation.set(0, 0, 0); R.hips.position.y = 0.95; R.bar.visible = false;
     for (let i = 0; i < 2; i++) { sh[i].rotation.set(0, 0, side[i] * 0.055); el[i].rotation.set(0, 0, 0); an[i].rotation.set(0, 0, 0); }
-    if (P.mode === "walk" && !P.air) {
+    if (P.mode === "climb") {
+        for (let i = 0; i < 2; i++) {
+            const ph = P.phase + (i ? Math.PI : 0);
+            const reach = Math.sin(ph), lift = (1 + Math.cos(ph)) * 0.5;
+            sh[i].rotation.set(-1.68 + reach * 0.22, 0, side[i] * (0.08 + lift * 0.025));
+            el[i].rotation.set(-0.86 - lift * 0.3, 0, side[i] * 0.035);
+            th[i].rotation.set(-0.16 + Math.max(0, Math.sin(ph)) * 0.26, 0, side[i] * 0.025);
+            kn[i].rotation.x = 0.42 + lift * 0.56;
+            an[i].rotation.x = -0.16 - lift * 0.12;
+        }
+        R.hips.position.y = 0.95 + Math.sin(P.phase * 2) * 0.018;
+        R.spine.rotation.set(-0.13, Math.sin(P.phase * 0.5) * 0.025, 0);
+        R.chest.scale.set(1.004, 1.002, 0.69);
+        R.head.rotation.set(-0.13 + Math.sin(P.phase) * 0.018, 0, Math.sin(P.phase * 0.5) * 0.025);
+    } else if (P.mode === "walk" && !P.air) {
         const amp = Math.min(1, P.speed / 4.2), run = THREE.MathUtils.clamp((P.speed - 4.5) / 3.5, 0, 1), swing = Math.sin(P.phase);
         for (let i = 0; i < 2; i++) {
             const ph = P.phase + (i ? Math.PI : 0), wave = Math.sin(ph);

@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { Human, poseHuman } from "./human.js";
-import { Collider, BLOCK } from "./world.js";
+import { Collider, BLOCK, CITY_HALF } from "./world.js";
 import { stepCar, resolveCarObstacles } from "./car-sim.js";
 import { stepHeli } from "./heli-sim.js";
 import { stepAirVehicle, resolveAirVehicleObstacles } from "./air-vehicle-sim.js";
@@ -30,7 +30,7 @@ function makeWalkRoute(building) {
   ];
 }
 
-const WALKER_NAMES = ["אורי", "דוד", "יונתן", "משה", "אליהו", "יעקב", "נחום", "שמואל", "בנימין", "אלעד", "אריאל", "נעם", "אבישי", "עמיחי", "מתניה", "איתן", "יהודה", "הלל"];
+const WALKER_NAMES = ["אורי", "דוד", "יונתן", "משה", "אליהו", "יעקב", "נחום", "שמואל", "בנימין", "אלעד", "אריאל", "נעם", "אבישי", "עמיחי", "מתניה", "איתן", "יהודה", "הלל", "רפאל", "אברהם", "יצחק", "שלמה", "מנחם", "מאיר", "דניאל", "אלעזר", "עוזיאל", "גדעון", "נפתלי", "אפרים", "חיים", "יוסף", "ברוך", "זאב", "נתנאל", "אלחנן"];
 
 function makeStairTour(building) {
   const stair = building.basementStairwell;
@@ -80,16 +80,17 @@ function makeBuildingVisitRoute(building, world) {
 }
 
 
-function routeToVisit(person) {
-  const loop = person.sidewalkRoute, target = person.visitRoute[0];
-  if (!loop.length) return person.visitRoute;
-  let startIndex = 0, targetIndex = 0, startDistance = Infinity, targetDistance = Infinity;
-  loop.forEach((point, index) => {
-    const fromPerson = Math.hypot(point.x - person.x, point.z - person.z);
-    const fromDoor = Math.hypot(point.x - target.x, point.z - target.z);
-    if (fromPerson < startDistance) { startDistance = fromPerson; startIndex = index; }
-    if (fromDoor < targetDistance) { targetDistance = fromDoor; targetIndex = index; }
+function nearestLoopIndex(loop, x, z) {
+  let index = 0, best = Infinity;
+  loop.forEach((point, i) => {
+    const d = Math.hypot(point.x - x, point.z - z);
+    if (d < best) { best = d; index = i; }
   });
+  return index;
+}
+
+function loopPath(loop, startIndex, targetIndex) {
+  if (!loop.length) return [];
   const collect = (direction) => {
     const path = [loop[startIndex]];
     let index = startIndex;
@@ -100,8 +101,67 @@ function routeToVisit(person) {
     return path;
   };
   const forward = collect(1), backward = collect(-1);
-  const sidewalkPath = forward.length <= backward.length ? forward : backward;
-  return [...sidewalkPath, ...person.visitRoute];
+  return forward.length <= backward.length ? forward : backward;
+}
+
+function nextRandom(person) {
+  person.rngState = (Math.imul(person.rngState, 1664525) + 1013904223) >>> 0;
+  return person.rngState / 4294967296;
+}
+
+function chooseAdjacentBuilding(person, world) {
+  const home = person.building;
+  const neighbors = (world.buildings || []).filter((building) =>
+    Math.abs(building.gridX - home.gridX) + Math.abs(building.gridZ - home.gridZ) === 1
+  );
+  if (!neighbors.length) return home;
+  return neighbors[Math.floor(nextRandom(person) * neighbors.length)];
+}
+
+function routeToVisit(person, destination, world) {
+  const sourceLoop = person.sidewalkRoute;
+  const targetLoop = makeWalkRoute(destination);
+  const visitRoute = person.visitRoute;
+  if (!sourceLoop.length || !targetLoop.length) return visitRoute;
+
+  const startIndex = nearestLoopIndex(sourceLoop, person.x, person.z);
+  const targetDoorIndex = nearestLoopIndex(targetLoop, visitRoute[0].x, visitRoute[0].z);
+  const dx = destination.gridX - person.building.gridX;
+  const dz = destination.gridZ - person.building.gridZ;
+
+  if (Math.abs(dx) + Math.abs(dz) !== 1) {
+    const sourceDoorIndex = nearestLoopIndex(sourceLoop, visitRoute[0].x, visitRoute[0].z);
+    return [...loopPath(sourceLoop, startIndex, sourceDoorIndex), ...visitRoute];
+  }
+
+  let sourceExitIndex, targetEntryIndex, sourceEdge, crossA, crossB, targetEdge;
+  if (dx !== 0) {
+    const upper = (person.rngState & 1) === 0;
+    sourceExitIndex = dx > 0 ? (upper ? 1 : 3) : (upper ? 7 : 5);
+    targetEntryIndex = dx > 0 ? (upper ? 7 : 5) : (upper ? 1 : 3);
+    const boundaryX = -CITY_HALF + (dx > 0 ? person.building.gridX + 1 : person.building.gridX) * BLOCK;
+    const rowNorth = -CITY_HALF + person.building.gridZ * BLOCK;
+    const crossingZ = rowNorth + (upper ? 4.2 : BLOCK - 4.2);
+    sourceEdge = { x: sourceLoop[sourceExitIndex].x, z: crossingZ };
+    targetEdge = { x: targetLoop[targetEntryIndex].x, z: crossingZ };
+    crossA = { x: boundaryX - Math.sign(dx) * 3.6, z: crossingZ };
+    crossB = { x: boundaryX + Math.sign(dx) * 3.6, z: crossingZ };
+  } else {
+    const east = (person.rngState & 1) === 0;
+    sourceExitIndex = dz > 0 ? 4 : 0;
+    targetEntryIndex = dz > 0 ? 0 : 4;
+    const boundaryZ = -CITY_HALF + (dz > 0 ? person.building.gridZ + 1 : person.building.gridZ) * BLOCK;
+    const columnWest = -CITY_HALF + person.building.gridX * BLOCK;
+    const crossingX = columnWest + (east ? BLOCK - 4.2 : 4.2);
+    sourceEdge = { x: crossingX, z: sourceLoop[sourceExitIndex].z };
+    targetEdge = { x: crossingX, z: targetLoop[targetEntryIndex].z };
+    crossA = { x: crossingX, z: boundaryZ - Math.sign(dz) * 3.6 };
+    crossB = { x: crossingX, z: boundaryZ + Math.sign(dz) * 3.6 };
+  }
+
+  const toCrosswalk = loopPath(sourceLoop, startIndex, sourceExitIndex);
+  const alongDestinationSidewalk = loopPath(targetLoop, targetEntryIndex, targetDoorIndex);
+  return [...toCrosswalk, sourceEdge, crossA, crossB, targetEdge, ...alongDestinationSidewalk.slice(1), ...visitRoute];
 }
 
 function resolveHelicopterBodies(point, yLo, yHi, radius, helis) {
@@ -131,7 +191,7 @@ function resolvePeople(point, yLo, yHi, radius, walkers, ignore) {
 function makeCitizens(world, cars, helis, airVehicles, collider) {
   const walkers = [];
   const buildings = world.buildings || [];
-  const walkerCount = Math.min(24, buildings.length);
+  const walkerCount = Math.min(36, buildings.length);
   for (let i = 0; i < walkerCount; i++) {
     const building = buildings[(i * 5 + 3) % buildings.length];
     const route = makeWalkRoute(building);
@@ -139,12 +199,13 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
     walkers.push({
       id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], rig: {},
       building, route, sidewalkRoute: route, visitRoute: makeBuildingVisitRoute(building, world),
+      visitTarget: null, followPlayer: false,
       doorIndex: findBuildingDoor(world, building), waypoint: (i * 3 + 1) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
-      yaw: i * .71, speed: 1.35 + (i % 4) * .18, phase: i * 1.2,
-      wait: (i % 3) * .65, actionWait: 0, stuck: 0, hidden: false,
-      visiting: false, visitCountdown: 9 + (i % 8) * 6.5,
-      greetCooldown: 4 + (i % 7) * 4, socialCooldown: 9 + (i % 6) * 5,
+      yaw: i * .71, speed: 1.25 + (i % 7) * .22, phase: i * 1.2,
+      wait: (i % 4) * .55, actionWait: 0, stuck: 0, hidden: false,
+      visiting: false, visitCountdown: 7 + (i % 8) * 5.5,
+      greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
       tOffset: i * .83
     });
@@ -255,28 +316,37 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
         continue;
       }
       const player = playerPositionRef?.current;
-      if (player && person.greetCooldown <= 0 && !person.visiting) {
-        const playerDistance = Math.hypot(player.x - person.x, player.z - person.z);
+      const playerDistance = player ? Math.hypot(player.x - person.x, player.z - person.z) : Infinity;
+      if (person.followPlayer && player && playerDistance > 65) {
+        person.followPlayer = false;
+        person.bubbleText = "התרחקת מאוד, אז אחזור לסיור שלי.";
+        person.bubbleUntil = now + 3.2;
+      }
+      if (player && person.greetCooldown <= 0 && !person.visiting && !person.followPlayer) {
         if (playerDistance > 1.4 && playerDistance < 5.8 && Math.abs(player.y - person.y) < 2.2) {
           person.greetCooldown = 13 + ((person.rngState >>> 8) % 900) / 100;
-          person.wait = Math.max(person.wait, 1.45);
+          person.wait = Math.max(person.wait, 1.15);
           person.yaw = Math.atan2(player.x - person.x, player.z - person.z);
-          person.bubbleText = ["שלום!", "יום טוב!", "מה נשמע?", "ברוך הבא לעיר!"][person.rngState % 4];
+          person.bubbleText = ["שלום! שמח לראות אותך.", "יום טוב! לאן אתה מטייל?", "מה נשמע? העיר גדולה, נכון?", "ברוך הבא! אולי ניפגש שוב ברחוב."][person.rngState % 4];
           person.bubbleUntil = now + 2.8;
         }
       }
-      if (!person.visiting) person.visitCountdown -= dt;
-      if (!person.visiting && person.visitCountdown <= 0) {
+      if (!person.visiting && !person.followPlayer) person.visitCountdown -= dt;
+      if (!person.visiting && !person.followPlayer && person.visitCountdown <= 0) {
+        const destination = chooseAdjacentBuilding(person, world);
+        person.visitTarget = destination;
+        person.visitRoute = makeBuildingVisitRoute(destination, world);
+        person.doorIndex = findBuildingDoor(world, destination);
         person.visiting = true;
-        person.route = routeToVisit(person);
+        person.route = routeToVisit(person, destination, world);
         person.waypoint = person.route.length > 1 ? 1 : 0;
         person.stuck = 0;
       }
-      if (!person.visiting && person.socialCooldown <= 0 && personIndex < walkers.length - 1) {
+      if (!person.visiting && !person.followPlayer && person.socialCooldown <= 0 && personIndex < walkers.length - 1) {
         let companion = null, closest = 1.55;
         for (let j = personIndex + 1; j < walkers.length; j++) {
           const other = walkers[j];
-          if (other.visiting || other.socialCooldown > 0 || conversationRef?.current?.personId === other.id) continue;
+          if (other.visiting || other.followPlayer || other.socialCooldown > 0 || conversationRef?.current?.personId === other.id) continue;
           const distance = Math.hypot(other.x - person.x, other.z - person.z);
           if (distance < closest && Math.abs(other.y - person.y) < .8) { closest = distance; companion = other; }
         }
@@ -300,12 +370,27 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
         poseHuman(rig, { mode: "walk", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
         continue;
       }
-      const target = person.route[person.waypoint];
+      const following = !!(person.followPlayer && player);
+      if (following && playerDistance <= 2.75) {
+        person.yaw = Math.atan2(player.x - person.x, player.z - person.z);
+        if (rig.root) {
+          rig.root.position.set(person.x, person.y, person.z);
+          rig.root.rotation.y = person.yaw;
+          rig.root.visible = true;
+        }
+        poseHuman(rig, { mode: "walk", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+        continue;
+      }
+      const target = following
+        ? { x: player.x - Math.sin(person.yaw) * 2.35, z: player.z - Math.cos(person.yaw) * 2.35 }
+        : person.route[person.waypoint];
       if (!target) continue;
       const dx = target.x - person.x, dz = target.z - person.z, distance = Math.hypot(dx, dz);
-      const threshold = target.precise ? .19 : .55;
+      const threshold = following ? 1.8 : (target.precise ? .19 : .55);
       if (distance < threshold) {
-        if (target.action) {
+        if (following) {
+          person.wait = .12;
+        } else if (target.action) {
           const doorOpen = !!doorStatesRef?.current?.[person.doorIndex];
           if (person.doorIndex >= 0 && ((target.action === "open" && !doorOpen) || (target.action === "close" && doorOpen))) onDoorToggle?.(person.doorIndex);
           person.waypoint++;
@@ -315,14 +400,16 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
           if (person.waypoint >= person.route.length) {
             if (person.visiting) {
               person.visiting = false;
+              if (person.visitTarget) {
+                person.building = person.visitTarget;
+                person.sidewalkRoute = makeWalkRoute(person.building);
+                person.visitRoute = makeBuildingVisitRoute(person.building, world);
+                person.doorIndex = findBuildingDoor(world, person.building);
+              }
+              person.visitTarget = null;
               person.route = person.sidewalkRoute;
-              let nearest = 0, nearestD = Infinity;
-              person.route.forEach((point, index) => {
-                const d = Math.hypot(point.x - person.x, point.z - person.z);
-                if (d < nearestD) { nearestD = d; nearest = index; }
-              });
-              person.waypoint = nearest;
-              person.visitCountdown = 18 + (Number(person.id.slice(-1)) % 7) * 7;
+              person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
+              person.visitCountdown = 16 + Math.floor(nextRandom(person) * 22);
             } else person.waypoint = 0;
           }
           if (!person.visiting) {
@@ -336,27 +423,30 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
         }
         continue;
       }
-      const speed = person.visiting ? 1.55 : person.speed;
+      const speed = following ? 2.9 : person.visiting ? 1.8 : person.speed;
       const nx = dx / Math.max(distance, .001), nz = dz / Math.max(distance, .001);
       const stepLength = speed * dt, yLo = person.y + .12, yHi = person.y + 1.72;
       const resolveMove = (candidate) => {
-        collider.resolve(candidate, person.y + .35, yHi, .31);
+        collider.resolve(candidate, person.y + .58, yHi, .31);
         resolvePeople(candidate, yLo, yHi, .31, walkers, person);
         resolveCarObstacles(candidate, yLo, yHi, .31, cars);
         resolveHelicopterBodies(candidate, yLo, yHi, .31, helis);
         resolveAirVehicleObstacles(candidate, yLo, yHi, .31, airVehicles);
-        collider.resolve(candidate, person.y + .35, yHi, .31);
+        collider.resolve(candidate, person.y + .58, yHi, .31);
         return candidate;
       };
       let next = resolveMove({ x: person.x + nx * stepLength, z: person.z + nz * stepLength });
       let bestAdvance = distance - Math.hypot(target.x - next.x, target.z - next.z);
-      // If a wall, bench, person or parked vehicle blocks the direct line, try two smooth side steps.
-      if (bestAdvance < stepLength * .28) {
-        for (const side of [-1, 1]) {
-          const sx = nx * .72 - nz * .69 * side, sz = nz * .72 + nx * .69 * side;
+      let bestScore = bestAdvance;
+      // Sample several smooth steering angles; prefer progress without pushing through people or walls.
+      if (bestAdvance < stepLength * .42) {
+        for (const angle of [-1.05, -.68, -.34, .34, .68, 1.05]) {
+          const sx = nx * Math.cos(angle) - nz * Math.sin(angle);
+          const sz = nz * Math.cos(angle) + nx * Math.sin(angle);
           const candidate = resolveMove({ x: person.x + sx * stepLength, z: person.z + sz * stepLength });
           const advance = distance - Math.hypot(target.x - candidate.x, target.z - candidate.z);
-          if (advance > bestAdvance + .015) { bestAdvance = advance; next = candidate; }
+          const score = advance + Math.max(0, sx * nx + sz * nz) * stepLength * .08;
+          if (score > bestScore + .012) { bestScore = score; bestAdvance = advance; next = candidate; }
         }
       }
       const movedX = next.x - person.x, movedZ = next.z - person.z;
@@ -371,7 +461,14 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
       person.phase += (moved / Math.max(dt, .001)) * dt * 2.1;
       if (person.stuck > 2.2) {
         person.stuck = 0;
-        person.waypoint = (person.waypoint + 1) % person.route.length;
+        if (following) {
+          person.followPlayer = false;
+          person.bubbleText = "יש כאן מכשול, אמשיך מכאן בסיור שלי.";
+          person.bubbleUntil = now + 2.8;
+          person.visitCountdown = 4;
+        } else {
+          person.waypoint = (person.waypoint + 1) % person.route.length;
+        }
       }
       if (rig.root) {
         rig.root.position.set(person.x, person.y, person.z);

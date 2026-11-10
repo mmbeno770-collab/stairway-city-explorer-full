@@ -25,6 +25,8 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "") {
   const text = String(message || "").trim().toLocaleLowerCase("he");
   const pick = (choices) => choices[Math.abs(turnCount) % choices.length];
   if (!text) return "לא שמעתי אותך. מה רצית לשאול?";
+  if (/(בוא איתי|בוא אחריי|תעקוב אחרי|תעקוב אחריי|תצטרף אלי|תצטרף אליי)/.test(text)) return "בשמחה! אתקדם אחריך ואנסה לשמור על מרחק נוח. לאן הולכים?";
+  if (/(תפסיק לעקוב|אל תעקוב|תישאר כאן|תחזור לסיור|תפסיק לבוא)/.test(text)) return "בסדר גמור. אני אשאר כאן ואמשיך את הסיור שלי.";
   if (/(שלום|היי|אהלן|בוקר טוב|ערב טוב)/.test(text)) return pick(["שלום! נחמד לפגוש אותך כאן בעיר.", "אהלן! יצאתי לסיבוב קטן. מה שלומך?", "שלום! אולי ניפגש באחד הבניינים."]);
   if (/(איך קוראים לך|מה השם שלך|מי אתה)/.test(text)) return "קוראים לי " + name + ". אני תושב וירטואלי שאוהב להסתובב ולגלות מקומות בעיר.";
   if (/(אתה אמיתי|אתה בן אדם|אתה רובוט|אתה ai|בינה מלאכותית)/.test(text)) return "אני דמות AI במשחק. יש לי מסלולים, הרגלים ותגובות, ואני יכול לשוחח איתך על העיר.";
@@ -34,6 +36,7 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "") {
   if (/(איפה|מיקום|בניין|קומה|מדרגות|גג)/.test(text)) return pick(["יש כאן הרבה בניינים. הדלתות מובילות ללובי, ומשם אפשר לעלות במדרגות.", "אני אוהב לעלות לקומות הגבוהות ולראות את העיר מלמעלה.", "אפשר להיכנס לבניינים ולגלות שבכל קומה יש חלל אחר."]);
   if (/(מכונית|רכב|אוטובוס|ג'יפ|חניון|מירוץ)/.test(text)) return pick(["בחניון המרכזי יש מכוניות, ג'יפ, אוטובוס ומכונית מרוץ.", "אני אוהב לעמוד ליד הכביש ולראות את התנועה. יש כאן כמה כלי רכב מעניינים.", "אפשר לבחור רכב, להיכנס אליו ולנסוע ברחובות העיר."]);
   if (/(מטוס|מסוק|טס|טיסה|טסלה|רכבל)/.test(text)) return pick(["אפשר להטיס מסוק או מטוס ולראות את העיר מלמעלה.", "הטסלה המעופפת מיוחדת מאוד. היא יכולה לעלות ולרדת באוויר.", "הרכבל עובר בין ארבע תחנות ומציע נוף יפה של כל העיר."]);
+  if (/(תושב|אנשים|דמויות|תושבים|ai|בינה)/.test(text)) return pick(["לכל אחד מאיתנו יש מסלול משלו, ואנחנו יכולים לעבור בין בניינים ולפגוש תושבים אחרים.", "אנחנו מסתובבים בעיר, עוקפים מכשולים, עוצרים לשיחות ומבקרים במקומות שונים.", "אפשר לבקש ממני לבוא איתך, או לבקש שאמשיך בסיור עצמאי."]);
   if (/(מזג אוויר|גשם|שמש|סערה|עננים)/.test(text)) return "אפשר לשנות את מזג האוויר ואת השעה בלוח הסביבה שבצד המסך.";
   if (/(תודה|מעולה|יופי|נהדר)/.test(text)) return pick(["בשמחה! תמיד נחמד לפגוש תושבים חדשים.", "אין בעד מה. שיהיה לך טיול נעים!", "בכיף! אולי נתראה בהמשך הסיבוב."]);
   if (/(להתראות|ביי|שלום לך)/.test(text)) return "להתראות! אני ממשיך לטייל בעיר.";
@@ -45,12 +48,12 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "") {
 
 function ScenicHills() {
   const hills = [
-    { p: [0, -4.5, -157], s: [78, 10, 30], c: "#78945f" },
-    { p: [0, -5, 157], s: [72, 11, 34], c: "#6f8e58" },
-    { p: [-160, -4.5, 0], s: [30, 10, 78], c: "#829b65" },
-    { p: [160, -5, 0], s: [32, 11, 72], c: "#718d57" },
-    { p: [-145, -6, -145], s: [40, 8, 34], c: "#8da36c" },
-    { p: [145, -6, 145], s: [42, 8, 36], c: "#81995f" }
+    { p: [0, -4.5, -205], s: [84, 12, 38], c: "#78945f" },
+    { p: [0, -5, 205], s: [82, 12, 40], c: "#6f8e58" },
+    { p: [-205, -4.5, 0], s: [38, 12, 84], c: "#829b65" },
+    { p: [205, -5, 0], s: [40, 12, 82], c: "#718d57" },
+    { p: [-198, -6, -198], s: [34, 8, 34], c: "#8da36c" },
+    { p: [198, -6, 198], s: [36, 8, 36], c: "#81995f" }
   ];
   return h(React.Fragment, null, hills.map((hill, i) =>
     h("mesh", { key: i, position: hill.p, scale: hill.s, receiveShadow: true },
@@ -292,6 +295,46 @@ function CableCabin({ doorsRef = null }) {
   );
 }
 
+function CableStationLadder({ station }) {
+  const rungs = useRef(null);
+  const ladderX = station.x - 5.2;
+  const rungCount = Math.max(1, Math.ceil(station.y / .38));
+
+  useEffect(() => {
+    const mesh = rungs.current;
+    if (!mesh) return;
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < rungCount; i++) {
+      dummy.position.set(ladderX, station.y * (i + 1) / (rungCount + 1), station.z);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [ladderX, rungCount, station]);
+
+  return h("group", null,
+    ...[-.58, .58].map((dz) => h("mesh", {
+      key: "ladder-rail-" + dz,
+      position: [ladderX, (station.y + 1.15) / 2, station.z + dz],
+      castShadow: true
+    },
+      h("boxGeometry", { args: [.16, station.y + 1.15, .16] }),
+      h("meshStandardMaterial", { color: "#d0ae70", metalness: .78, roughness: .28 })
+    )),
+    h("instancedMesh", { ref: rungs, args: [undefined, undefined, rungCount], castShadow: true },
+      h("boxGeometry", { args: [.17, .11, 1.22] }),
+      h("meshStandardMaterial", { color: "#d8bd84", metalness: .72, roughness: .3 })
+    ),
+    h("mesh", { position: [ladderX, station.y + .18, station.z], castShadow: true },
+      h("boxGeometry", { args: [.18, .12, 1.3] }),
+      h("meshStandardMaterial", { color: "#f0d49b", metalness: .72, roughness: .28 })
+    )
+  );
+}
+
 function Cableway({ ride, curve }) {
   const autonomous = useRef([]), passengerCabin = useRef(null);
   const loop = [...CABLE_STATIONS.map((station) => station.id), CABLE_STATIONS[0].id];
@@ -353,18 +396,7 @@ function Cableway({ ride, curve }) {
         h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })
       ));
     }
-    const ladderX = station.x - 5.2;
-    const ladderCount = Math.ceil(station.y / 2.3);
-    const ladder = [
-      ...[-.58, .58].map((dz) => h("mesh", { key: "ladder-rail-" + dz, position: [ladderX, station.y / 2, station.z + dz] },
-        h("boxGeometry", { args: [.16, station.y, .16] }),
-        h("meshStandardMaterial", { color: "#d0ae70", metalness: .78, roughness: .28 })
-      )),
-      ...Array.from({ length: ladderCount }, (_, i) => h("mesh", { key: "rung-" + i, position: [ladderX, station.y * (i + 1) / (ladderCount + 1), station.z] },
-        h("boxGeometry", { args: [.17, .12, 1.22] }),
-        h("meshStandardMaterial", { color: "#d8bd84", metalness: .72, roughness: .3 })
-      ))
-    ];
+    const ladder = h(CableStationLadder, { station });
     const top = station.y + 6.65;
     const stationPulleys = [-1.15, 0, 1.15].map((offset) =>
       h("mesh", { key: "station-pulley-" + offset, position: [station.x + offset, top, station.z], rotation: [Math.PI / 2, 0, 0] },
@@ -377,7 +409,7 @@ function Cableway({ ride, curve }) {
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [2.5, .2, .2] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
       h("mesh", { position: [station.x, station.y + 6.55, station.z] }, h("boxGeometry", { args: [.2, .2, 2.5] }), h("meshStandardMaterial", { color: "#596a70", metalness: .86, roughness: .28 })),
       h("mesh", { position: [station.x, station.y + .035, station.z] }, h("boxGeometry", { args: [13.8, .06, 8.4] }), h("meshStandardMaterial", { color: "#4b5a5e", metalness: .78, roughness: .3 })),
-      ...ladder
+      ladder
     );
   });
 
@@ -609,7 +641,7 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, hudTimer: 0, cameraReady: false, lastPrompt: "" });
   const heliEnv = useMemo(() => ({ ground: (x, z, y) => col.groundAt(x, z, y, .6, 1), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStates, airVehicles]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
   const airEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignoreVehicle) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles, ignoreVehicle); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
@@ -666,26 +698,29 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
       camTarget.set(p.x, p.y + 1.35, p.z);
     } else if (s.mode === "cable-ladder") {
       const station = CABLE_STATIONS[s.cableStation] || CABLE_STATIONS[0];
-      const climbing = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0) + inp.joy.y;
-      if (s.cableDescending) {
-        p.y = Math.max(0, p.y - Math.max(0, -climbing) * 6.2 * dt);
-        if (p.y <= .04) {
-          p.set(station.x - 5.2, 0, station.z); s.cableDescending = false; s.cableStation = -1;
-          s.mode = "walk"; s.v.set(0, 0, 0); onMode("walk"); onPrompt("");
-        }
-      } else {
-        p.y = Math.min(station.y, p.y + Math.max(0, climbing) * 6.2 * dt);
-        if (p.y >= station.y - .03) {
-          p.set(station.x - 5.2, station.y, station.z);
-          s.mode = "cable-platform"; onMode("cable-platform");
-          const previous = (s.cableStation + CABLE_STATIONS.length - 1) % CABLE_STATIONS.length;
-          cableRide.current = { active: false, approaching: true, docked: false, station: s.cableStation, route: [previous, s.cableStation], progress: .91, doorsOpen: false };
-          s.lastPrompt = ""; onPrompt("הגעתם לרציף — הקרונית מתקרבת");
-        }
+      const climbingInput = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0) + inp.joy.y;
+      const climbRate = 2.8;
+      const climbDirection = s.cableDescending ? -1 : 1;
+      const climbSpeed = (s.cableDescending ? Math.max(0, -climbingInput) : Math.max(0, climbingInput)) * climbRate;
+      if (climbSpeed > .02) {
+        p.y = THREE.MathUtils.clamp(p.y + climbSpeed * climbDirection * dt, 0, station.y);
+        s.climbPhase += climbSpeed * dt * 1.55;
       }
-      if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
-      poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
-      camTarget.set(p.x, p.y + 1.55, p.z); camDist = 7;
+      if (s.cableDescending && p.y <= .025) {
+        p.set(station.x - 5.55, .02, station.z);
+        s.cableDescending = false; s.cableStation = -1; s.climbPhase = 0;
+        s.mode = "walk"; s.v.set(0, 0, 0); s.face = -Math.PI / 2; onMode("walk"); onPrompt("");
+      } else if (!s.cableDescending && p.y >= station.y - .025) {
+        p.set(station.x - 3.7, station.y, station.z);
+        s.climbPhase = 0; s.face = Math.PI / 2;
+        s.mode = "cable-platform"; onMode("cable-platform");
+        const previous = (s.cableStation + CABLE_STATIONS.length - 1) % CABLE_STATIONS.length;
+        cableRide.current = { active: false, approaching: true, docked: false, station: s.cableStation, route: [previous, s.cableStation], progress: .91, doorsOpen: false };
+        s.lastPrompt = ""; onPrompt("הגעתם לרציף — הקרונית מתקרבת");
+      }
+      if (root) { root.position.copy(p); root.rotation.set(0, s.face, Math.sin(s.climbPhase) * .025); }
+      poseHuman(rig, { mode: "climb", phase: s.climbPhase, speed: climbSpeed, direction: climbDirection, air: false, t: s.t, dt });
+      camTarget.set(p.x + .4, p.y + 1.25, p.z); camDist = 4.6;
     } else if (s.mode === "cable-platform") {
       const station = CABLE_STATIONS[s.cableStation] || CABLE_STATIONS[0];
       const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
@@ -719,7 +754,8 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
           onMode("cable"); onPrompt("↑ / W — קדימה · ↓ / S — אחורה · F — יציאה ליד תחנה");
           onHud("רכבל · ↑ קדימה · ↓ אחורה · F יציאה בתחנה");
         } else if (atLadder) {
-          s.cableDescending = true; s.mode = "cable-ladder"; s.v.set(0, 0, 0); s.lastPrompt = "";
+          s.cableDescending = true; s.climbPhase = 0; p.x = station.x - 5.55; p.z = station.z; s.face = Math.PI / 2;
+          s.mode = "cable-ladder"; s.v.set(0, 0, 0); s.lastPrompt = "";
           onMode("cable-ladder"); onPrompt("החזיקו ↓ / S כדי לרדת בסולם");
         } else if (currentRide?.approaching) onPrompt("הקרונית עדיין מתקרבת — המתינו ליד הרציף");
         else onPrompt("התקרבו לדלת הקרונית או לסולם");
@@ -848,8 +884,10 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
         else if (it.type === "elevator" && world.elevator) { s.elevatorFloor = Math.max(-1, Math.min(world.elevator.floors - 1, Math.floor(it.floor ?? 0))); p.set(world.elevator.x, s.elevatorFloor * 4 + .22, world.elevator.z); elevatorY.current = s.elevatorFloor * 4; s.mode = "elevator"; onMode("elevator"); onElevatorMenu({ floors: world.elevator.floors, current: s.elevatorFloor }); }
         else if (it.type === "cable") {
           s.cableStation = Math.max(0, Math.min(CABLE_STATIONS.length - 1, it.stationId || 0));
-          s.cableDescending = false; p.set(it.x, 0, it.z); s.mode = "cable-ladder"; s.v.set(0, 0, 0);
-          onMode("cable-ladder"); onPrompt("החזיקו ↑ / W כדי לטפס לתחנת הרכבל");
+          s.cableDescending = false; s.climbPhase = 0;
+          p.set(it.x - .35, 0, it.z); s.face = Math.PI / 2;
+          s.mode = "cable-ladder"; s.v.set(0, 0, 0);
+          onMode("cable-ladder"); onPrompt("החזיקו ↑ / W כדי לטפס — הידיים והרגליים נעות יחד עם הסולם");
         }
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
@@ -1032,6 +1070,24 @@ export default function Game() {
     event.preventDefault();
     const message = chatDraft.trim().slice(0, 220);
     if (!message || !conversation) return;
+    const currentPerson = citizensRef.current.find((item) => item.id === conversation.personId);
+    const followCommand = /(בוא איתי|בוא אחריי|תעקוב אחרי|תעקוב אחריי|תצטרף אלי|תצטרף אליי)/.test(message);
+    const stopFollowCommand = /(תפסיק לעקוב|אל תעקוב|תישאר כאן|תחזור לסיור|תפסיק לבוא)/.test(message);
+    if (currentPerson && followCommand) {
+      currentPerson.followPlayer = true;
+      currentPerson.visiting = false;
+      currentPerson.visitTarget = null;
+      currentPerson.wait = 0;
+      currentPerson.stuck = 0;
+    } else if (currentPerson && stopFollowCommand) {
+      currentPerson.followPlayer = false;
+      currentPerson.visiting = false;
+      currentPerson.visitTarget = null;
+      currentPerson.route = currentPerson.sidewalkRoute;
+      currentPerson.waypoint = 0;
+      currentPerson.visitCountdown = 3;
+      currentPerson.wait = .25;
+    }
     const topic = /(בניין|קומה|דלת|מדרגות|גג|לובי)/.test(message) ? "buildings" : /(רכב|מכונית|אוטובוס|ג'יפ|חניון)/.test(message) ? "vehicles" : conversation.topic;
     const reply = makeNpcReply(conversation.npcName, message, conversation.messages.length, conversation.topic);
     if (conversationRef.current) conversationRef.current = { ...conversationRef.current, bubbleText: reply };

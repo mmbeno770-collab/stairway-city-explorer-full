@@ -4,6 +4,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { Human, poseHuman } from "./human.js";
 import { Collider, BLOCK, CITY_HALF } from "./world.js";
+import { makeElevatorTrip, advanceElevatorTrip } from "./elevator-sim.js";
 import { stepCar, resolveCarObstacles } from "./car-sim.js";
 import { stepHeli } from "./heli-sim.js";
 import { stepAirVehicle, resolveAirVehicleObstacles } from "./air-vehicle-sim.js";
@@ -56,12 +57,29 @@ function findBuildingDoor(world, building) {
   return world.interactables.findIndex((item) => item.type === "door" && Math.abs(item.x - doorX) < .16 && Math.abs(item.z - doorZ) < .16);
 }
 
-function makeBuildingVisitRoute(building, world) {
+function makeBuildingVisitRoute(building, world, useElevator = false) {
   const doorIndex = findBuildingDoor(world, building);
   const door = doorIndex >= 0 ? world.interactables[doorIndex] : null;
   const doorX = door?.x ?? (building.x0 + building.x1) * .5;
   const doorZ = door?.z ?? building.z0 + .3;
   const approach = { x: doorX, z: doorZ - 2.35 };
+  const lift = world.elevators?.[building.elevatorId];
+
+  if (useElevator && lift) {
+    return [
+      { ...approach, action: "open" },
+      { x: doorX, z: doorZ + 1.05 },
+      { x: doorX, z: doorZ + 2.7 },
+      { x: lift.approachX, z: lift.z, action: "elevatorUp" },
+      { x: lift.approachX - 1.1, z: lift.z + 1.7, action: "pause" },
+      { x: lift.approachX, z: lift.z, action: "elevatorDown" },
+      { x: doorX, z: doorZ + 2.7 },
+      { x: doorX, z: doorZ + 1.05 },
+      approach,
+      { ...approach, action: "close" }
+    ];
+  }
+
   const stair = building.basementStairwell;
   const stairEntry = stair ? { x: stair.x0 + 1, z: stair.z0 - .45 } : { x: doorX, z: doorZ + 3.2 };
   const stairs = makeStairTour(building);
@@ -198,8 +216,8 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
     const point = route[(i * 3) % route.length];
     walkers.push({
       id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], rig: {},
-      building, route, sidewalkRoute: route, visitRoute: makeBuildingVisitRoute(building, world),
-      visitTarget: null, followPlayer: false,
+      building, route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
+      visitTarget: null, followPlayer: false, ridingElevator: false, elevatorId: -1, elevatorTrip: null, elevatorDestination: 0,
       doorIndex: findBuildingDoor(world, building), waypoint: (i * 3 + 1) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
       yaw: i * .71, speed: 1.25 + (i % 7) * .22, phase: i * 1.2,
@@ -253,7 +271,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   return { walkers, drivers, airPilots, heliPilots, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
 }
 
-export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle }) {
+export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle }) {
   const collider = useMemo(() => new Collider(world.boxes), [world]);
   const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider), [world, cars, helis, airVehicles, collider]);
   if (citizensRef) citizensRef.current = sim.walkers;
@@ -300,6 +318,46 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
       person.greetCooldown = Math.max(0, person.greetCooldown - dt);
       person.socialCooldown = Math.max(0, person.socialCooldown - dt);
       if (person.bubbleUntil <= now) person.bubbleText = "";
+      if (person.ridingElevator && person.elevatorTrip) {
+        const lift = elevatorCars[person.elevatorId];
+        if (!lift) {
+          person.ridingElevator = false;
+          person.elevatorTrip = null;
+        } else {
+          const travel = advanceElevatorTrip(person.elevatorTrip, dt);
+          lift.y.current = travel.y;
+          lift.moving.current = !travel.done;
+          person.x = lift.layout.x;
+          person.y = travel.y + .22;
+          person.z = lift.layout.z;
+          if (rig.root) {
+            rig.root.position.set(person.x, person.y, person.z);
+            rig.root.rotation.y = person.yaw;
+            rig.root.visible = true;
+          }
+          poseHuman(rig, { mode: "walk", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+          if (travel.done) {
+            lift.y.current = person.elevatorTrip.to;
+            lift.moving.current = false;
+            if (lift.occupant === person.id) lift.occupant = null;
+            person.ridingElevator = false;
+            person.elevatorTrip = null;
+            const nextTarget = person.route[person.waypoint];
+            if (person.elevatorDestination > .05 && nextTarget) {
+              person.x = nextTarget.x;
+              person.z = nextTarget.z;
+              person.y = person.elevatorDestination;
+            } else {
+              person.x = lift.layout.approachX - .35;
+              person.z = lift.layout.z;
+              person.y = 0;
+            }
+            person.elevatorDestination = 0;
+            if (rig.root) rig.root.position.set(person.x, person.y, person.z);
+          }
+          continue;
+        }
+      }
       if (conversationRef?.current?.personId === person.id) {
         const player = playerPositionRef?.current;
         if (player) person.yaw = Math.atan2(player.x - person.x, player.z - person.z);
@@ -335,7 +393,8 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
       if (!person.visiting && !person.followPlayer && person.visitCountdown <= 0) {
         const destination = chooseAdjacentBuilding(person, world);
         person.visitTarget = destination;
-        person.visitRoute = makeBuildingVisitRoute(destination, world);
+        person.usesElevator = nextRandom(person) < .42;
+        person.visitRoute = makeBuildingVisitRoute(destination, world, person.usesElevator);
         person.doorIndex = findBuildingDoor(world, destination);
         person.visiting = true;
         person.route = routeToVisit(person, destination, world);
@@ -390,6 +449,33 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
       if (distance < threshold) {
         if (following) {
           person.wait = .12;
+        } else if (target.action === "elevatorUp" || target.action === "elevatorDown") {
+          const elevatorId = (person.visitTarget || person.building).elevatorId;
+          const lift = elevatorCars[elevatorId];
+          if (!lift || (lift.occupant && lift.occupant !== person.id)) {
+            person.actionWait = .45;
+          } else {
+            const maxPassengerFloor = Math.max(1, lift.layout.floors - 2);
+            const destinationFloor = target.action === "elevatorUp"
+              ? 1 + Math.floor(nextRandom(person) * maxPassengerFloor)
+              : 0;
+            const destinationY = destinationFloor * 4;
+            if (Math.abs(lift.y.current - destinationY) < .08) {
+              lift.y.current = destinationY;
+              person.waypoint++;
+            } else {
+              lift.occupant = person.id;
+              lift.moving.current = true;
+              person.elevatorId = elevatorId;
+              person.elevatorDestination = destinationY;
+              person.elevatorTrip = makeElevatorTrip(lift.y.current, destinationY, "citizen");
+              person.ridingElevator = true;
+              person.waypoint++;
+            }
+          }
+        } else if (target.action === "pause") {
+          person.waypoint++;
+          person.wait = Math.max(person.wait, 1.35);
         } else if (target.action) {
           const doorOpen = !!doorStatesRef?.current?.[person.doorIndex];
           if (person.doorIndex >= 0 && ((target.action === "open" && !doorOpen) || (target.action === "close" && doorOpen))) onDoorToggle?.(person.doorIndex);
@@ -403,7 +489,7 @@ export function Citizens({ world, cars, helis, airVehicles, activeVehicleRef, ci
               if (person.visitTarget) {
                 person.building = person.visitTarget;
                 person.sidewalkRoute = makeWalkRoute(person.building);
-                person.visitRoute = makeBuildingVisitRoute(person.building, world);
+                person.visitRoute = makeBuildingVisitRoute(person.building, world, person.usesElevator);
                 person.doorIndex = findBuildingDoor(world, person.building);
               }
               person.visitTarget = null;

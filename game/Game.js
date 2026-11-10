@@ -637,11 +637,11 @@ function ParkingModels({ airVehicles }) {
     )
   );
 }
-function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, onTalk }) {
+function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStates, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, onTalk }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
   const heliEnv = useMemo(() => ({ ground: (x, z, y) => col.groundAt(x, z, y, .6, 1), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStates, airVehicles]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
   const airEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignoreVehicle) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles, ignoreVehicle); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
@@ -667,12 +667,18 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
     if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
-      if (chosen === -2) { s.mode = "walk"; onMode("walk"); p.set(world.elevator.approachX, s.elevatorFloor * 4, world.elevator.z); onPrompt(""); }
-      else {
-        const from = elevatorY.current, to = floorHeight(chosen, world.elevator.floors);
+      const elevatorCar = elevatorCars[s.elevatorId];
+      if (!elevatorCar) {
+        s.mode = "walk"; s.elevatorId = -1; onMode("walk"); onPrompt("המעלית לא זמינה כרגע");
+      } else if (chosen === -2) {
+        elevatorCar.occupant = null; elevatorCar.moving.current = false;
+        s.mode = "walk"; p.set(elevatorCar.layout.approachX - .35, s.elevatorFloor * 4, elevatorCar.layout.z);
+        s.elevatorId = -1; onMode("walk"); onPrompt("");
+      } else {
+        const from = elevatorCar.y.current, to = floorHeight(chosen, elevatorCar.layout.floors);
         s.elevatorFloor = chosen;
         if (Math.abs(from - to) < .08) onPrompt("F / פעולה — לצאת מהמעלית");
-        else { s.elevatorTrip = makeElevatorTrip(from, to, "ride"); elevatorMoving.current = true; onPrompt(""); }
+        else { s.elevatorTrip = makeElevatorTrip(from, to, "ride"); elevatorCar.moving.current = true; onPrompt(""); }
       }
     }
     s.yaw -= inp.drag.dx * .005; s.pitch = THREE.MathUtils.clamp(s.pitch + inp.drag.dy * .004, -.35, 1.25); inp.drag.dx = inp.drag.dy = 0;
@@ -687,12 +693,23 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
     const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), jump = keys.has("Space") || inp.up;
     let camTarget = new THREE.Vector3(p.x, p.y + 1.5, p.z), camDist = s.dist, followYaw = null;
     if (s.mode === "elevator") {
-      if (s.elevatorTrip) {
-        const travel = advanceElevatorTrip(s.elevatorTrip, dt); elevatorY.current = travel.y; elevatorMoving.current = !travel.done;
-        p.set(world.elevator.x, travel.y + .22, world.elevator.z);
-        if (travel.done) { s.elevatorTrip = null; s.elevatorFloor = Math.round(travel.y / 4); elevatorMoving.current = false; onPrompt("F / פעולה — לצאת מהמעלית"); }
+      const elevatorCar = elevatorCars[s.elevatorId];
+      if (!elevatorCar) {
+        s.mode = "walk"; s.elevatorId = -1; onMode("walk"); onPrompt("יצאתם מהמעלית");
+      } else {
+        const layout = elevatorCar.layout;
+        if (s.elevatorTrip) {
+          const travel = advanceElevatorTrip(s.elevatorTrip, dt);
+          elevatorCar.y.current = travel.y; elevatorCar.moving.current = !travel.done;
+          p.set(layout.x, travel.y + .22, layout.z);
+          if (travel.done) { s.elevatorTrip = null; s.elevatorFloor = Math.round(travel.y / 4); elevatorCar.moving.current = false; onPrompt("F / פעולה — לצאת מהמעלית"); }
+        }
+        if (act && !s.elevatorTrip) {
+          elevatorCar.occupant = null; elevatorCar.moving.current = false;
+          p.set(layout.approachX - .35, s.elevatorFloor * 4, layout.z);
+          s.elevatorId = -1; s.mode = "walk"; onMode("walk"); onPrompt("");
+        }
       }
-      if (act && !s.elevatorTrip) { p.x = world.elevator.approachX - .35; p.y = s.elevatorFloor * 4; s.mode = "walk"; onMode("walk"); onPrompt(""); }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.35, p.z);
@@ -806,11 +823,21 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
       if (jump && s.onGround) { s.v.y = JUMP; s.onGround = false; }
       s.v.y -= GRAVITY * dt;
       const next = { x: p.x + s.v.x * dt, z: p.z + s.v.z * dt };
-      col.resolve(next, p.y + STEP, p.y + HEIGHT, RAD); resolveCarObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, cars); resolveHelicopterObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, helis); resolveAirVehicleObstacles(next, p.y + STEP, p.y + HEIGHT, RAD, airVehicles); resolveClosedDoors(next, p.y + STEP, p.y + HEIGHT, RAD, world, doorStates); p.x = next.x; p.z = next.z;
+      const stairwell = world.buildings.some((building) => {
+        const stair = building.basementStairwell;
+        return stair && p.x >= stair.x0 - .55 && p.x <= stair.x1 + .55 && p.z >= stair.z0 - .55 && p.z <= stair.z1 + .55;
+      });
+      const stepHeight = stairwell ? .58 : STEP;
+      col.resolve(next, p.y + stepHeight, p.y + HEIGHT, RAD);
+      resolveCarObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, cars);
+      resolveHelicopterObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, helis);
+      resolveAirVehicleObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, airVehicles);
+      resolveClosedDoors(next, p.y + stepHeight, p.y + HEIGHT, RAD, world, doorStates);
+      p.x = next.x; p.z = next.z;
       let ny = p.y + s.v.y * dt, ceiling = col.ceilingAt(p.x, p.z, p.y + HEIGHT - .05);
       if (ny + HEIGHT > ceiling && s.v.y > 0) { ny = ceiling - HEIGHT; s.v.y = 0; }
-      const ground = col.groundAt(p.x, p.z, p.y, STEP);
-      if (ny <= ground || (s.onGround && s.v.y <= 0 && ny - ground < STEP)) { ny = ground; s.v.y = 0; s.onGround = true; } else s.onGround = false;
+      const ground = col.groundAt(p.x, p.z, p.y, stepHeight, stairwell ? .14 : RAD);
+      if (ny <= ground || (s.onGround && s.v.y <= 0 && ny - ground < stepHeight)) { ny = ground; s.v.y = 0; s.onGround = true; } else s.onGround = false;
       p.y = ny;
       if (p.y < -20) { p.set(...world.spawn); s.v.set(0, 0, 0); }
       s.timer -= dt;
@@ -881,7 +908,20 @@ function Player({ world, helis, cars, airVehicles, activeVehicleRef, input, onLo
           onPrompt(entering ? "נכנסתם למחסן · F ליד המדרגות לחזרה" : "חזרתם לקומת הקרקע");
           s.lastPrompt = entering ? "נכנסתם למחסן" : "";
         }
-        else if (it.type === "elevator" && world.elevator) { s.elevatorFloor = Math.max(-1, Math.min(world.elevator.floors - 1, Math.floor(it.floor ?? 0))); p.set(world.elevator.x, s.elevatorFloor * 4 + .22, world.elevator.z); elevatorY.current = s.elevatorFloor * 4; s.mode = "elevator"; onMode("elevator"); onElevatorMenu({ floors: world.elevator.floors, current: s.elevatorFloor }); }
+        else if (it.type === "elevator") {
+          const elevatorId = Number(it.elevatorId), elevatorCar = elevatorCars[elevatorId];
+          if (!elevatorCar) onPrompt("המעלית לא זמינה כרגע");
+          else if (elevatorCar.occupant && elevatorCar.occupant !== "player") onPrompt("המעלית בשימוש — נסו שוב בעוד רגע");
+          else {
+            const layout = elevatorCar.layout;
+            s.elevatorId = elevatorId;
+            s.elevatorFloor = Math.max(-1, Math.min(layout.floors - 1, Math.floor(it.floor ?? 0)));
+            elevatorCar.occupant = "player"; elevatorCar.y.current = s.elevatorFloor * 4; elevatorCar.moving.current = false;
+            p.set(layout.x, s.elevatorFloor * 4 + .22, layout.z);
+            s.mode = "elevator"; onMode("elevator");
+            onElevatorMenu({ elevatorId, buildingName: layout.buildingName, floors: layout.floors, current: s.elevatorFloor });
+          }
+        }
         else if (it.type === "cable") {
           s.cableStation = Math.max(0, Math.min(CABLE_STATIONS.length - 1, it.stationId || 0));
           s.cableDescending = false; s.climbPhase = 0;
@@ -1040,7 +1080,8 @@ export default function Game() {
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("high");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
-  const doorRef = useRef({}), elevatorY = useRef(0), elevatorMoving = useRef(false), cableRide = useRef({ active: false, route: [], progress: 0 });
+  const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 });
+  const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
@@ -1134,10 +1175,10 @@ export default function Game() {
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
-        h(DoorSet, { world, doorStates }), world.elevator && h(ElevatorModel, { layout: world.elevator, y: elevatorY, moving: elevatorMoving }),
+        h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
-        h(Citizens, { world, cars, helis, airVehicles, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor }),
-        h(Player, { world, helis, cars, airVehicles, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, elevatorY, elevatorMoving, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
+        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor }),
+        h(Player, { world, helis, cars, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStates: doorRef.current, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -1167,7 +1208,7 @@ export default function Game() {
       )
     ),
     elevatorMenu && h("div", { className: "elevator-dialog", role: "dialog", "aria-label": "בחירת קומה במעלית" },
-      h("h3", null, "מעלית · בחירת קומה"),
+      h("h3", null, elevatorMenu.buildingName ? "מעלית · " + elevatorMenu.buildingName : "מעלית · בחירת קומה"),
       h("div", { className: "elevator-floor-grid" }, [h("button", { key: -1, className: elevatorMenu.current === -1 ? "selected" : "", onClick: () => { input.current.elevatorFloor = -1; } }, "מחסן ‎-1"), ...Array.from({ length: elevatorMenu.floors }, (_, index) => { const floor = index; return h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`); })]),
       h("button", { className: "elevator-cancel", onClick: () => { input.current.action = true; } }, "יציאה מהמעלית")
     ),

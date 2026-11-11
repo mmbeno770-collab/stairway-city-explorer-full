@@ -426,6 +426,30 @@ function Cableway({ ride, curve }) {
 function Boxes({ world, kind }) {
   const ref = useRef(null);
   const list = useMemo(() => world.boxes.filter((b) => b.kind === kind), [world, kind]);
+  const surfaceTexture = useMemo(() => {
+    if (kind !== "solid") return null;
+    const size = 96, canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    const image = context.createImageData(size, size);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const index = (y * size + x) * 4;
+      let hash = (Math.imul(x + 9, 1597334677) ^ Math.imul(y + 3, 3812015801)) >>> 0;
+      hash = Math.imul(hash ^ (hash >>> 15), 2246822519) >>> 0;
+      const grain = 188 + (hash & 63);
+      image.data[index] = grain; image.data[index + 1] = grain; image.data[index + 2] = grain; image.data[index + 3] = 255;
+    }
+    context.putImageData(image, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.anisotropy = 4;
+    texture.needsUpdate = true;
+    return texture;
+  }, [kind]);
+  useEffect(() => () => surfaceTexture?.dispose(), [surfaceTexture]);
   useEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
@@ -440,7 +464,7 @@ function Boxes({ world, kind }) {
     mesh.computeBoundingSphere();
   }, [list]);
   const material = kind === "solid"
-    ? h("meshStandardMaterial", { roughness: .8, metalness: .02 })
+    ? h("meshStandardMaterial", { roughness: .84, metalness: .025, roughnessMap: surfaceTexture, bumpMap: surfaceTexture, bumpScale: .016 })
     : kind === "glass"
       ? h("meshPhysicalMaterial", { transparent: true, opacity: .32, roughness: .05, metalness: .3, envMapIntensity: 1.5, depthWrite: false })
       : h("meshBasicMaterial", { toneMapped: false });
@@ -1066,7 +1090,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
-    h("directionalLight", { position: [50, 85, 45], intensity: 2.0, color: "#fff0d1", castShadow: true, "shadow-mapSize": [quality === "high" ? 2048 : 1024, quality === "high" ? 2048 : 1024], "shadow-camera-left": -45, "shadow-camera-right": 45, "shadow-camera-top": 45, "shadow-camera-bottom": -45 }),
+    h("directionalLight", { position: [50, 105, 45], intensity: 2.1, color: "#fff0d1", castShadow: true, "shadow-mapSize": [quality === "high" ? 3072 : quality === "balanced" ? 2048 : 1024, quality === "high" ? 3072 : quality === "balanced" ? 2048 : 1024], "shadow-camera-left": -185, "shadow-camera-right": 185, "shadow-camera-top": 185, "shadow-camera-bottom": -185, "shadow-camera-near": 1, "shadow-camera-far": 420, "shadow-bias": -0.00018, "shadow-normalBias": 0.025, "shadow-radius": quality === "high" ? 4 : 2 }),
     h(Human, { rig })
   );
 }
@@ -1167,13 +1191,13 @@ export default function Game() {
         h("color", { attach: "background", args: [environment.skyColor] }), h("fog", { attach: "fog", args: [environment.fogColor, environment.fogNear, environment.fogFar] }),
         h(Sky, { sunPosition: environment.sunPosition, turbidity: environment.turbidity, rayleigh: 1.2 + environment.daylight * .5, mieCoefficient: weather === "fog" ? .012 : .004 }),
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
-        h(Environment, { resolution: quality === "high" ? 96 : 64 }, h(Lightformer, { intensity: 1.2 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [20, 20, 1] }), h(Lightformer, { intensity: .6, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [20, 4, 1] })),
+        h(Environment, { resolution: quality === "high" ? 128 : 64 }, h(Lightformer, { intensity: 1.2 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [20, 20, 1] }), h(Lightformer, { intensity: .6, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [20, 4, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { quality, wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
         h(ScenicHills), h(WalkableHills),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
-        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength }),
+        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),

@@ -35,10 +35,10 @@ const SIGN_MATERIALS = ["#d45b46", "#d6a844", "#5d91a1", "#7b69a0", "#68956e", "
     new THREE.MeshStandardMaterial({ color, roughness: .42, metalness: .08, emissive: color, emissiveIntensity: .16 })
 );
 function box(position, scale, material, rotation = [0, 0, 0], key) {
-    return h("mesh", { key, position, scale, rotation, geometry: BOX, material, castShadow: true, receiveShadow: true });
+    return h("mesh", { key, position, scale, rotation: rotation || [0, 0, 0], geometry: BOX, material, castShadow: true, receiveShadow: true });
 }
 function cylinder(position, radius, height, material, rotation = [0, 0, 0], key, radial = 16) {
-    return h("mesh", { key, position, rotation, castShadow: true, receiveShadow: true },
+    return h("mesh", { key, position, rotation: rotation || [0, 0, 0], castShadow: true, receiveShadow: true },
         h("cylinderGeometry", { args: [radius, radius, height, radial] }), material);
 }
 function sphere(position, scale, material, key) {

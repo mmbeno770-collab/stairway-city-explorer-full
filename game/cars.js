@@ -9,25 +9,55 @@ const trim = new THREE.MeshStandardMaterial({ color: "#252a30", metalness: .45, 
 const headlamp = new THREE.MeshBasicMaterial({ color: "#fff1c4", toneMapped: false });
 const tailOff = new THREE.MeshStandardMaterial({ color: "#771c1c", emissive: "#250606", roughness: .4 });
 const tailOn = new THREE.MeshStandardMaterial({ color: "#ff3030", emissive: "#ff1111", emissiveIntensity: 1.8 });
+function makeWheelParts(radius, width) {
+    const spokes = [-1, 1].flatMap((side) => Array.from({ length: 6 }, (_, index) => {
+        const angle = index * Math.PI / 3;
+        return _jsx("mesh", {
+            material: rim,
+            position: [Math.cos(angle) * radius * .39, side * (width / 2 + .027), Math.sin(angle) * radius * .39],
+            rotation: [0, -angle, 0],
+            children: _jsx("boxGeometry", { args: [radius * .62, .026, .038] })
+        }, `spoke-${side}-${index}`);
+    }));
+    return _jsxs(_Fragment, { children: [
+        _jsx("mesh", { material: rubber, castShadow: true, children: _jsx("cylinderGeometry", { args: [radius, radius, width, 24] }) }),
+        _jsx("mesh", { material: rim, children: _jsx("cylinderGeometry", { args: [radius * .72, radius * .72, width + .012, 24] }) }),
+        ...[-1, 1].map((side) => _jsx("mesh", {
+            material: rim, position: [0, side * (width / 2 + .018), 0], rotation: [Math.PI / 2, 0, 0],
+            children: _jsx("torusGeometry", { args: [radius * .69, .026, 8, 24] })
+        }, `rim-ring-${side}`)),
+        ...spokes,
+        ...[-1, 1].map((side) => _jsx("mesh", {
+            material: trim, position: [0, side * (width / 2 + .031), 0],
+            children: _jsx("cylinderGeometry", { args: [radius * .24, radius * .24, .035, 16] })
+        }, `hub-${side}`))
+    ] });
+}
 function CarModel({ car }) {
-    const root = useRef(null), wheels = useRef([]), brakes = useRef([]);
+    const root = useRef(null), wheels = useRef([]), steerWheels = useRef([]), brakes = useRef([]);
     useFrame((_, dt) => {
         if (!root.current) return;
         root.current.position.set(car.x, car.y, car.z); root.current.rotation.y = car.yaw;
-        for (const wheel of wheels.current) if (wheel) wheel.rotation.y -= car.speed * dt / .34;
+        for (const wheel of wheels.current) if (wheel) wheel.rotation.y += car.speed * dt / .34;
+        for (const wheel of steerWheels.current) if (wheel) wheel.rotation.y = (car.steering || 0) * .48;
         for (const lamp of brakes.current) if (lamp) lamp.material = car.brake || car.speed < -.1 ? tailOn : tailOff;
     });
-    const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({ color: car.color, metalness: .58, roughness: .3 }), [car.color]);
+    const bodyMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: car.color, metalness: .38, roughness: .24, clearcoat: .92, clearcoatRoughness: .16, envMapIntensity: 1.45 }), [car.color]);
     if (car.kind === "bus") {
         const busWindows = [-2.35, -1.15, .05, 1.25, 2.35].flatMap((z) => [-1, 1].map((side) =>
             _jsx("mesh", { material: glass, position: [side * 1.235, 1.72, z], children: _jsx("boxGeometry", { args: [.035, .82, .9] }) }, `window-${z}-${side}`)
         ));
         const busWheels = [-1, 1].flatMap((side) => [-2.25, 0, 2.25].map((z, i) => {
             const index = (side < 0 ? 0 : 3) + i;
-            return _jsxs("group", { ref: (el) => { if (el) wheels.current[index] = el; }, position: [side * 1.24, .46, z], "rotation-z": Math.PI / 2, children: [
-                _jsx("mesh", { material: rubber, castShadow: true, children: _jsx("cylinderGeometry", { args: [.44, .44, .25, 18] }) }),
-                _jsx("mesh", { material: rim, children: _jsx("cylinderGeometry", { args: [.27, .27, .26, 14] }) })
-            ] }, `bus-wheel-${side}-${z}`);
+            return _jsx("group", {
+                ref: (el) => { if (i === 2 && el) steerWheels.current[index] = el; },
+                position: [side * 1.24, .46, z],
+                children: _jsx("group", {
+                    ref: (el) => { if (el) wheels.current[index] = el; },
+                    "rotation-z": Math.PI / 2,
+                    children: makeWheelParts(.44, .25)
+                })
+            }, `bus-wheel-${side}-${z}`);
         }));
         return _jsxs("group", { ref: root, children: [
             _jsx("mesh", { material: bodyMat, position: [0, 1.2, 0], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", { args: [2.45, 2.05, 6.55] }) }),
@@ -80,11 +110,15 @@ function CarModel({ car }) {
         [-.72, .72].map((x, i) => _jsx("mesh", { ref: el => { if (el) brakes.current[i] = el; }, material: tailOff, position: [x, .82, -2.095], children: _jsx("boxGeometry", { args: [.34, .19, .04] }) }, i)),
         [-1, 1].flatMap(side => [-1, 1].map(axle => {
             const index = (side === -1 ? 0 : 2) + (axle === -1 ? 0 : 1);
-            return _jsxs("group", { ref: el => { if (el) wheels.current[index] = el; }, position: [side * .96, .34, axle * 1.35], "rotation-z": Math.PI / 2, children: [
-                _jsx("mesh", { material: rubber, castShadow: true, children: _jsx("cylinderGeometry", { args: [.34, .34, .2, 18] }) }),
-                _jsx("mesh", { material: rim, children: _jsx("cylinderGeometry", { args: [.22, .22, .214, 14] }) }),
-                _jsx("mesh", { material: trim, children: _jsx("cylinderGeometry", { args: [.085, .085, .22, 12] }) })
-            ] }, `${side}-${axle}`);
+            return _jsx("group", {
+                ref: (el) => { if (axle === 1 && el) steerWheels.current[index] = el; },
+                position: [side * .96, .34, axle * 1.35],
+                children: _jsx("group", {
+                    ref: (el) => { if (el) wheels.current[index] = el; },
+                    "rotation-z": Math.PI / 2,
+                    children: makeWheelParts(.34, .2)
+                })
+            }, `${side}-${axle}`);
         })),
         _jsx("mesh", { material: bodyMat, position: [-1.03, 1.15, .8], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),
         _jsx("mesh", { material: bodyMat, position: [1.03, 1.15, .8], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),

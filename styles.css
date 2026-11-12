@@ -30,6 +30,13 @@ button { font: inherit; }
 .hud-btn { float: left; background: rgba(255,255,255,.1); border: 1px solid var(--hud-border); color: var(--hud-fg); border-radius: 8px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
 .joy { position: absolute; z-index: 6; left: max(24px, env(safe-area-inset-left)); bottom: max(24px, env(safe-area-inset-bottom)); width: 112px; height: 112px; border-radius: 50%; background: var(--hud-bg); border: 1px solid var(--hud-border); display: none; align-items: center; justify-content: center; touch-action: none; box-shadow: 0 8px 28px rgba(0,0,0,.22); }
 .joy-knob { width: 44px; height: 44px; border-radius: 50%; background: var(--hud-accent); pointer-events: none; box-shadow: 0 2px 14px rgba(0,0,0,.25); }
+.joy { isolation: isolate; }
+.joy-direction { position: absolute; z-index: 0; color: rgba(255,255,255,.55); font-size: 13px; line-height: 1; font-weight: 800; pointer-events: none; text-shadow: 0 1px 5px rgba(0,0,0,.65); }
+.joy-direction.up { top: 7px; left: 50%; transform: translateX(-50%); }
+.joy-direction.right { right: 8px; top: 50%; transform: translateY(-50%); }
+.joy-direction.down { bottom: 7px; left: 50%; transform: translateX(-50%); }
+.joy-direction.left { left: 8px; top: 50%; transform: translateY(-50%); }
+.joy-knob { position: relative; z-index: 1; }
 .jump-btn { position: absolute; z-index: 6; right: max(24px, env(safe-area-inset-right)); bottom: max(34px, env(safe-area-inset-bottom)); width: 76px; height: 76px; border-radius: 50%; background: var(--hud-bg); border: 1px solid var(--hud-border); color: var(--hud-fg); font-weight: 700; display: none; touch-action: none; }
 .interaction-prompt { left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 30; min-width: 190px; max-width: min(86vw, 520px); padding: 13px 20px; font-weight: 700; font-size: 15px; cursor: pointer; border-color: rgba(114,227,206,.6); background: rgba(5,23,29,.92); box-shadow: 0 10px 34px rgba(0,0,0,.32), 0 0 0 1px rgba(114,227,206,.08); }
 .interaction-prompt:active { transform: translateX(-50%) scale(.97); }

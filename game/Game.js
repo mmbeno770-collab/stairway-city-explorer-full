@@ -18,6 +18,18 @@ import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./env
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
 
 const h = React.createElement;
+
+function readMoveAxes(keys, joystick = { x: 0, y: 0 }) {
+  const horizontal = Number(keys.has("KeyD") || keys.has("ArrowRight")) - Number(keys.has("KeyA") || keys.has("ArrowLeft")) + (joystick.x || 0);
+  const forward = Number(keys.has("KeyW") || keys.has("ArrowUp")) - Number(keys.has("KeyS") || keys.has("ArrowDown")) + (joystick.y || 0);
+  const length = Math.hypot(horizontal, forward);
+  const scale = length > 1 ? 1 / length : 1;
+  return { x: horizontal * scale, z: forward * scale };
+}
+function cameraRelativeMove(x, forward, yaw) {
+  const sin = Math.sin(yaw), cos = Math.cos(yaw);
+  return { x: sin * forward - cos * x, z: cos * forward + sin * x };
+}
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
@@ -474,6 +486,32 @@ function Boxes({ world, kind }) {
 function Ground({ quality, wet, buildings }) {
   const data = useMemo(() => {
     const size = quality === "low" ? 1024 : quality === "balanced" ? 1536 : 2048;
+    const surfaceCanvas = document.createElement("canvas");
+    surfaceCanvas.width = surfaceCanvas.height = 512;
+    const surfaceContext = surfaceCanvas.getContext("2d");
+    if (surfaceContext) {
+      const pixels = surfaceContext.createImageData(512, 512);
+      for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) {
+        const index = (y * 512 + x) * 4;
+        let hash = (Math.imul(x + 31, 1597334677) ^ Math.imul(y + 17, 3812015801)) >>> 0;
+        hash = Math.imul(hash ^ (hash >>> 15), 2246822519) >>> 0;
+        const grain = 112 + (hash & 127);
+        pixels.data[index] = grain; pixels.data[index + 1] = grain; pixels.data[index + 2] = grain; pixels.data[index + 3] = 255;
+      }
+      surfaceContext.putImageData(pixels, 0, 0);
+      surfaceContext.strokeStyle = "rgba(60,60,60,.26)";
+      surfaceContext.lineWidth = 1.2;
+      for (let i = 0; i < 18; i++) {
+        const x = (i * 83) % 512, y = (i * 137) % 512;
+        surfaceContext.beginPath(); surfaceContext.moveTo(x, y); surfaceContext.lineTo(x + 5 + (i % 9), y + 2 + (i % 5)); surfaceContext.stroke();
+      }
+    }
+    const surfaceTexture = new THREE.CanvasTexture(surfaceCanvas);
+    surfaceTexture.wrapS = surfaceTexture.wrapT = THREE.RepeatWrapping;
+    surfaceTexture.repeat.set(54, 54);
+    surfaceTexture.colorSpace = THREE.NoColorSpace;
+    surfaceTexture.anisotropy = quality === "high" ? 8 : 4;
+    surfaceTexture.needsUpdate = true;
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
     const ctx = canvas.getContext("2d"), total = GRID * BLOCK + 40, p = size / total, to = (v) => (v + total / 2) * p;
     ctx.fillStyle = "#668452"; ctx.fillRect(0, 0, size, size);
@@ -540,17 +578,17 @@ function Ground({ quality, wet, buildings }) {
       ctx.clearRect(to(opening.x0 + .025), to(opening.z0 + .025), (opening.x1 - opening.x0 - .05) * p, (opening.z1 - opening.z0 - .05) * p);
     }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = quality === "high" ? 8 : 4; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = true;
-    return { texture, total };
+    return { texture, surfaceTexture, total };
   }, [quality]);
-  useEffect(() => () => data.texture.dispose(), [data]);
+  useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .28 : .93, metalness: wet ? .2 : 0 })),
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -5.1, 0] }, h("planeGeometry", { args: [1200, 1200] }), h("meshStandardMaterial", { color: "#6f9a52", roughness: wet ? .72 : 1 }))
   );
 }
 
 function Trees({ world, nightFactor }) {
-  const trunk = useRef(null), crown = useRef(null), crown2 = useRef(null), lampPole = useRef(null), lampHead = useRef(null);
+  const trunk = useRef(null), crown = useRef(null), crown2 = useRef(null), crown3 = useRef(null), crown4 = useRef(null), crown5 = useRef(null), lampPole = useRef(null), lampHead = useRef(null);
   const glow = useMemo(() => new THREE.MeshStandardMaterial({ color: "#fff1c8", emissive: "#ffc86b", emissiveIntensity: 0, roughness: .25 }), []);
   useFrame(() => { glow.emissiveIntensity = nightFactor * 2.6; });
   useEffect(() => {
@@ -560,14 +598,30 @@ function Trees({ world, nightFactor }) {
       obj.position.set(tree.x, baseY + 1.1 * tree.s, tree.z); obj.scale.setScalar(tree.s); obj.rotation.set(0, i * 1.71 + (tree.turn || 0), 0); obj.updateMatrix(); trunk.current.setMatrixAt(i, obj.matrix);
       obj.position.set(tree.x, baseY + 3 * tree.s, tree.z); obj.updateMatrix(); crown.current.setMatrixAt(i, obj.matrix); crown.current.setColorAt(i, color.setHSL(.25 + (i % 5) * .02, .45, .32 + (i % 3) * .05));
       obj.position.set(tree.x + Math.sin(i * 1.71) * .6 * tree.s, baseY + 3.9 * tree.s, tree.z + Math.cos(i * 1.71) * .6 * tree.s); obj.scale.setScalar(tree.s * .65); obj.updateMatrix(); crown2.current.setMatrixAt(i, obj.matrix); crown2.current.setColorAt(i, color.setHSL(.24 + (i % 4) * .02, .5, .38));
+      const clusters = [
+        { ref: crown3, x: -.72, y: 3.12, z: .12, scale: .58, hue: .255 },
+        { ref: crown4, x: .7, y: 3.2, z: .18, scale: .61, hue: .285 },
+        { ref: crown5, x: .05, y: 3.05, z: -.72, scale: .56, hue: .235 }
+      ];
+      clusters.forEach((cluster) => {
+        obj.position.set(tree.x + cluster.x * tree.s, baseY + cluster.y * tree.s, tree.z + cluster.z * tree.s);
+        obj.scale.setScalar(cluster.scale * tree.s);
+        obj.rotation.set(.05 * Math.sin(i), i * .83 + cluster.hue * 8, .04 * Math.cos(i));
+        obj.updateMatrix();
+        cluster.ref.current.setMatrixAt(i, obj.matrix);
+        cluster.ref.current.setColorAt(i, color.setHSL(cluster.hue + (i % 3) * .012, .43, .3 + (i % 4) * .035));
+      });
     });
     world.lamps.forEach((lamp, i) => { obj.position.set(lamp.x, 2.5, lamp.z); obj.scale.set(1, 1, 1); obj.rotation.set(0, 0, 0); obj.updateMatrix(); lampPole.current.setMatrixAt(i, obj.matrix); obj.position.y = 5.1; obj.updateMatrix(); lampHead.current.setMatrixAt(i, obj.matrix); });
-    [trunk, crown, crown2, lampPole, lampHead].forEach((r) => { if (r.current) { r.current.instanceMatrix.needsUpdate = true; if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; r.current.computeBoundingSphere(); } });
+    [trunk, crown, crown2, crown3, crown4, crown5, lampPole, lampHead].forEach((r) => { if (r.current) { r.current.instanceMatrix.needsUpdate = true; if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; r.current.computeBoundingSphere(); } });
   }, [world]);
   return h(React.Fragment, null,
     h("instancedMesh", { ref: trunk, args: [undefined, undefined, world.trees.length], castShadow: true }, h("cylinderGeometry", { args: [.15, .22, 2.2, 7] }), h("meshStandardMaterial", { color: "#6b4a2f" })),
     h("instancedMesh", { ref: crown, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1.42, 16, 12] }), h("meshStandardMaterial", { roughness: .92 })),
     h("instancedMesh", { ref: crown2, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1.02, 14, 10] }), h("meshStandardMaterial", { roughness: .9 })),
+    h("instancedMesh", { ref: crown3, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1, 14, 10] }), h("meshStandardMaterial", { roughness: .96 })),
+    h("instancedMesh", { ref: crown4, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1, 14, 10] }), h("meshStandardMaterial", { roughness: .96 })),
+    h("instancedMesh", { ref: crown5, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1, 14, 10] }), h("meshStandardMaterial", { roughness: .96 })),
     h("instancedMesh", { ref: lampPole, args: [undefined, undefined, world.lamps.length], castShadow: true }, h("cylinderGeometry", { args: [.07, .1, 5, 6] }), h("meshStandardMaterial", { color: "#2f3a40", metalness: .6, roughness: .4 })),
     h("instancedMesh", { ref: lampHead, args: [undefined, glow, world.lamps.length] }, h("sphereGeometry", { args: [.25, 10, 8] }))
   );
@@ -711,9 +765,8 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
     else if (s.mode === "airVehicle") s.airDist = THREE.MathUtils.clamp(s.airDist + inp.zoom * 1.6, 7, 26);
     else s.dist = THREE.MathUtils.clamp(s.dist + inp.zoom, 2.5, 14);
     inp.zoom = 0;
-    const mx = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) + inp.joy.x;
-    const mz = (keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) - (keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0) + inp.joy.y;
-    const len = Math.hypot(mx, mz), moveX = len > 1 ? mx / len : mx, moveZ = len > 1 ? mz / len : mz;
+    const axes = readMoveAxes(keys, inp.joy);
+    const moveX = axes.x, moveZ = axes.z;
     const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), jump = keys.has("Space") || inp.up;
     let camTarget = new THREE.Vector3(p.x, p.y + 1.5, p.z), camDist = s.dist, followYaw = null;
     if (s.mode === "elevator") {
@@ -764,8 +817,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
       camTarget.set(p.x + .4, p.y + 1.25, p.z); camDist = 4.6;
     } else if (s.mode === "cable-platform") {
       const station = CABLE_STATIONS[s.cableStation] || CABLE_STATIONS[0];
-      const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
-      const wx = fx * moveZ - fz * moveX, wz = fz * moveZ + fx * moveX;
+      const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), wx = worldMove.x, wz = worldMove.z;
       const blend = 1 - Math.exp(-ACCEL * dt);
       s.v.x += (wx * WALK - s.v.x) * blend; s.v.z += (wz * WALK - s.v.z) * blend;
       if (Math.hypot(wx, wz) > .1) { const target = Math.atan2(wx, wz); let d = target - s.face; d = Math.atan2(Math.sin(d), Math.cos(d)); s.face += d * (1 - Math.exp(-12 * dt)); }
@@ -841,7 +893,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
       poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
       camTarget.set(p.x, p.y + 2.2, p.z); camDist = 6.4; followYaw = s.face;
     } else if (s.mode === "walk") {
-      const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw), wx = fx * moveZ - fz * moveX, wz = fz * moveZ + fx * moveX, speed = shift ? RUN : WALK, blend = 1 - Math.exp(-ACCEL * dt);
+      const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), wx = worldMove.x, wz = worldMove.z, speed = shift ? RUN : WALK, blend = 1 - Math.exp(-ACCEL * dt);
       s.v.x += (wx * speed - s.v.x) * blend; s.v.z += (wz * speed - s.v.z) * blend;
       if (Math.hypot(wx, wz) > .1) { const target = Math.atan2(wx, wz); let d = target - s.face; d = Math.atan2(Math.sin(d), Math.cos(d)); s.face += d * (1 - Math.exp(-12 * dt)); if (moveZ >= -.1) followYaw = s.face; }
       if (jump && s.onGround) { s.v.y = JUMP; s.onGround = false; }
@@ -1254,7 +1306,12 @@ export default function Game() {
         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
       )
     ),
-    h("div", { ref: joyRef, className: "joy", onPointerDown: (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }, onPointerMove: joyMove, onPointerUp: joyEnd, onPointerCancel: joyEnd }, h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
+    h("div", { ref: joyRef, className: "joy", "aria-label": "שליטה בכיוון: למעלה קדימה, למטה אחורה, שמאלה שמאלה, ימינה ימינה", onPointerDown: (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }, onPointerMove: joyMove, onPointerUp: joyEnd, onPointerCancel: joyEnd },
+      h("span", { className: "joy-direction up", "aria-hidden": true }, "↑"),
+      h("span", { className: "joy-direction right", "aria-hidden": true }, "→"),
+      h("span", { className: "joy-direction down", "aria-hidden": true }, "↓"),
+      h("span", { className: "joy-direction left", "aria-hidden": true }, "←"),
+      h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
     h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
     (mode === "heli" || mode === "airVehicle" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },

@@ -21,7 +21,7 @@ const h = React.createElement;
 const WALK = 4.2, RUN = 8, ACCEL = 14, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
-function makeNpcReply(name, message, turnCount = 0, previousTopic = "") {
+function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personality = "סקרן ואוהב לגלות מקומות חדשים") {
   const text = String(message || "").trim().toLocaleLowerCase("he");
   const pick = (choices) => choices[Math.abs(turnCount) % choices.length];
   if (!text) return "לא שמעתי אותך. מה רצית לשאול?";
@@ -30,7 +30,7 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "") {
   if (/(שלום|היי|אהלן|בוקר טוב|ערב טוב)/.test(text)) return pick(["שלום! נחמד לפגוש אותך כאן בעיר.", "אהלן! יצאתי לסיבוב קטן. מה שלומך?", "שלום! אולי ניפגש באחד הבניינים."]);
   if (/(איך קוראים לך|מה השם שלך|מי אתה)/.test(text)) return "קוראים לי " + name + ". אני תושב וירטואלי שאוהב להסתובב ולגלות מקומות בעיר.";
   if (/(אתה אמיתי|אתה בן אדם|אתה רובוט|אתה ai|בינה מלאכותית)/.test(text)) return "אני דמות AI במשחק. יש לי מסלולים, הרגלים ותגובות, ואני יכול לשוחח איתך על העיר.";
-  if (/(מה אתה עושה|מה מעשיך|מה קורה|מה התוכניות שלך)/.test(text)) return pick(["אני יוצא לטיול, נכנס מדי פעם לבניין ועולה לקומות.", "אני בודק מה קורה ברחובות, פוגש תושבים ומסתובב בעיר.", "לפעמים אני מטייל ברגל ולפעמים צופה בכלי הרכב שעוברים."]);
+  if (/(מה אתה עושה|מה מעשיך|מה קורה|מה התוכניות שלך)/.test(text)) return "אני " + personality + ". כרגע אני מטייל בעיר ומחפש משהו מעניין לעשות.";
   if (/(איך קוראים לך|מה השם שלך)/.test(text)) return "אני " + name + ". נעים להכיר!";
   if (/(מה אפשר לעשות|מה יש כאן|מה יש בעיר|אטרקציות|לבקר)/.test(text)) return "אפשר לחקור עשרות בניינים, להיכנס לחנויות ולחדרים, לעלות במדרגות, לנסוע ברכבים, לטוס ולעלות ברכבל.";
   if (/(איפה|מיקום|בניין|קומה|מדרגות|גג)/.test(text)) return pick(["יש כאן הרבה בניינים. הדלתות מובילות ללובי, ומשם אפשר לעלות במדרגות.", "אני אוהב לעלות לקומות הגבוהות ולראות את העיר מלמעלה.", "אפשר להיכנס לבניינים ולגלות שבכל קומה יש חלל אחר."]);
@@ -851,7 +851,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
         const stair = building.basementStairwell;
         return stair && p.x >= stair.x0 - .55 && p.x <= stair.x1 + .55 && p.z >= stair.z0 - .55 && p.z <= stair.z1 + .55;
       });
-      const stepHeight = stairwell ? .58 : STEP;
+      const stepHeight = stairwell ? .82 : STEP;
       col.resolve(next, p.y + stepHeight, p.y + HEIGHT, RAD);
       resolveCarObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, cars);
       resolveHelicopterObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, helis);
@@ -860,7 +860,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
       p.x = next.x; p.z = next.z;
       let ny = p.y + s.v.y * dt, ceiling = col.ceilingAt(p.x, p.z, p.y + HEIGHT - .05);
       if (ny + HEIGHT > ceiling && s.v.y > 0) { ny = ceiling - HEIGHT; s.v.y = 0; }
-      const ground = col.groundAt(p.x, p.z, p.y, stepHeight, stairwell ? .14 : RAD);
+      const ground = col.groundAt(p.x, p.z, p.y, stepHeight, stairwell ? .22 : RAD);
       if (ny <= ground || (s.onGround && s.v.y <= 0 && ny - ground < stepHeight)) { ny = ground; s.v.y = 0; s.onGround = true; } else s.onGround = false;
       p.y = ny;
       if (p.y < -20) { p.set(...world.spawn); s.v.set(0, 0, 0); }
@@ -1154,7 +1154,7 @@ export default function Game() {
       currentPerson.wait = .25;
     }
     const topic = /(בניין|קומה|דלת|מדרגות|גג|לובי)/.test(message) ? "buildings" : /(רכב|מכונית|אוטובוס|ג'יפ|חניון)/.test(message) ? "vehicles" : conversation.topic;
-    const reply = makeNpcReply(conversation.npcName, message, conversation.messages.length, conversation.topic);
+    const reply = makeNpcReply(conversation.npcName, message, conversation.messages.length, conversation.topic, currentPerson?.personality);
     if (conversationRef.current) conversationRef.current = { ...conversationRef.current, bubbleText: reply };
     setConversation((current) => current ? ({
       ...current, topic,

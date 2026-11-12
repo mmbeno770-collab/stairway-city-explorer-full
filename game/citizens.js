@@ -31,7 +31,8 @@ function makeWalkRoute(building) {
   ];
 }
 
-const WALKER_NAMES = ["אורי", "דוד", "יונתן", "משה", "אליהו", "יעקב", "נחום", "שמואל", "בנימין", "אלעד", "אריאל", "נעם", "אבישי", "עמיחי", "מתניה", "איתן", "יהודה", "הלל", "רפאל", "אברהם", "יצחק", "שלמה", "מנחם", "מאיר", "דניאל", "אלעזר", "עוזיאל", "גדעון", "נפתלי", "אפרים", "חיים", "יוסף", "ברוך", "זאב", "נתנאל", "אלחנן"];
+const WALKER_NAMES = ["אורי","דוד","יונתן","משה","אליהו","יעקב","נחום","שמואל","בנימין","אלעד","אריאל","נעם","אבישי","עמיחי","מתניה","איתן","יהודה","הלל","רפאל","אברהם","יצחק","שלמה","מנחם","מאיר","דניאל","אלעזר","עוזיאל","גדעון","נפתלי","אפרים","חיים","יוסף","ברוך","זאב","נתנאל","אלחנן","אבנר","אורי־אל","בועז","גבריאל","גרשון","דביר","הראל","זכריה","חנניה","טוביה","יואל","כפיר","ליאור","מיכאל","נחמן","סיני","עובדיה","פנחס","צבי","קובי","רועי","שמעיה","תומר","יאיר"];
+const PERSONALITIES = ["סקרן ואוהב לגלות מקומות חדשים","רגוע ומעדיף טיולים שקטים","חברותי ואוהב לפגוש תושבים","חובב טכנולוגיה ומבנים","הרפתקן שאוהב גגות ותצפיות","מסודר ומתכנן את המסלול מראש","מצחיק ואוהב לספר בדיחות","עוזר ותמיד מציע רעיונות"];
 
 function makeStairTour(building) {
   const stair = building.basementStairwell;
@@ -209,20 +210,20 @@ function resolvePeople(point, yLo, yHi, radius, walkers, ignore) {
 function makeCitizens(world, cars, helis, airVehicles, collider) {
   const walkers = [];
   const buildings = world.buildings || [];
-  const walkerCount = Math.min(36, buildings.length);
+  const walkerCount = Math.min(60, buildings.length);
   for (let i = 0; i < walkerCount; i++) {
     const building = buildings[(i * 5 + 3) % buildings.length];
     const route = makeWalkRoute(building);
     const point = route[(i * 3) % route.length];
     walkers.push({
-      id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], rig: {},
+      id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
       building, route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
       visitTarget: null, followPlayer: false, ridingElevator: false, elevatorId: -1, elevatorTrip: null, elevatorDestination: 0,
       doorIndex: findBuildingDoor(world, building), waypoint: (i * 3 + 1) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
-      yaw: i * .71, speed: 1.25 + (i % 7) * .22, phase: i * 1.2,
+      yaw: i * .71, speed: 1.05 + (i % 9) * .2, phase: i * 1.2,
       wait: (i % 4) * .55, actionWait: 0, stuck: 0, hidden: false,
-      visiting: false, visitCountdown: 7 + (i % 8) * 5.5,
+      visiting: false, visitCountdown: 5 + (i % 11) * 4.8,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
       tOffset: i * .83
@@ -539,7 +540,11 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       const moved = Math.hypot(movedX, movedZ);
       if (moved < .012) person.stuck += dt; else person.stuck = 0;
       person.x = next.x; person.z = next.z;
-      person.y = collider.groundAt(person.x, person.z, person.y, .75, .32);
+      const inStairwell = (world.buildings || []).some((building) => {
+        const stair = building.basementStairwell;
+        return stair && person.x >= stair.x0 - .65 && person.x <= stair.x1 + .65 && person.z >= stair.z0 - .65 && person.z <= stair.z1 + .65;
+      });
+      person.y = collider.groundAt(person.x, person.z, person.y, inStairwell ? .82 : .75, inStairwell ? .22 : .32);
       if (moved > .015) {
         const desiredYaw = Math.atan2(movedX, movedZ);
         person.yaw += angleDiff(desiredYaw - person.yaw, 0) * (1 - Math.exp(-10 * dt));

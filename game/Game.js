@@ -8,6 +8,7 @@ import { Citizens } from "./citizens.js";
 import { Helicopters } from "./helicopter.js";
 import { makeHeli, stepHeli, canExitHeli } from "./heli-sim.js";
 import { CityDetails } from "./CityDetails.js";
+import { CityLandmarks } from "./CityLandmarks.js";
 import { AnimatedWorld } from "./animated-world.js";
 import { Cars } from "./cars.js";
 import { makeCar, stepCar, resolveCarObstacles } from "./car-sim.js";
@@ -1249,7 +1250,7 @@ export default function Game() {
         h(ScenicHills), h(WalkableHills),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
-        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }),
+        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),

@@ -1,4 +1,4 @@
-export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 36, GRID = 9, CITY_HALF = (GRID * BLOCK) / 2;
+export const FLOOR_H = 4, WALL_T = 0.3, BLOCK = 36, GRID = 11, CITY_HALF = (GRID * BLOCK) / 2;
 
 export const CABLE_STATIONS = [
   { id: 0, name: "תחנת צפון־מערב", x: -90, z: -90, y: 48 },
@@ -22,9 +22,60 @@ const THEMES = [
 const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
-    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [];
+    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [];
     const elevators = [];
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
+    const addHome = (homeX, homeZ, style, id, lotX0, lotZ0) => {
+        const width = style === "villa" ? 9.1 : 8.15, depth = style === "villa" ? 9.8 : 9.1;
+        const floors = style === "villa" ? 2 : 1, wallHeight = floors === 2 ? 6.35 : 3.45;
+        const x0 = homeX - width / 2, x1 = homeX + width / 2, z0 = homeZ - depth / 2, z1 = homeZ + depth / 2;
+        const wall = style === "villa" ? "#d5c4a8" : style === "cottage" ? "#d9c7ad" : "#c9c9bf";
+        const roof = style === "villa" ? "#465965" : style === "cottage" ? "#9a5543" : "#58636a";
+        homes.push({ id, cx: homeX, cz: homeZ, style, width, depth, floors, wallHeight, wallColor: wall, roofColor: roof });
+        add(x0 - .25, 0, z0 - .25, x1 + .25, .24, z1 + .25, "#b8b4a9", "solid", true);
+        add(x0, .24, z0, x1, .34, z1, "#9a9386", "solid", true);
+        const t = .24, frontDoor = 1.65;
+        add(x0, .34, z0, x0 + t, wallHeight + .34, z1, wall, "solid", true);
+        add(x1 - t, .34, z0, x1, wallHeight + .34, z1, wall, "solid", true);
+        add(x0 + t, .34, z1 - t, x1 - t, wallHeight + .34, z1, wall, "solid", true);
+        add(x0 + t, .34, z0, homeX - frontDoor / 2, wallHeight + .34, z0 + t, wall, "solid", true);
+        add(homeX + frontDoor / 2, .34, z0, x1 - t, wallHeight + .34, z0 + t, wall, "solid", true);
+        add(homeX - frontDoor / 2, 2.5, z0, homeX + frontDoor / 2, wallHeight + .34, z0 + t, wall, "solid", true);
+        const pathX = homeX, pathZ0 = lotZ0 + 2.6, pathZ1 = z0 - .05;
+        add(pathX - .7, .075, pathZ0, pathX + .7, .12, pathZ1, "#d8d0c0", "solid", false);
+        add(x0 - .5, .06, z0 - .55, x1 + .5, .09, z1 + .7, style === "villa" ? "#7b9365" : "#82976b", "solid", false);
+        if (style === "villa") {
+            add(x1 + .45, .06, z0 + .5, x1 + 2.7, .1, z1 + .7, "#858b8c", "solid", false);
+            add(x1 + .45, .08, z0 + .5, x1 + 2.7, .12, z1 + .7, "#c1c4c0", "solid", false);
+        }
+        for (const side of [-1, 1]) trees.push({ x: homeX + side * (width * .68), z: homeZ + depth * .55, s: .7 + r() * .18 });
+        lamps.push({ x: homeX - width * .65, z: homeZ - depth * .65 }, { x: homeX + width * .65, z: homeZ - depth * .65 });
+        add(homeX - .95, .34, z0 - .14, homeX + .95, .58, z0 + .08, "#76543d", "solid", false);
+    };
+    const addLandmarkLot = (type, cx, cz) => {
+        if (type === "mall") {
+            add(cx - 11.6, 0, cz - 11.6, cx + 11.6, .24, cz + 11.6, "#777f80", "solid", true);
+            add(cx - 11.15, .24, cz - 11.15, cx + 11.15, .32, cz + 11.15, "#c1c1b7", "solid", true);
+            add(cx - 11, .3, cz + 10.65, cx + 11, 7.8, cz + 11, "#4b5a60", "solid", true);
+            add(cx - 11, .3, cz - 11, cx - 10.7, 7.8, cz + 11, "#596b70", "solid", true);
+            add(cx + 10.7, .3, cz - 11, cx + 11, 7.8, cz + 11, "#596b70", "solid", true);
+            add(cx - 10.8, 3.82, cz - 10.8, cx + 10.8, 4.02, cz + 10.8, "#899394", "solid", true);
+            landmarks.push({ type: "mall", x: cx, z: cz, name: "קניון העיר" });
+            for (let i = 0; i < 8; i++) lamps.push({ x: cx - 9.5 + i * 2.7, z: cz - 12.3 });
+            return;
+        }
+        if (type === "sports") {
+            add(cx - 12, 0, cz - 12, cx + 12, .16, cz + 12, "#6f875e", "solid", true);
+            add(cx - 12, .16, cz - 12, cx + 12, .2, cz + 12, "#a0a18c", "solid", false);
+            landmarks.push({ type: "sports", x: cx, z: cz, name: "מתחם הספורט" });
+            lamps.push({ x: cx - 10.5, z: cz - 10.5 }, { x: cx + 10.5, z: cz + 10.5 });
+            return;
+        }
+        add(cx - 12, 0, cz - 12, cx + 12, .16, cz + 12, "#738b5c", "solid", true);
+        add(cx - 11.6, .16, cz - 11.6, cx + 11.6, .2, cz + 11.6, "#b1aa92", "solid", false);
+        landmarks.push({ type: "amusement", x: cx, z: cz, name: "לונה פארק" });
+        for (let i = 0; i < 6; i++) lamps.push({ x: cx - 9.5 + i * 3.8, z: cz - 11.4 });
+    };
     for (const station of CABLE_STATIONS) {
         // Elevated station decks are real walkable collision surfaces.
         add(station.x - 7, station.y - .35, station.z - 4.2, station.x + 7, station.y, station.z + 4.2, "#8d9698", "solid", true);
@@ -219,6 +270,23 @@ export function generateWorld(seed = 7) {
             busStop(cx + 5.5, cz + 15.0);
             continue;
         }
+        if (gx === 2 && gz === 7) { addLandmarkLot("mall", cx, cz); continue; }
+        if (gx === 8 && gz === 2) { addLandmarkLot("sports", cx, cz); continue; }
+        if (gx === 7 && gz === 8) { addLandmarkLot("amusement", cx, cz); continue; }
+        const outerHomes =
+            (gx === 0 && [2, 4, 6, 8].includes(gz)) ||
+            (gx === GRID - 1 && [2, 4, 6, 8].includes(gz)) ||
+            (gz === 0 && [2, 4, 6, 8].includes(gx)) ||
+            (gz === GRID - 1 && [2, 4, 6, 8].includes(gx));
+        if (outerHomes) {
+            add(cx - 12.2, 0, cz - 12.2, cx + 12.2, .07, cz + 12.2, "#7e9367", "solid", false);
+            for (let home = 0; home < 2; home++) {
+                const style = ["cottage", "villa", "house"][(gx * 3 + gz * 5 + home) % 3];
+                addHome(cx + (home === 0 ? -5.15 : 5.15), cz + 1.3, style, homes.length, lotX0, lotZ0);
+            }
+            add(cx - 10.5, .08, cz - 10.8, cx + 10.5, .13, cz - 10.35, "#c8c3b4", "solid", false);
+            continue;
+        }
         const W = 14 + Math.floor(r() * 4) * 1.5, D = 14 + Math.floor(r() * 3) * 1.5, nFloors = 2 + Math.floor(r() * 5), x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2, facade = FACADES[Math.floor(r() * FACADES.length)], glass = r() > .5 ? "#83aab9" : "#9bbdb6";
         const floors = [{ theme: "lobby", label: "לובי" }], pool = [...THEMES].sort(() => r() - .5);
         for (let f = 1; f < nFloors; f++) floors.push(pool[(f - 1) % pool.length]);
@@ -381,7 +449,7 @@ export function generateWorld(seed = 7) {
     add(-E, 0, -E - .5, E, 1.2, -E, "#9a948a"); add(-E, 0, E, E, 1.2, E + .5, "#9a948a");
     add(-E - .5, 0, -E, -E, 1.2, E, "#9a948a"); add(E, 0, -E, E + .5, 1.2, E, "#9a948a");
     const b0 = buildings[0];
-    return { boxes, buildings, trees, lamps, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    return { boxes, buildings, trees, lamps, homes, landmarks, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

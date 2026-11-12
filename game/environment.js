@@ -108,10 +108,10 @@ function Pedestrians({ quality }) {
 }
 export function AmbientLife({ quality }) { return _jsx(Pedestrians, { quality }); }
 export function StreetLights({ lamps, nightFactor, quality }) {
-    const limit = quality === "low" ? 4 : quality === "balanced" ? 8 : 12;
-    const selected = useMemo(() => lamps.filter((_, index) => index % 4 === 0).slice(0, limit), [lamps, limit]);
+    const limit = quality === "low" ? 5 : quality === "balanced" ? 12 : 18;
+    const selected = useMemo(() => lamps.filter((_, index) => index % 3 === 0).slice(0, limit), [lamps, limit]);
     if (nightFactor < 0.06) return null;
-    return _jsx(_Fragment, { children: selected.map((lamp, index) => _jsx("pointLight", { position: [lamp.x, 4.8, lamp.z], color: "#ffd99a", intensity: nightFactor * 1.15, distance: 17, decay: 2 }, index)) });
+    return _jsx(_Fragment, { children: selected.map((lamp, index) => _jsx("pointLight", { position: [lamp.x, 4.8, lamp.z], color: "#ffd99a", intensity: nightFactor * 1.25, distance: 20, decay: 1.85 }, index)) });
 }
 export function WeatherEffects({ weather, profile }) { return _jsxs(_Fragment, { children: [_jsx(CloudLayer, { profile }), _jsx(RainLayer, { profile }), _jsx(Lightning, { enabled: weather === "storm" })] }); }
 export function QualityMonitor({ onLevel }) {

@@ -1054,7 +1054,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
         s.hudTimer -= dt;
         if (s.hudTimer <= 0) { s.hudTimer = .5; onHud(`אימון משקולות · ${Math.floor(s.liftElapsed / 2.6)} חזרות · F לסיום`); }
       }
-      if (act || (s.mode === "sit" && (len > .3 || jump))) {
+      if (act || (s.mode === "sit" && (Math.hypot(moveX, moveZ) > .3 || jump))) {
         if (s.mode === "sit") { p.x += Math.sin(s.face) * .8; p.z += Math.cos(s.face) * .8; p.y = s.sitY; }
         bar.current = -1; s.mode = "walk"; s.target = -1; onMode("walk"); onPrompt(""); onHud("");
       }

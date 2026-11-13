@@ -115,7 +115,7 @@ export function StreetLights({ lamps, nightFactor, quality }) {
 }
 export function WeatherEffects({ weather, profile }) { return _jsxs(_Fragment, { children: [_jsx(CloudLayer, { profile }), _jsx(RainLayer, { profile }), _jsx(Lightning, { enabled: weather === "storm" })] }); }
 export function QualityMonitor({ onLevel }) {
-    const sample = useRef({ elapsed: 0, frames: 0, slow: 0, fast: 0, level: "high" });
+    const sample = useRef({ elapsed: 0, frames: 0, slow: 0, fast: 0, level: "low" });
     useFrame((_, dt) => {
         const current = sample.current; current.elapsed += dt; current.frames += 1;
         if (current.elapsed < 3) return;

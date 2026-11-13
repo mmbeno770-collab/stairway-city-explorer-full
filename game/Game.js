@@ -1143,7 +1143,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
-    h("directionalLight", { position: [50, 105, 45], intensity: 2.1, color: "#fff0d1", castShadow: true, "shadow-mapSize": [quality === "high" ? 3072 : quality === "balanced" ? 2048 : 1024, quality === "high" ? 3072 : quality === "balanced" ? 2048 : 1024], "shadow-camera-left": -185, "shadow-camera-right": 185, "shadow-camera-top": 185, "shadow-camera-bottom": -185, "shadow-camera-near": 1, "shadow-camera-far": 420, "shadow-bias": -0.00018, "shadow-normalBias": 0.025, "shadow-radius": quality === "high" ? 4 : 2 }),
+    h("directionalLight", { position: [50, 105, 45], intensity: 2.1, color: "#fff0d1", castShadow: true, "shadow-mapSize": [quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024, quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024], "shadow-camera-left": -185, "shadow-camera-right": 185, "shadow-camera-top": 185, "shadow-camera-bottom": -185, "shadow-camera-near": 1, "shadow-camera-far": 420, "shadow-bias": -0.00018, "shadow-normalBias": 0.025, "shadow-radius": quality === "high" ? 4 : 2 }),
     h(Human, { rig })
   );
 }
@@ -1154,7 +1154,7 @@ export default function Game() {
   const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
-  const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("high");
+  const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("low");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 });
@@ -1240,11 +1240,11 @@ export default function Game() {
   const joyEnd = () => { input.current.joy = { x: 0, y: 0 }; setKnob({ x: 0, y: 0 }); };
   return h("div", { id: "scene-root", className: "game-root", dir: "rtl" },
     h("div", { className: "game-canvas", onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel: (e) => { input.current.zoom += e.deltaY * .005; } },
-      h(Canvas, { shadows: quality !== "low", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.65) : quality === "balanced" ? 1.15 : .85, camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: quality === "high", powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); } },
+      h(Canvas, { shadows: quality !== "low", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.35) : quality === "balanced" ? 1.15 : .85, camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: quality === "high", powerPreference: "default" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); } },
         h("color", { attach: "background", args: [environment.skyColor] }), h("fog", { attach: "fog", args: [environment.fogColor, environment.fogNear, environment.fogFar] }),
         h(Sky, { sunPosition: environment.sunPosition, turbidity: environment.turbidity, rayleigh: 1.2 + environment.daylight * .5, mieCoefficient: weather === "fog" ? .012 : .004 }),
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
-        h(Environment, { resolution: quality === "high" ? 192 : quality === "balanced" ? 96 : 64 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
+        h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { quality, wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
         h(ScenicHills), h(WalkableHills),

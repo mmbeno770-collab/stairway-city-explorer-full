@@ -38,8 +38,8 @@ function box(position, scale, material, rotation = [0, 0, 0], key) {
     return h("mesh", { key, position, scale, rotation: rotation || [0, 0, 0], geometry: BOX, material, castShadow: true, receiveShadow: true });
 }
 function cylinder(position, radius, height, material, rotation = [0, 0, 0], key, radial = 16) {
-    return h("mesh", { key, position, rotation: rotation || [0, 0, 0], castShadow: true, receiveShadow: true },
-        h("cylinderGeometry", { args: [radius, radius, height, radial] }), material);
+    return h("mesh", { key, position, rotation: rotation || [0, 0, 0], material, castShadow: true, receiveShadow: true },
+        h("cylinderGeometry", { args: [radius, radius, height, radial] }));
 }
 function sphere(position, scale, material, key) {
     return h("mesh", { key, position, scale, geometry: new THREE.SphereGeometry(1, 12, 10), material, castShadow: true });
@@ -153,12 +153,12 @@ function SportsModel({ place }) {
         [[bx + 5.08, .31, courtZ], [bx + 5.2, .31, courtZ], [.11, .035, 17.3]]
     ];
     basketballLines.forEach(([a, b, size], i) => add([(a[0] + b[0]) / 2, .32, (a[2] + b[2]) / 2], size, M.white, null, "basket-line-" + i));
-    pieces.push(h("mesh", { key: "basket-circle", position: [bx, .33, courtZ], rotation: [Math.PI / 2, 0, 0] }, h("torusGeometry", { args: [1.6, .035, 7, 36] }), M.white));
+    pieces.push(h("mesh", { key: "basket-circle", position: [bx, .33, courtZ], rotation: [Math.PI / 2, 0, 0], material: M.white }, h("torusGeometry", { args: [1.6, .035, 7, 36] })));
     for (const direction of [-1, 1]) {
         const z = courtZ + direction * 7.35;
         add([bx, 2.15, z], [.16, 3.75, .16], M.metal, null, "basket-pole-" + direction);
         add([bx, 3.58, z - direction * .55], [1.9, 1.2, .12], M.white, null, "basket-backboard-" + direction);
-        pieces.push(h("mesh", { key: "basket-rim-" + direction, position: [bx, 3.04, z - direction * .95], rotation: [Math.PI / 2, 0, 0] }, h("torusGeometry", { args: [.48, .055, 8, 24] }), M.red));
+        pieces.push(h("mesh", { key: "basket-rim-" + direction, position: [bx, 3.04, z - direction * .95], rotation: [Math.PI / 2, 0, 0], material: M.red }, h("torusGeometry", { args: [.48, .055, 8, 24] })));
     }
     const soccerLines = [
         [sx, .33, courtZ - 8.7, 10.4, .035, .1],
@@ -168,7 +168,7 @@ function SportsModel({ place }) {
         [sx, .33, courtZ, 10.4, .035, .1]
     ];
     soccerLines.forEach(([x, y, z, w, hh, d], i) => add([x, y, z], [w, hh, d], M.white, null, "soccer-line-" + i));
-    pieces.push(h("mesh", { key: "soccer-center-circle", position: [sx, .34, courtZ], rotation: [Math.PI / 2, 0, 0] }, h("torusGeometry", { args: [1.45, .035, 7, 32] }), M.white));
+    pieces.push(h("mesh", { key: "soccer-center-circle", position: [sx, .34, courtZ], rotation: [Math.PI / 2, 0, 0], material: M.white }, h("torusGeometry", { args: [1.45, .035, 7, 32] })));
     for (const direction of [-1, 1]) {
         const z = courtZ + direction * 8.25;
         for (const side of [-1, 1]) add([sx + side * 2.05, 1.15, z], [.12, 2.3, .12], M.white, null, "goal-post-" + direction + "-" + side);
@@ -199,7 +199,7 @@ function FerrisWheel({ x, z }) {
         beam([-4.2, .25, 0], [0, 8.1, 0], .42, M.metal, "wheel-support-a"),
         beam([4.2, .25, 0], [0, 8.1, 0], .42, M.metal, "wheel-support-b"),
         h("group", { ref: wheel },
-            h("mesh", { position: [0, 8.1, 0] }, h("torusGeometry", { args: [radius, .18, 12, 64] }), M.gold),
+            h("mesh", { position: [0, 8.1, 0], material: M.gold }, h("torusGeometry", { args: [radius, .18, 12, 64] })),
             ...spokes,
             cylinder([0, 8.1, .15], .48, .45, M.metal, [Math.PI / 2, 0, 0])
         ),
@@ -224,7 +224,7 @@ function Carousel({ x, z }) {
         h("group", { ref: ride },
             cylinder([0, 2.8, 0], .18, 5.2, M.gold),
             cylinder([0, 5.2, 0], 3.6, .24, M.red, [0, 0, 0], "carousel-roof", 32),
-            h("mesh", { position: [0, 5.52, 0], rotation: [0, 0, 0] }, h("coneGeometry", { args: [3.2, 1.15, 32] }), M.yellow),
+            h("mesh", { position: [0, 5.52, 0], rotation: [0, 0, 0], material: M.yellow }, h("coneGeometry", { args: [3.2, 1.15, 32] })),
             ...horses,
             ...Array.from({ length: 8 }, (_, i) => {
                 const a = i * Math.PI / 4;

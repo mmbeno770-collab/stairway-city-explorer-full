@@ -29,9 +29,36 @@ export function generateWorld(seed = 7) {
         add(x0, .34, z0, x0 + t, wallHeight + .34, z1, wall, "solid", true);
         add(x1 - t, .34, z0, x1, wallHeight + .34, z1, wall, "solid", true);
         add(x0 + t, .34, z1 - t, x1 - t, wallHeight + .34, z1, wall, "solid", true);
-        add(x0 + t, .34, z0, homeX - frontDoor / 2, wallHeight + .34, z0 + t, wall, "solid", true);
-        add(homeX + frontDoor / 2, .34, z0, x1 - t, wallHeight + .34, z0 + t, wall, "solid", true);
-        add(homeX - frontDoor / 2, 2.5, z0, homeX + frontDoor / 2, wallHeight + .34, z0 + t, wall, "solid", true);
+        // Front facade has real openings for the door and front windows so the furnished rooms can be seen.
+        const frontOpenings = [
+            { x0: homeX - width * .28 - .71, x1: homeX - width * .28 + .71, y0: 1.24, y1: 2.56 },
+            { x0: homeX + width * .28 - .71, x1: homeX + width * .28 + .71, y0: 1.24, y1: 2.56 },
+            { x0: homeX - frontDoor / 2, x1: homeX + frontDoor / 2, y0: .34, y1: 2.5 }
+        ];
+        if (style === "villa") {
+            frontOpenings.push(
+                { x0: homeX - 2.45 - .64, x1: homeX - 2.45 + .64, y0: 4.66, y1: 5.74 },
+                { x0: homeX + 2.45 - .64, x1: homeX + 2.45 + .64, y0: 4.66, y1: 5.74 }
+            );
+        }
+        const facadeX = [...new Set([x0 + t, x1 - t, ...frontOpenings.flatMap((o) => [Math.max(x0 + t, o.x0), Math.min(x1 - t, o.x1)])])].sort((a, b) => a - b);
+        const facadeY = [...new Set([.34, wallHeight + .34, ...frontOpenings.flatMap((o) => [o.y0, o.y1])])].filter((y) => y >= .34 && y <= wallHeight + .34).sort((a, b) => a - b);
+        for (let xi = 0; xi < facadeX.length - 1; xi++) for (let yi = 0; yi < facadeY.length - 1; yi++) {
+            const xa = facadeX[xi], xb = facadeX[xi + 1], ya = facadeY[yi], yb = facadeY[yi + 1];
+            if (xb - xa < .01 || yb - ya < .01) continue;
+            const mx = (xa + xb) / 2, my = (ya + yb) / 2;
+            const opening = frontOpenings.some((o) => mx > o.x0 && mx < o.x1 && my > o.y0 && my < o.y1);
+            if (!opening) add(xa, ya, z0, xb, yb, z0 + t, wall, "solid", true);
+        }
+        // A walkable upper floor and low, climbable steps make the villas usable inside.
+        if (style === "villa") {
+            const stairX = homeX + width * .28, stairCount = 11, stairStart = z0 + 1.2;
+            for (let step = 0; step < stairCount; step++) {
+                const top = .34 + (step + 1) * .30, stepZ = stairStart + step * .4;
+                add(stairX - .48, .34, stepZ, stairX + .48, top, stepZ + .42, "#826445", "solid", true);
+            }
+            add(x0 + t, 3.64, z0 + 5.2, x1 - t, 3.82, z1 - t, "#9a8872", "solid", true);
+        }
         const pathX = homeX, pathZ0 = lotZ0 + 2.6, pathZ1 = z0 - .05;
         add(pathX - .7, .075, pathZ0, pathX + .7, .12, pathZ1, "#d8d0c0", "solid", false);
         add(x0 - .5, .06, z0 - .55, x1 + .5, .09, z1 + .7, style === "villa" ? "#7b9365" : "#82976b", "solid", false);
@@ -62,8 +89,8 @@ export function generateWorld(seed = 7) {
             lamps.push({ x: cx - 10.5, z: cz - 10.5 }, { x: cx + 10.5, z: cz + 10.5 });
             return;
         }
-        add(cx - 12, 0, cz - 12, cx + 12, .16, cz + 12, "#738b5c", "solid", true);
-        add(cx - 11.6, .16, cz - 11.6, cx + 11.6, .2, cz + 11.6, "#b1aa92", "solid", false);
+        add(cx - 15, 0, cz - 15, cx + 15, .16, cz + 15, "#738b5c", "solid", true);
+        add(cx - 14.6, .16, cz - 14.6, cx + 14.6, .2, cz + 14.6, "#b1aa92", "solid", false);
         landmarks.push({ type: "amusement", x: cx, z: cz, name: "לונה פארק" });
         for (let i = 0; i < 6; i++) lamps.push({ x: cx - 9.5 + i * 3.8, z: cz - 11.4 });
     };

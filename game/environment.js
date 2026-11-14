@@ -115,16 +115,32 @@ export function StreetLights({ lamps, nightFactor, quality }) {
 }
 export function WeatherEffects({ weather, profile }) { return _jsxs(_Fragment, { children: [_jsx(CloudLayer, { profile }), _jsx(RainLayer, { profile }), _jsx(Lightning, { enabled: weather === "storm" })] }); }
 export function QualityMonitor({ onLevel }) {
-    const sample = useRef({ elapsed: 0, frames: 0, slow: 0, fast: 0, level: "low" });
+    const sample = useRef({ elapsed: 0, frames: 0, slow: 0, fast: 0, level: "balanced" });
     useFrame((_, dt) => {
-        const current = sample.current; current.elapsed += dt; current.frames += 1;
-        if (current.elapsed < 3) return;
-        const fps = current.frames / current.elapsed; current.elapsed = 0; current.frames = 0;
-        current.slow = fps < 38 ? current.slow + 1 : 0; current.fast = fps > 55 ? current.fast + 1 : 0;
+        const current = sample.current;
+        current.elapsed += dt;
+        current.frames += 1;
+        if (current.elapsed < 2) return;
+        const fps = current.frames / current.elapsed;
+        current.elapsed = 0;
+        current.frames = 0;
+        current.slow = fps < 36 ? current.slow + 1 : 0;
+        const upgradeThreshold = current.level === "low" ? 50 : 58;
+        current.fast = fps > upgradeThreshold ? current.fast + 1 : 0;
         let next = current.level;
-        if (current.slow >= 2) { next = current.level === "high" ? "balanced" : "low"; current.slow = 0; current.fast = 0; }
-        else if (current.fast >= 4) { next = current.level === "low" ? "balanced" : "high"; current.fast = 0; }
-        if (next !== current.level) { current.level = next; onLevel(next); }
+        if (current.slow >= 2 && current.level !== "low") {
+            next = current.level === "high" ? "balanced" : "low";
+            current.slow = 0;
+            current.fast = 0;
+        } else if (current.fast >= 2 && current.level !== "high") {
+            next = current.level === "low" ? "balanced" : "high";
+            current.fast = 0;
+            current.slow = 0;
+        }
+        if (next !== current.level) {
+            current.level = next;
+            onLevel(next);
+        }
     });
     return null;
 }

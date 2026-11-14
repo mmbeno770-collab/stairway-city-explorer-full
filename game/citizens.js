@@ -276,9 +276,14 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
   const collider = useMemo(() => new Collider(world.boxes), [world]);
   const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider), [world, cars, helis, airVehicles, collider]);
   if (citizensRef) citizensRef.current = sim.walkers;
+  const simulationClock = useRef(0);
 
   useFrame((state, rawDt) => {
-    const dt = Math.min(rawDt, .045), now = state.clock.elapsedTime;
+    simulationClock.current += Math.min(rawDt, .1);
+    if (simulationClock.current < 1 / 30) return;
+    const dt = Math.min(simulationClock.current, .045);
+    simulationClock.current = 0;
+    const now = state.clock.elapsedTime;
     const walkers = sim.walkers, drivers = sim.drivers;
     const carEnv = {
       ground: (x, z, y) => collider.groundAt(x, z, y, .65, 1),
@@ -711,7 +716,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
   });
 
   return h(React.Fragment, null, sim.all.map((person) => h(React.Fragment, { key: person.id },
-    h(Human, { rig: person.rig }),
+    h(Human, { rig: person.rig, lowDetail: conversationRef?.current?.personId !== person.id }),
     person.id.startsWith("walker-") ? h(CitizenSpeechBubble, { person }) : null
   )));
 }

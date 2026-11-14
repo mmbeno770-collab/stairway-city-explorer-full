@@ -51,7 +51,50 @@ function Face({ r, S }) {
         _jsx("mesh", { geometry: G.philtrum, material: M.skinShadow, position: [0, -0.041, 0.095] }), _jsx("mesh", { geometry: G.lipUpper, material: M.lip, position: [0, -0.064, 0.097] }), _jsx("mesh", { geometry: G.lipLower, material: M.lip, position: [0, -0.073, 0.097] }), _jsx("mesh", { geometry: G.smile, material: M.mouth })
     ] });
 }
-export function Human({ rig }) {
+function SimpleHuman({ rig }) {
+    const r = (key) => (object) => { if (object) rig[key] = object; };
+    const noShadow = { castShadow: false, receiveShadow: false };
+    return _jsxs("group", { ref: r("root"), scale: 0.95, children: [
+        _jsxs("group", { ref: r("hips"), position: [0, 0.95, 0], children: [
+            _jsx("mesh", { geometry: G.pelvis, material: M.pants, ...noShadow }),
+            ...[-1, 1].map((side, index) => _jsxs("group", { ref: r("thigh" + index), position: [side * 0.092, -0.015, 0], children: [
+                _jsx("mesh", { geometry: G.thigh, material: M.pants, ...noShadow }),
+                _jsxs("group", { ref: r("knee" + index), position: [0, -0.41, 0], children: [
+                    _jsx("mesh", { geometry: G.knee, material: M.pants, ...noShadow }),
+                    _jsx("mesh", { geometry: G.shin, material: M.pants, ...noShadow }),
+                    _jsxs("group", { ref: r("ankle" + index), position: [0, -0.42, 0], children: [
+                        _jsx("mesh", { geometry: G.ankle, material: M.skin, ...noShadow }),
+                        _jsx("mesh", { geometry: G.shoe, material: M.shoe, position: [0, -0.032, 0.038], ...noShadow })
+                    ] })
+                ] })
+            ] }, index)),
+            _jsxs("group", { ref: r("spine"), position: [0, 0.05, 0], children: [
+                _jsx("mesh", { ref: r("chest"), geometry: G.torso, material: M.shirt, scale: [1, 1, 0.68], ...noShadow }),
+                ...[-1, 1].map((side, index) => _jsxs("group", { ref: r("shoulder" + index), position: [side * 0.19, 0.43, 0], children: [
+                    _jsx("mesh", { geometry: G.shoulder, material: M.shirt, ...noShadow }),
+                    _jsx("mesh", { geometry: G.upperArm, material: M.shirt, ...noShadow }),
+                    _jsxs("group", { ref: r("elbow" + index), position: [0, -0.28, 0], children: [
+                        _jsx("mesh", { geometry: G.elbow, material: M.skin, ...noShadow }),
+                        _jsx("mesh", { geometry: G.forearm, material: M.skin, ...noShadow })
+                    ] })
+                ] }, index)),
+                _jsxs("group", { ref: r("neck"), position: [0, 0.49, 0], children: [
+                    _jsx("mesh", { geometry: G.neck, material: M.skin, ...noShadow }),
+                    _jsxs("group", { ref: r("head"), position: [0, 0.21, 0], children: [
+                        _jsx("mesh", { geometry: G.skull, material: M.skin, ...noShadow }),
+                        _jsx("mesh", { geometry: G.hairCap, material: M.hair, position: [0, 0.016, -0.006], rotation: [-0.28, 0, 0], scale: [1, 1.06, 1.08], ...noShadow }),
+                        _jsx("mesh", { geometry: G.kippah, material: M.kippah, position: [0, 0.108, -0.007], ...noShadow }),
+                        _jsx("mesh", { geometry: G.kippahTrim, material: M.kippahTrim, position: [0, 0.109, -0.007], rotation: [Math.PI / 2, 0, 0], ...noShadow }),
+                        ...[-1, 1].map((side) => _jsx("mesh", { geometry: G.hairSide, material: M.hair, position: [side * 0.081, 0.002, 0.008], ...noShadow }, side))
+                    ] })
+                ] })
+            ] })
+        ] }),
+        _jsx("group", { ref: r("bar"), visible: false })
+    ] });
+}
+export function Human({ rig, lowDetail = false }) {
+    if (lowDetail) return _jsx(SimpleHuman, { rig });
     const r = (key) => (o) => { if (o) rig[key] = o; }, S = { castShadow: true, receiveShadow: true };
     return _jsxs("group", { ref: r("root"), scale: 0.95, children: [
         _jsxs("group", { ref: r("hips"), "position-y": 0.95, children: [

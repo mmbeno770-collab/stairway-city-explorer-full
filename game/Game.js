@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, Sky } from "@react-three/drei";
 import * as THREE from "three";
-import { Collider, generateWorld, locate, CITY_HALF, BLOCK, GRID, CABLE_STATIONS, WALKABLE_HILLS } from "./world.js";
+import { Collider, generateWorld, locate, CITY_HALF, BLOCK, GRID, CABLE_STATIONS } from "./world.js";
 import { Human, poseHuman, BARBELL } from "./human.js";
 import { Citizens } from "./citizens.js";
 import { Helicopters } from "./helicopter.js";
@@ -58,25 +58,6 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personal
   if (/(למה|איך|מתי|האם|כמה)/.test(text)) return pick(["זאת שאלה טובה. אני עוד מגלה דברים בעיר, אבל אשמח לעזור לך לחקור.", "ממה שראיתי, יש כאן הרבה מקומות לגלות. לאן נלך עכשיו?", "אני לא בטוח בכל הפרטים, אבל אפשר לבדוק יחד."]);
   return pick(["מעניין! ספר לי עוד, אני מקשיב.", "אני מבין אותך. מה עוד תרצה לדעת על העיר?", "נחמד לדבר תוך כדי הטיול. יש כאן עוד הרבה מה לראות.", "אולי נגלה משהו חדש בסיבוב הבא שלנו."]);
 }
-
-function ScenicHills() {
-  const hills = [
-    { p: [0, -4.5, -205], s: [84, 12, 38], c: "#78945f" },
-    { p: [0, -5, 205], s: [82, 12, 40], c: "#6f8e58" },
-    { p: [-205, -4.5, 0], s: [38, 12, 84], c: "#829b65" },
-    { p: [205, -5, 0], s: [40, 12, 82], c: "#718d57" },
-    { p: [-198, -6, -198], s: [34, 8, 34], c: "#8da36c" },
-    { p: [198, -6, 198], s: [36, 8, 36], c: "#81995f" }
-  ];
-  return h(React.Fragment, null, hills.map((hill, i) =>
-    h("mesh", { key: i, position: hill.p, scale: hill.s, receiveShadow: true },
-      h("sphereGeometry", { args: [1, 28, 18] }),
-      h("meshStandardMaterial", { color: hill.c, roughness: 1 })
-    )
-  ));
-}
-
-
 
 const BIRD_WING_GEOMETRY = (() => {
   const shape = new THREE.Shape();
@@ -169,40 +150,6 @@ function BirdFlocks() {
           )
         )
       )
-    )
-  ));
-}
-
-function hillGeometry(hill) {
-  const segments = 36, positions = [], indices = [];
-  for (let iz = 0; iz <= segments; iz++) {
-    const z = (iz / segments * 2 - 1) * hill.rz;
-    for (let ix = 0; ix <= segments; ix++) {
-      const x = (ix / segments * 2 - 1) * hill.rx;
-      const nx = x / hill.rx, nz = z / hill.rz, radius = Math.hypot(nx, nz);
-      const y = radius >= 1 ? 0 : hill.height * .5 * (1 + Math.cos(Math.PI * radius));
-      positions.push(x, y, z);
-    }
-  }
-  for (let iz = 0; iz < segments; iz++) for (let ix = 0; ix < segments; ix++) {
-    const centerX = (ix + .5) / segments * 2 - 1, centerZ = (iz + .5) / segments * 2 - 1;
-    if (centerX * centerX + centerZ * centerZ > 1.02) continue;
-    const a = iz * (segments + 1) + ix, b = a + 1, c = a + segments + 1, d = c + 1;
-    indices.push(a, d, b, a, c, d);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-function WalkableHills() {
-  const geometries = useMemo(() => WALKABLE_HILLS.map(hillGeometry), []);
-  useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
-  return h(React.Fragment, null, WALKABLE_HILLS.map((hill, i) =>
-    h("mesh", { key: i, geometry: geometries[i], position: [hill.x, 0, hill.z], castShadow: true, receiveShadow: true },
-      h("meshStandardMaterial", { color: i % 2 ? "#829b5f" : "#748e55", roughness: .98, metalness: 0 })
     )
   ));
 }
@@ -1247,7 +1194,6 @@ export default function Game() {
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { quality, wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
-        h(ScenicHills), h(WalkableHills),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world }),

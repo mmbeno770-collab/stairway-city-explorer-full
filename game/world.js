@@ -6,15 +6,6 @@ export const CABLE_STATIONS = [
   { id: 2, name: "תחנת דרום־מזרח", x: 90, z: 90, y: 49 },
   { id: 3, name: "תחנת דרום־מערב", x: -90, z: 90, y: 55 }
 ];
-export const WALKABLE_HILLS = [
-  { x: -78, z: -80, rx: 6.5, rz: 6.5, height: 2.8 },
-  { x: -64, z: -80, rx: 6.5, rz: 6.5, height: 3.5 }
-];
-export function hillHeightAt(hill, x, z) {
-  const nx = (x - hill.x) / hill.rx, nz = (z - hill.z) / hill.rz;
-  const radius = Math.hypot(nx, nz);
-  return radius >= 1 ? 0 : hill.height * 0.5 * (1 + Math.cos(Math.PI * radius));
-}
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const THEMES = [
     { theme: "cafe", label: "בית קפה", floor: "#76523d" }, { theme: "library", label: "ספרייה", floor: "#584638" }, { theme: "gym", label: "חדר כושר", floor: "#343d49" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#d7d0c2" }, { theme: "office", label: "משרדים", floor: "#8d9b9d" }, { theme: "apartment", label: "דירת מגורים", floor: "#b99a72" }, { theme: "arcade", label: "אולם משחקים", floor: "#25283b" }, { theme: "garden", label: "גן פנימי", floor: "#637a4d" }, { theme: "music", label: "אולפן מוזיקה", floor: "#56383a" }, { theme: "kids", label: "חדר ילדים", floor: "#c3d0ce" },
@@ -620,10 +611,6 @@ export class Collider {
                 continue;
             }
             if (b.y1 <= y + step && b.y1 > g) g = b.y1;
-        }
-        for (const hill of WALKABLE_HILLS) {
-            const surface = hillHeightAt(hill, x, z);
-            if (surface > g) g = surface;
         }
         if (basementGround > -Infinity) g = basementGround;
         return g;

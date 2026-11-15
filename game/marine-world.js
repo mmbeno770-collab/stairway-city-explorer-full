@@ -99,7 +99,7 @@ function IslandAnimal({animal}){
  const animalColor={penguin:"#273b46",fox:"#bd7042",deer:"#a97c4d",lizard:"#5d9363",seal:"#829ca5",parrot:"#27a77b",goat:"#ded6c1",turtle:"#607b49",rabbit:"#d3c7b5"}[animal.type]||"#72876a";
  const bodyMat=new THREE.MeshStandardMaterial({color:animalColor,roughness:.9}),white=new THREE.MeshStandardMaterial({color:"#f1f1e9"}),feetMat=new THREE.MeshStandardMaterial({color:animal.type==="penguin"?"#eaa64a":"#51493e"});
  return React.createElement("group",{ref,position:[animal.x,.27,animal.z],scale:animal.scale},
-  React.createElement("mesh",{position:[0,.62,0],material:bodyMat},React.createElement("sphereGeometry",{args:[animal.type==="penguin"||animal.type==="seal"?.38:.55,animal.type==="penguin"||animal.type==="seal"?.58:.36,.34]})),
+  React.createElement("mesh",{position:[0,.62,0],material:bodyMat},React.createElement("sphereGeometry",{args:[(animal.type==="penguin"||animal.type==="seal") ? .38 : .55,(animal.type==="penguin"||animal.type==="seal") ? .58 : .36,.34]})),
   React.createElement("mesh",{position:[0,1.05,.24],material:bodyMat},React.createElement("sphereGeometry",{args:[.24,12,10]})),
   ...(animal.type==="turtle"?[React.createElement("mesh",{key:"shell",position:[0,.78,-.03],material:new THREE.MeshStandardMaterial({color:"#365d3e"})},React.createElement("sphereGeometry",{args:[.58,.34,.48]}))]:[]),
   ...(animal.type==="penguin"?[React.createElement("mesh",{key:"belly",position:[0,.58,.22],material:white},React.createElement("sphereGeometry",{args:[.25,.42,.13]}))]:[]),
@@ -110,9 +110,9 @@ function IslandAnimal({animal}){
 function IslandModel({island}){
  const base=useMemo(()=>islandShape(island,1.06,true),[island]),top=useMemo(()=>islandShape(island,.86,false),[island]);
  const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.sand,roughness:.96}),[island.sand]),grassMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.color,roughness:.94}),[island.color]);
- return React.createElement("group",{position:[island.x,-1.85,island.z]},
-  React.createElement("mesh",{geometry:base,material:sandMat,receiveShadow:true,castShadow:true}),
-  React.createElement("mesh",{geometry:top,position:[0,2.13,0],material:grassMat,receiveShadow:true}),
+ return React.createElement("group",{position:[0,-1.85,0]},
+  React.createElement("mesh",{geometry:base,position:[island.x,0,island.z],material:sandMat,receiveShadow:true,castShadow:true}),
+  React.createElement("mesh",{geometry:top,position:[island.x,2.13,island.z],material:grassMat,receiveShadow:true}),
   ...island.trees.map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
   ...island.animals.map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal}))
  );

@@ -17,7 +17,7 @@ import { ElevatorModel } from "./elevator-system.js";
 import { advanceElevatorTrip, floorHeight, makeElevatorTrip } from "./elevator-sim.js";
 import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./environment.js";
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
-import { createMarineWorld, createIslandCollisionBoxes, MAINLAND_SHORE, isMainlandLand, getIslandAt, MarineWorld } from "./marine-world.js";
+import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, MarineWorld } from "./marine-world.js";
 
 const h = React.createElement;
 
@@ -705,8 +705,6 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
     activeVehicleRef.current.mode = s.mode; activeVehicleRef.current.target = s.target;
-    divingRef.current = s.mode === "swim";
-    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.y = s.face; }
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
     if (inp.closeTalk) {
@@ -714,6 +712,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       if (s.mode === "talk") { s.mode = "walk"; s.talkTarget = null; s.nearPerson = -1; s.v.set(0, 0, 0); onMode("walk"); onPrompt(""); }
     }
     const p = s.p, root = rig.root;
+    divingRef.current = s.mode === "swim";
+    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.y = s.face; }
     if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
@@ -1105,7 +1105,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       s.v.x += (worldMove.x * speed - s.v.x) * (1 - Math.exp(-4.5 * dt));
       s.v.z += (worldMove.z * speed - s.v.z) * (1 - Math.exp(-4.5 * dt));
       p.x += s.v.x * dt; p.z += s.v.z * dt;
-      const vertical = (jump ? 1 : 0) - (shift ? 1 : 0);
+      const vertical = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
       if (vertical) p.y = THREE.MathUtils.clamp(p.y + vertical * 3.2 * dt, -22, -1.2);
       else p.y += (-2.6 - p.y) * (1 - Math.exp(-.32 * dt));
       if (Math.hypot(worldMove.x, worldMove.z) > .1) {
@@ -1122,7 +1122,6 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         camTarget.set(p.x, p.y + 1.28, p.z); camDist = 5.8; followYaw = s.face;
         s.hudTimer -= dt;
         if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("צלילה · W/A/S/D לשחייה · רווח לעלייה · Shift להעמקה · אפשר לשחות עד האיים"); }
-        onPrompt("חליפת צלילה פעילה · חפשו דגים, מדוזות וסוסוני ים");
       }
     } else if (s.mode === "airVehicle") {
       const vehicle = airVehicles[s.target];
@@ -1188,8 +1187,9 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     const desired = camTarget.clone().addScaledVector(back, distance);
     if (!s.cameraReady) { camera.position.copy(desired); s.cameraReady = true; }
     camera.position.lerp(desired, 1 - Math.exp(-6 * dt)); camera.lookAt(camTarget);
-    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : locate(world, p.x, p.y, p.z);
-    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
+    const islandHere = getIslandAt(p.x, p.z, marine.islands);
+    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "swim" ? "מתחת למים" : islandHere ? islandHere.name : locate(world, p.x, p.y, p.z);
+    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || islandHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
@@ -1326,7 +1326,7 @@ export default function Game() {
       h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "heli" || mode === "car" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    hud && (mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     conversation && h("section", { className: "npc-chat-panel hud-panel", role: "dialog", "aria-label": "שיחה עם תושב" },
       h("div", { className: "npc-chat-header" },
         h("div", null, h("strong", null, "שיחה עם " + conversation.npcName), h("span", null, "התושב עוצר ומקשיב לך")),
@@ -1372,8 +1372,8 @@ export default function Game() {
       h("span", { className: "joy-direction down", "aria-hidden": true }, "↓"),
       h("span", { className: "joy-direction left", "aria-hidden": true }, "←"),
       h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
-    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" ? "עלייה" : mode === "car" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
-    (mode === "heli" || mode === "airVehicle" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
+    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" || mode === "swim" ? "עלייה" : mode === "car" || mode === "boat" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
+    (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
       h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות, ולהקות ציפורים שחולפות בשמיים מדי פעם."),
       h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך"),

@@ -477,10 +477,7 @@ export function generateWorld(seed = 7) {
     const autonomousHelicopter = inter.find((item) => item.type === "heli" && !item.parking && (item.scale || 1) >= .95)
         || inter.find((item) => item.type === "heli" && !item.parking);
     if (autonomousHelicopter) autonomousHelicopter.npcControlled = true;
-    const E = CITY_HALF + 4;
-    add(-E, 0, -E - .5, E, 1.2, -E, "#9a948a"); add(-E, 0, E, E, 1.2, E + .5, "#9a948a");
-    add(-E - .5, 0, -E, -E, 1.2, E, "#9a948a"); add(E, 0, -E, E + .5, 1.2, E, "#9a948a");
-    const b0 = buildings[0];
+    // Open perimeter lets visitors reach the beach and boarding points.\n    const b0 = buildings[0];
     return { boxes, buildings, trees, lamps, homes, landmarks, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }

@@ -17,6 +17,7 @@ import { ElevatorModel } from "./elevator-system.js";
 import { advanceElevatorTrip, floorHeight, makeElevatorTrip } from "./elevator-sim.js";
 import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./environment.js";
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
+import { createMarineWorld, createIslandCollisionBoxes, MAINLAND_SHORE, isMainlandLand, getIslandAt, MarineWorld } from "./marine-world.js";
 
 const h = React.createElement;
 
@@ -32,7 +33,7 @@ function cameraRelativeMove(x, forward, yaw) {
   return { x: sin * forward - cos * x, z: cos * forward + sin * x };
 }
 const WALK = 6.2, RUN = 10.5, ACCEL = 16, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
 function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personality = "סקרן ואוהב לגלות מקומות חדשים") {
   const text = String(message || "").trim().toLocaleLowerCase("he");
@@ -49,6 +50,7 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personal
   if (/(איפה|מיקום|בניין|קומה|מדרגות|גג)/.test(text)) return pick(["יש כאן הרבה בניינים. הדלתות מובילות ללובי, ומשם אפשר לעלות במדרגות.", "אני אוהב לעלות לקומות הגבוהות ולראות את העיר מלמעלה.", "אפשר להיכנס לבניינים ולגלות שבכל קומה יש חלל אחר."]);
   if (/(מכונית|רכב|אוטובוס|ג'יפ|חניון|מירוץ)/.test(text)) return pick(["בחניון המרכזי יש מכוניות, ג'יפ, אוטובוס ומכונית מרוץ.", "אני אוהב לעמוד ליד הכביש ולראות את התנועה. יש כאן כמה כלי רכב מעניינים.", "אפשר לבחור רכב, להיכנס אליו ולנסוע ברחובות העיר."]);
   if (/(מטוס|מסוק|טס|טיסה|טסלה|רכבל)/.test(text)) return pick(["אפשר להטיס מסוק או מטוס ולראות את העיר מלמעלה.", "הטסלה המעופפת מיוחדת מאוד. היא יכולה לעלות ולרדת באוויר.", "הרכבל עובר בין שמונה תחנות ומחבר את כל חלקי העיר."]);
+  if (/(סירה|ים|אי|דגים|צלילה|שייט)/.test(text)) return pick(["בחוף יש סירות, ואפשר לשוט איתן לאיים. בכניסה למים עוברים למצב צלילה ורואים יצורים ימיים.", "יש כמה איים שונים מסביב לעיר: אי טרופי, אי מושלג, אי קיץ ועוד מקומות שאפשר לחקור."]);
   if (/(תושב|אנשים|דמויות|תושבים|ai|בינה)/.test(text)) return pick(["לכל אחד מאיתנו יש מסלול משלו, ואנחנו יכולים לעבור בין בניינים ולפגוש תושבים אחרים.", "אנחנו מסתובבים בעיר, עוקפים מכשולים, עוצרים לשיחות ומבקרים במקומות שונים.", "אפשר לבקש ממני לבוא איתך, או לבקש שאמשיך בסיור עצמאי."]);
   if (/(מזג אוויר|גשם|שמש|סערה|עננים)/.test(text)) return "אפשר לשנות את מזג האוויר ואת השעה בלוח הסביבה שבצד המסך.";
   if (/(תודה|מעולה|יופי|נהדר)/.test(text)) return pick(["בשמחה! תמיד נחמד לפגוש תושבים חדשים.", "אין בעד מה. שיהיה לך טיול נעים!", "בכיף! אולי נתראה בהמשך הסיבוב."]);
@@ -468,6 +470,7 @@ function Ground({ wet, buildings }) {
     const ctx = canvas.getContext("2d"), total = GRID * BLOCK + 40, p = size / total, to = (v) => (v + total / 2) * p;
     // A pale sandy border around the city forms its beach.
     ctx.fillStyle = "#dfc991"; ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#c8b37e"; ctx.fillRect(to(-CITY_HALF - 20), to(-CITY_HALF - 20), (GRID * BLOCK + 40) * p, (GRID * BLOCK + 40) * p);
     ctx.fillStyle = "#303b43"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
@@ -536,7 +539,7 @@ function Ground({ wet, buildings }) {
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.16, 0], receiveShadow: true }, h("planeGeometry", { args: [1600, 1600] }), h("meshStandardMaterial", { color: "#247d9b", roughness: .28, metalness: .18, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: .035, envMapIntensity: 1.15 }))
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.16, 0], receiveShadow: true }, h("planeGeometry", { args: [2400, 2400] }), h("meshStandardMaterial", { color: "#247d9b", roughness: .28, metalness: .18, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: .035, envMapIntensity: 1.15 }))
   );
 }
 
@@ -669,7 +672,19 @@ function ParkingModels({ airVehicles }) {
     )
   );
 }
-function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, onTalk }) {
+function DiverSuit({ rig }) {
+  return h("group", { ref: node => { rig.diverSuit = node; }, visible: false, scale: .95 },
+    h("mesh", { position: [0, 1.22, 0], scale: [.34, .5, .25] }, h("sphereGeometry", { args: [1, 16, 12] }), h("meshStandardMaterial", { color: "#123e55", roughness: .52, metalness: .12 })),
+    ...[-1, 1].map(side => h("mesh", { key: "sleeve-" + side, position: [side * .28, 1.18, 0], rotation: [0, 0, side * -.22] }, h("cylinderGeometry", { args: [.105, .14, .62, 10] }), h("meshStandardMaterial", { color: "#15516a", roughness: .6 }))),
+    ...[-1, 1].map(side => h("mesh", { key: "leg-" + side, position: [side * .1, .48, 0] }, h("cylinderGeometry", { args: [.105, .115, .78, 10] }), h("meshStandardMaterial", { color: "#102f47", roughness: .58 }))),
+    h("mesh", { position: [0, 1.28, -.245], rotation: [Math.PI / 2, 0, 0] }, h("cylinderGeometry", { args: [.16, .16, .48, 14] }), h("meshStandardMaterial", { color: "#c1cbd0", metalness: .74, roughness: .3 })),
+    h("mesh", { position: [0, 1.92, .08], scale: [.19, .11, .12] }, h("sphereGeometry", { args: [1, 16, 10] }), h("meshPhysicalMaterial", { color: "#71c4d8", transparent: true, opacity: .78, roughness: .12, metalness: .1 })),
+    h("mesh", { position: [0, 1.92, .18] }, h("boxGeometry", { args: [.4, .045, .06] }), h("meshStandardMaterial", { color: "#d7a948", metalness: .7, roughness: .28 })),
+    ...[-1, 1].map(side => h("mesh", { key: "fin-" + side, position: [side * .1, .08, .24] }, h("boxGeometry", { args: [.18, .08, .46] }), h("meshStandardMaterial", { color: "#e3b34d", roughness: .52 })))
+  );
+}
+
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, onTalk }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
@@ -685,10 +700,13 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
   const heliIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((x, i) => { if (x.type === "heli") map.set(i, n++); }); return map; }, [world]);
   const carIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((x, i) => { if (x.type === "car") map.set(i, n++); }); return map; }, [world]);
   const airVehicleIndices = useMemo(() => new Map(airVehicles.map((vehicle, index) => [vehicle.id, index])), [airVehicles]);
+  const boatIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "boat") map.set(index, n++); }); return map; }, [world]);
   const bar = useRef(-1);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
     activeVehicleRef.current.mode = s.mode; activeVehicleRef.current.target = s.target;
+    divingRef.current = s.mode === "swim";
+    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.y = s.face; }
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
     if (inp.closeTalk) {
@@ -870,11 +888,15 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
       if (ny <= ground || (s.onGround && s.v.y <= 0 && ny - ground < stepHeight)) { ny = ground; s.v.y = 0; s.onGround = true; } else s.onGround = false;
       p.y = ny;
       if (p.y < -20) { p.set(...world.spawn); s.v.set(0, 0, 0); }
+      if (!isMainlandLand(p.x, p.z) && !getIslandAt(p.x, p.z, marine.islands)) {
+        p.y = -2.7; s.v.set(0, 0, 0); s.mode = "swim"; s.onGround = false;
+        s.lastPrompt = ""; onMode("swim"); onPrompt("נכנסתם למים · חליפת צלילה הופעלה"); onHud("");
+      }
       s.timer -= dt;
-      if (s.timer <= 0 || (act && s.mode === "walk")) {
+      if (s.mode === "walk" && (s.timer <= 0 || act)) {
         s.timer = .14; let best = -1, bestD = Infinity;
         world.interactables.forEach((it, i) => {
-          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : it.type === "door" ? 2.7 : 1.8;
+          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "boat" ? 4.8 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : it.type === "door" ? 2.7 : 1.8;
           if (it.type === "heli") { const item = helis[heliIndices.get(i)]; x = item.x; y = item.y; z = item.z; if (!item.grounded) return; }
           if (it.type === "car") { const item = cars[carIndices.get(i)]; x = item.x; y = item.y; z = item.z; }
           if (it.type === "airVehicle") { const item = airVehicles[airVehicleIndices.get(it.id)]; if (!item) return; x = item.x; y = item.y; z = item.z; }
@@ -935,6 +957,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
         }
         else if (it.type === "heli") { s.target = heliIndices.get(s.near); s.mode = "heli"; onMode("heli"); }
         else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
+        else if (it.type === "boat") { s.target = boatIndices.get(s.near); s.mode = "boat"; s.v.set(0, 0, 0); onMode("boat"); onPrompt("הסירה מוכנה · W/S לשוט · A/D לפנות"); }
         else if (it.type === "airVehicle") { s.target = airVehicleIndices.get(it.id); s.mode = "airVehicle"; onMode("airVehicle"); onPrompt(it.id === "plane" ? "מטוס · W/S תנועה · רווח להמראה · Shift להנמכה" : "טסלה מעופפת · W/S נסיעה · רווח לעלייה נמוכה · Shift לירידה"); }
         else if (it.type === "door") {
           const wasOpen = !!doorStatesRef.current[s.near];
@@ -1045,6 +1068,62 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
           s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud(`רכב · ${Math.round(Math.abs(car.speed) * 3.6)} קמ״ש · W קדימה · S אחורה · A שמאלה · D ימינה · Shift בלימה`); }
         }
       }
+    } else if (s.mode === "boat") {
+      const boat = boats[s.target];
+      if (!boat) { s.mode = "walk"; s.target = -1; onMode("walk"); }
+      else {
+        const throttle = Math.max(-1, Math.min(1, moveZ));
+        if (Math.abs(throttle) > .025) boat.speed += throttle * 4.6 * dt; else boat.speed *= Math.exp(-.72 * dt);
+        boat.speed = THREE.MathUtils.clamp(boat.speed, -4.5, 13.5);
+        boat.steering += (moveX - boat.steering) * (1 - Math.exp(-3.8 * dt));
+        boat.yaw += boat.steering * .82 * Math.min(1, Math.abs(boat.speed) / 3.5) * dt * Math.sign(boat.speed || 1);
+        const nx = boat.x + Math.sin(boat.yaw) * boat.speed * dt, nz = boat.z + Math.cos(boat.yaw) * boat.speed * dt;
+        const coastNow = Math.max(Math.abs(boat.x), Math.abs(boat.z)), coastNext = Math.max(Math.abs(nx), Math.abs(nz));
+        if (isMainlandLand(nx, nz) && coastNext < coastNow) boat.speed *= .2;
+        else if (getIslandAt(nx, nz, marine.islands)) boat.speed *= .18;
+        else { boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
+        boat.y = -.16 + Math.sin(s.t * 1.8 + boat.id) * .025;
+        p.set(boat.x, boat.y + .36, boat.z);
+        if (act && Math.abs(boat.speed) < 1.2) {
+          const island = getIslandAt(boat.x, boat.z, marine.islands);
+          if (island) { p.y = .28; s.mode = "walk"; onMode("walk"); onPrompt("הגעתם אל " + island.name); }
+          else if (isMainlandLand(boat.landX, boat.landZ)) { p.set(boat.landX, .2, boat.landZ); s.mode = "walk"; onMode("walk"); onPrompt("ירדתם אל החוף"); }
+          else { p.y = -2.7; s.mode = "swim"; onMode("swim"); onPrompt("נכנסתם למים · מצב צלילה הופעל"); }
+          boat.speed = 0; s.target = -1; s.v.set(0, 0, 0); onHud("");
+        } else {
+          temp.e.set(0, boat.yaw, 0, "YXZ"); temp.q.setFromEuler(temp.e);
+          if (root) { root.position.copy(temp.v.set(0, .55, -.25).applyQuaternion(temp.q).add(new THREE.Vector3(boat.x, boat.y, boat.z))); root.rotation.set(0, boat.yaw, 0); }
+          poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
+          camTarget.set(boat.x, boat.y + 2.1, boat.z); camDist = 8; followYaw = boat.yaw;
+          s.hudTimer -= dt;
+          if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("סירה · W/S קדימה ואחורה · A/D היגוי · F ירידה בעצירה"); }
+          onPrompt(Math.abs(boat.speed) < 1.2 ? "F / פעולה — לרדת מהסירה" : "עצרו את הסירה כדי לרדת");
+        }
+      }
+    } else if (s.mode === "swim") {
+      const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), speed = shift ? 4.2 : 5.6;
+      s.v.x += (worldMove.x * speed - s.v.x) * (1 - Math.exp(-4.5 * dt));
+      s.v.z += (worldMove.z * speed - s.v.z) * (1 - Math.exp(-4.5 * dt));
+      p.x += s.v.x * dt; p.z += s.v.z * dt;
+      const vertical = (jump ? 1 : 0) - (shift ? 1 : 0);
+      if (vertical) p.y = THREE.MathUtils.clamp(p.y + vertical * 3.2 * dt, -22, -1.2);
+      else p.y += (-2.6 - p.y) * (1 - Math.exp(-.32 * dt));
+      if (Math.hypot(worldMove.x, worldMove.z) > .1) {
+        const target = Math.atan2(worldMove.x, worldMove.z); let delta = target - s.face;
+        delta = Math.atan2(Math.sin(delta), Math.cos(delta)); s.face += delta * (1 - Math.exp(-4 * dt)); followYaw = s.face;
+      }
+      const island = getIslandAt(p.x, p.z, marine.islands);
+      if (island) { p.y = .28; s.v.set(0, 0, 0); s.mode = "walk"; s.onGround = true; s.lastPrompt = ""; onMode("walk"); onHud(""); onPrompt("הגעתם אל " + island.name); }
+      else if (isMainlandLand(p.x, p.z)) { p.y = .2; s.v.set(0, 0, 0); s.mode = "walk"; s.onGround = true; s.lastPrompt = ""; onMode("walk"); onHud(""); onPrompt("חזרתם לחוף העיר"); }
+      else {
+        if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+        s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.1;
+        poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z) * .55, air: false, t: s.t, dt });
+        camTarget.set(p.x, p.y + 1.28, p.z); camDist = 5.8; followYaw = s.face;
+        s.hudTimer -= dt;
+        if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("צלילה · W/A/S/D לשחייה · רווח לעלייה · Shift להעמקה · אפשר לשחות עד האיים"); }
+        onPrompt("חליפת צלילה פעילה · חפשו דגים, מדוזות וסוסוני ים");
+      }
     } else if (s.mode === "airVehicle") {
       const vehicle = airVehicles[s.target];
       if (!vehicle) { s.mode = "walk"; onMode("walk"); }
@@ -1115,12 +1194,21 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
   });
   return h(React.Fragment, null,
     h("directionalLight", { position: [50, 105, 45], intensity: 2.1, color: "#fff0d1", castShadow: true, "shadow-mapSize": [quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024, quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024], "shadow-camera-left": -185, "shadow-camera-right": 185, "shadow-camera-top": 185, "shadow-camera-bottom": -185, "shadow-camera-near": 1, "shadow-camera-far": 420, "shadow-bias": -0.00018, "shadow-normalBias": 0.025, "shadow-radius": quality === "high" ? 4 : 2 }),
-    h(Human, { rig })
+    h(Human, { rig }),
+    h(DiverSuit, { rig })
   );
 }
 
 export default function Game() {
-  const world = useMemo(() => generateWorld(7), []);
+  const marine = useMemo(() => createMarineWorld(), []);
+  const world = useMemo(() => {
+    const city = generateWorld(7);
+    city.islands = marine.islands;
+    city.boxes.push(...createIslandCollisionBoxes(marine.islands));
+    city.interactables.push(...marine.boats.map(boat => ({ ...boat, type: "boat" })));
+    return city;
+  }, [marine]);
+  const boats = marine.boats;
   const cableCurve = useMemo(() => makeCableCurve(), []);
   const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
@@ -1128,7 +1216,7 @@ export default function Game() {
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
-  const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 });
+  const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
@@ -1218,6 +1306,7 @@ export default function Game() {
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
+        h(MarineWorld, { marine, boats, divingRef }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),
@@ -1225,7 +1314,7 @@ export default function Game() {
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor }),
-        h(Player, { world, helis, cars, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),

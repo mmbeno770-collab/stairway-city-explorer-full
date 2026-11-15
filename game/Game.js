@@ -1073,7 +1073,9 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       if (!boat) { s.mode = "walk"; s.target = -1; onMode("walk"); }
       else {
         const throttle = Math.max(-1, Math.min(1, moveZ));
-        if (Math.abs(throttle) > .025) boat.speed += throttle * 4.6 * dt; else boat.speed *= Math.exp(-.72 * dt);
+        if (jump) boat.speed *= Math.exp(-6 * dt);
+        else if (Math.abs(throttle) > .025) boat.speed += throttle * 4.6 * dt;
+        else boat.speed *= Math.exp(-.72 * dt);
         boat.speed = THREE.MathUtils.clamp(boat.speed, -4.5, 13.5);
         boat.steering += (moveX - boat.steering) * (1 - Math.exp(-3.8 * dt));
         boat.yaw += boat.steering * .82 * Math.min(1, Math.abs(boat.speed) / 3.5) * dt * Math.sign(boat.speed || 1);
@@ -1360,6 +1362,8 @@ export default function Game() {
         h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),
         h("li", null, "תושבי העיר הם דמויות AI: הם מטיילים, עוצרים ומסתכלים סביב, נכנסים למכוניות, נוסעים ומטיסים מסוק, מטוס וטסלה. אפשר להשתלט על כלי רכב שה-AI נוהג בהם כשמתקרבים ולוחצים F."),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
+        h("li", null, "סירות: F ליד סירה בחוף כדי לעלות. W/S לשוט, A/D לפנות, רווח לבלום, ו־F לרדת כשהסירה בעצירה. אפשר להגיע לאיים."),
+        h("li", null, "צלילה: כשיורדים מהחוף ונכנסים למים חליפת צלילה מופעלת. W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק; חפשו דגים, מדוזות, סוסוני ים ואלמוגים."),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
         h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),
         h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
@@ -1375,7 +1379,7 @@ export default function Game() {
     h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" || mode === "swim" ? "עלייה" : mode === "car" || mode === "boat" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
-      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, גבעות שאפשר לטפס עליהן, מרפסות, גגות ורכבל גבוה מעל העיר עם ארבע תחנות, ולהקות ציפורים שחולפות בשמיים מדי פעם."),
+      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, חוף וים, 36 סירות, שמונה איים שונים, עולם תת־ימי עם יצורים ימיים, ורכבל עם שמונה תחנות מעל העיר."),
       h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך"),
       h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
     ))

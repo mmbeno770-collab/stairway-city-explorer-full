@@ -110,9 +110,9 @@ function IslandAnimal({animal}){
 function IslandModel({island}){
  const base=useMemo(()=>islandShape(island,1.06,true),[island]),top=useMemo(()=>islandShape(island,.86,false),[island]);
  const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.sand,roughness:.96}),[island.sand]),grassMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.color,roughness:.94}),[island.color]);
- return React.createElement("group",{position:[0,-1.85,0]},
-  React.createElement("mesh",{geometry:base,position:[island.x,0,island.z],material:sandMat,receiveShadow:true,castShadow:true}),
-  React.createElement("mesh",{geometry:top,position:[island.x,2.13,island.z],material:grassMat,receiveShadow:true}),
+ return React.createElement("group",{position:[0,0,0]},
+  React.createElement("mesh",{geometry:base,position:[island.x,-1.85,island.z],material:sandMat,receiveShadow:true,castShadow:true}),
+  React.createElement("mesh",{geometry:top,position:[island.x,.28,island.z],material:grassMat,receiveShadow:true}),
   ...island.trees.map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
   ...island.animals.map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal}))
  );

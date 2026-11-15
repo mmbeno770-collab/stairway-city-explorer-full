@@ -33,7 +33,13 @@ export function createMarineWorld(){
   if(side===3){x=-d;z=t;yaw=-Math.PI/2;ix=1;iz=0;}
   boats.push({id:boats.length,type:"boat",x,y:WATER_LEVEL,z,yaw,speed:0,steering:0,color:colors[(i+side*2)%colors.length],landX:x+ix*5.2,landZ:z+iz*5.2,length:5.6,width:2.4});
  }
- return{islands,boats};
+ const dolphins = [
+  {id:0,x:0,y:-2.5,z:-270,yaw:0,speed:0,phase:.2,scheduleOffset:0,baseX:0,baseZ:-278,rangeX:34,rangeZ:42,active:false,ridden:false},
+  {id:1,x:270,y:-2.5,z:0,yaw:Math.PI/2,speed:0,phase:1.8,scheduleOffset:29,baseX:278,baseZ:0,rangeX:40,rangeZ:34,active:false,ridden:false},
+  {id:2,x:0,y:-2.5,z:270,yaw:Math.PI,speed:0,phase:3.3,scheduleOffset:58,baseX:0,baseZ:278,rangeX:38,rangeZ:44,active:false,ridden:false},
+  {id:3,x:-270,y:-2.5,z:0,yaw:-Math.PI/2,speed:0,phase:4.7,scheduleOffset:87,baseX:-278,baseZ:0,rangeX:42,rangeZ:36,active:false,ridden:false}
+ ];
+ return{islands,boats,dolphins};
 }
 export function isMainlandLand(x,z){return Math.abs(x)<=MAINLAND_SHORE&&Math.abs(z)<=MAINLAND_SHORE;}
 export function getIslandAt(x,z,islands){
@@ -153,10 +159,67 @@ function UnderwaterLife({divingRef,islands}){
   );}))
  );
 }
+
+const dolphinSkin = new THREE.MeshPhysicalMaterial({color:"#526f7d",roughness:.3,metalness:.14,clearcoat:.9,clearcoatRoughness:.18});
+const dolphinBelly = new THREE.MeshStandardMaterial({color:"#d8e6e9",roughness:.52});
+const dolphinFin = new THREE.MeshPhysicalMaterial({color:"#405b68",roughness:.34,metalness:.1,clearcoat:.7});
+const dolphinEye = new THREE.MeshBasicMaterial({color:"#101b20"});
+function DolphinModel({dolphin}){
+ const root=useRef(null),tail=useRef(null),flippers=useRef([]);
+ useFrame(({clock})=>{
+  if(!root.current)return;
+  root.current.visible=!!dolphin.active;
+  root.current.position.set(dolphin.x,dolphin.y+Math.sin(clock.elapsedTime*2.1+dolphin.phase)*.045,dolphin.z);
+  root.current.rotation.y=dolphin.yaw;
+  root.current.rotation.z=Math.sin(clock.elapsedTime*1.7+dolphin.phase)*.035;
+  if(tail.current)tail.current.rotation.y=Math.sin(clock.elapsedTime*7.5+dolphin.phase)*.38;
+  flippers.current.forEach((fin,i)=>{if(fin)fin.rotation.z=Math.sin(clock.elapsedTime*4+dolphin.phase+i)*.08+(i===0?-.12:.12);});
+ });
+ return React.createElement("group",{ref:root},
+  React.createElement("mesh",{material:dolphinSkin,scale:[.54,.48,1.62],castShadow:true},React.createElement("sphereGeometry",{args:[1,28,20]})),
+  React.createElement("mesh",{material:dolphinBelly,position:[0,-.25,.05],scale:[.41,.23,1.25]},React.createElement("sphereGeometry",{args:[1,24,16]})),
+  React.createElement("mesh",{material:dolphinSkin,position:[0,-.02,1.25],scale:[.31,.22,.64]},React.createElement("sphereGeometry",{args:[1,22,16]})),
+  React.createElement("mesh",{material:dolphinSkin,position:[0,.47,-.2],rotation:[0,0,Math.PI],scale:[.34,.62,.18]},React.createElement("coneGeometry",{args:[.62,.95,12]})),
+  React.createElement("group",{ref:tail,position:[0,0,-1.42]},
+   React.createElement("mesh",{material:dolphinSkin,scale:[.23,.2,.58]},React.createElement("sphereGeometry",{args:[1,16,12]})),
+   React.createElement("mesh",{material:dolphinFin,position:[-.42,0,-.52],rotation:[0,0,-.18],scale:[.48,.09,.5]},React.createElement("sphereGeometry",{args:[1,16,10]})),
+   React.createElement("mesh",{material:dolphinFin,position:[.42,0,-.52],rotation:[0,0,.18],scale:[.48,.09,.5]},React.createElement("sphereGeometry",{args:[1,16,10]}))
+  ),
+  ...[-1,1].map((side,i)=>React.createElement("group",{key:"flipper-"+side,ref:n=>{flippers.current[i]=n;},position:[side*.44,-.18,.05],rotation:[0,0,side*.28]},
+   React.createElement("mesh",{material:dolphinFin,scale:[.18,.09,.64]},React.createElement("sphereGeometry",{args:[1,16,10]}))
+  )),
+  ...[-1,1].map(side=>React.createElement("mesh",{key:"eye-"+side,material:dolphinEye,position:[side*.31,.16,.94],scale:[.055,.06,.045]},React.createElement("sphereGeometry",{args:[1,12,10]}))),
+  React.createElement("mesh",{material:dolphinBelly,position:[0,-.16,1.69],scale:[.2,.07,.23]},React.createElement("sphereGeometry",{args:[1,14,10]}))
+ );
+}
+function DolphinSchool({dolphins,divingRef}){
+ const root=useRef(null);
+ useFrame(({clock})=>{
+  if(root.current)root.current.visible=!!divingRef.current;
+  const time=clock.elapsedTime;
+  dolphins.forEach(d=>{
+   if(d.ridden)return;
+   const cycle=(time+d.scheduleOffset)%112;
+   d.active=cycle<46;
+   if(!d.active)return;
+   const phase=time*.34+d.phase;
+   d.x=d.baseX+Math.sin(phase)*d.rangeX;
+   d.z=d.baseZ+Math.sin(phase*.72)*d.rangeZ;
+   d.y=-2.45+Math.sin(phase*1.9)*.22;
+   const dx=Math.cos(phase)*d.rangeX*.34,dz=Math.cos(phase*.72)*d.rangeZ*.245;
+   d.yaw=Math.atan2(dx,dz);
+  });
+ });
+ return React.createElement("group",{ref:root,visible:false},
+  ...dolphins.map(d=>React.createElement(DolphinModel,{key:"dolphin-"+d.id,dolphin:d}))
+ );
+}
+
 export function MarineWorld({marine,boats,divingRef}){
  return React.createElement(React.Fragment,null,
   ...marine.islands.map(island=>React.createElement(IslandModel,{key:island.id,island})),
   ...boats.map(boat=>React.createElement(BoatModel,{key:"boat-"+boat.id,boat})),
-  React.createElement(UnderwaterLife,{divingRef,islands:marine.islands})
+  React.createElement(UnderwaterLife,{divingRef,islands:marine.islands}),
+  React.createElement(DolphinSchool,{dolphins:marine.dolphins,divingRef})
  );
 }

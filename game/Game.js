@@ -437,6 +437,21 @@ function Boxes({ world, kind }) {
   return h("instancedMesh", { ref, args: [undefined, undefined, list.length], castShadow: kind === "solid", receiveShadow: kind === "solid" }, h("boxGeometry"), material);
 }
 
+
+function UnderwaterAtmosphere({enabled,fogColor,fogNear,fogFar}){
+ const {scene}=useThree();
+ const blue=useMemo(()=>new THREE.Color("#0b6482"),[]);
+ const normal=useMemo(()=>new THREE.Color(),[]);
+ useFrame((_,dt)=>{
+  if(!scene.fog)return;
+  normal.set(fogColor);
+  scene.fog.color.lerp(enabled?blue:normal,1-Math.exp(-dt*3));
+  scene.fog.near=THREE.MathUtils.damp(scene.fog.near,enabled?4.5:fogNear,3,dt);
+  scene.fog.far=THREE.MathUtils.damp(scene.fog.far,enabled?82:fogFar,3,dt);
+ });
+ return null;
+}
+
 function Ground({ wet, buildings }) {
   const data = useMemo(() => {
     const size = 1536;
@@ -539,7 +554,7 @@ function Ground({ wet, buildings }) {
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.16, 0], receiveShadow: true }, h("planeGeometry", { args: [2400, 2400] }), h("meshStandardMaterial", { color: "#247d9b", roughness: .28, metalness: .18, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: .035, envMapIntensity: 1.15 }))
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.16, 0], receiveShadow: true }, h("planeGeometry", { args: [2400, 2400] }), h("meshPhysicalMaterial", { color: "#42b8d2", roughness: .13, metalness: .045, transparent: true, opacity: .62, transmission: .22, thickness: 1.15, ior: 1.33, clearcoat: 1, clearcoatRoughness: .08, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: .018, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.2 }))
   );
 }
 
@@ -712,8 +727,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       if (s.mode === "talk") { s.mode = "walk"; s.talkTarget = null; s.nearPerson = -1; s.v.set(0, 0, 0); onMode("walk"); onPrompt(""); }
     }
     const p = s.p, root = rig.root;
-    divingRef.current = s.mode === "swim";
-    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.y = s.face; }
+    divingRef.current = s.mode === "swim" || s.mode === "dolphin";
+    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.y = s.face; }
     if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
@@ -1114,6 +1129,24 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         const target = Math.atan2(worldMove.x, worldMove.z); let delta = target - s.face;
         delta = Math.atan2(Math.sin(delta), Math.cos(delta)); s.face += delta * (1 - Math.exp(-4 * dt)); followYaw = s.face;
       }
+      let nearestDolphin=-1,nearestDolphinDistance=4.2;
+      marine.dolphins.forEach((d,index)=>{
+        if(!d.active||d.ridden)return;
+        const distance=Math.hypot(p.x-d.x,p.z-d.z);
+        if(distance<nearestDolphinDistance&&Math.abs(p.y-d.y)<3.2){nearestDolphin=index;nearestDolphinDistance=distance;}
+      });
+      if(nearestDolphin>=0){
+        const dolphin=marine.dolphins[nearestDolphin];
+        onPrompt("F / פעולה — לעלות על הדולפין");
+        if(act){
+          dolphin.ridden=true; dolphin.active=true;
+          s.target=nearestDolphin; s.mode="dolphin"; s.face=dolphin.yaw;
+          p.set(dolphin.x,dolphin.y+1.05,dolphin.z); s.v.set(0,0,0);
+          onMode("dolphin"); onHud("רכיבה על דולפין · W קדימה · S אחורה · A/D לכיוון · F לרדת");
+          onPrompt("עליתם על הדולפין! אפשר לכוון אותו עם W A S D");
+        }
+      }
+      if(s.mode==="swim"){
       const island = getIslandAt(p.x, p.z, marine.islands);
       if (island) { p.y = .28; s.v.set(0, 0, 0); s.mode = "walk"; s.onGround = true; s.lastPrompt = ""; onMode("walk"); onHud(""); onPrompt("הגעתם אל " + island.name); }
       else if (isMainlandLand(p.x, p.z)) { p.y = .2; s.v.set(0, 0, 0); s.mode = "walk"; s.onGround = true; s.lastPrompt = ""; onMode("walk"); onHud(""); onPrompt("חזרתם לחוף העיר"); }
@@ -1121,9 +1154,41 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
         s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.1;
         poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z) * .55, air: false, t: s.t, dt });
-        camTarget.set(p.x, p.y + 1.28, p.z); camDist = 5.8; followYaw = s.face;
+        camTarget.set(p.x, p.y + .35, p.z); camDist = 4.9; followYaw = s.face;
         s.hudTimer -= dt;
         if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("צלילה · W/A/S/D לשחייה · רווח לעלייה · Shift להעמקה · אפשר לשחות עד האיים"); }
+      }
+      }
+    } else if (s.mode === "dolphin") {
+      const dolphin=marine.dolphins[s.target];
+      if(!dolphin){
+        s.mode="swim"; s.target=-1; onMode("swim");
+      } else if(act){
+        dolphin.ridden=false; dolphin.active=true;
+        p.set(dolphin.x-Math.sin(dolphin.yaw)*1.4,dolphin.y,dolphin.z-Math.cos(dolphin.yaw)*1.4);
+        s.mode="swim"; s.target=-1; s.v.set(0,0,0);
+        onMode("swim"); onHud("צלילה · W/A/S/D לשחייה · רווח לעלייה · Shift להעמקה");
+        onPrompt("ירדתם מהדולפין");
+      } else {
+        if(jump)dolphin.speed*=Math.exp(-5*dt);
+        else if(Math.abs(moveZ)>.025)dolphin.speed+=moveZ*5.8*dt;
+        else dolphin.speed*=Math.exp(-.9*dt);
+        dolphin.speed=THREE.MathUtils.clamp(dolphin.speed,-3.2,12);
+        dolphin.yaw+=moveX*1.35*Math.min(1,Math.abs(dolphin.speed)/2.8)*dt*Math.sign(dolphin.speed||1);
+        const nx=dolphin.x+Math.sin(dolphin.yaw)*dolphin.speed*dt;
+        const nz=dolphin.z+Math.cos(dolphin.yaw)*dolphin.speed*dt;
+        if(!getIslandAt(nx,nz,marine.islands)&&!isMainlandLand(nx,nz)){
+          dolphin.x=THREE.MathUtils.clamp(nx,-1050,1050);
+          dolphin.z=THREE.MathUtils.clamp(nz,-1050,1050);
+        } else dolphin.speed*=.2;
+        dolphin.y=-2.45+(jump?Math.sin(s.t*8)*.28:0);
+        p.set(dolphin.x,dolphin.y+1.05,dolphin.z); s.face=dolphin.yaw;
+        if(root){root.position.set(dolphin.x,dolphin.y+.48,dolphin.z);root.rotation.set(0,dolphin.yaw,0);}
+        poseHuman(rig,{mode:"car",phase:0,speed:0,air:false,t:s.t,dt});
+        camTarget.set(p.x,p.y+.25,p.z); camDist=6.3; followYaw=dolphin.yaw;
+        s.hudTimer-=dt;
+        if(s.hudTimer<=0){s.hudTimer=.25;onHud("רכיבה על דולפין · W קדימה · S אחורה · A/D לכיוון · רווח לבלימה");}
+        onPrompt("F / פעולה — לרדת מהדולפין");
       }
     } else if (s.mode === "airVehicle") {
       const vehicle = airVehicles[s.target];
@@ -1182,13 +1247,18 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     helis.forEach((heli, i) => { if (!(s.mode === "heli" && i === s.target) && heli.rotor > 0) stepHeli(heli, { fwd: 0, turn: 0, lift: 0, piloted: false }, dt, heliEnv); });
     airVehicles.forEach((vehicle, i) => { if (!(s.mode === "airVehicle" && i === s.target)) stepAirVehicle(vehicle, { throttle: 0, steer: 0, lift: 0, piloted: false }, dt, airEnv); });
     if (followYaw !== null && performance.now() / 1000 - inp.lastDrag > 1.2) { let d = followYaw - s.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); s.yaw += d * (1 - Math.exp(-2.5 * dt)); }
-    const back = new THREE.Vector3(-Math.sin(s.yaw) * Math.cos(s.pitch), Math.sin(s.pitch), -Math.cos(s.yaw) * Math.cos(s.pitch));
+    const underwaterView=s.mode==="swim"||s.mode==="dolphin";
+    const cameraPitch=underwaterView?-0.1:s.pitch;
+    const back = new THREE.Vector3(-Math.sin(s.yaw) * Math.cos(cameraPitch), Math.sin(cameraPitch), -Math.cos(s.yaw) * Math.cos(cameraPitch));
     let distance = camDist;
     const underground = p.y < -.5;
     for (let t = .3; t <= camDist; t += .3) { const test = camTarget.clone().addScaledVector(back, t); if (col.pointInside(test.x, test.y, test.z, .2) || (!underground && test.y < .2)) { distance = Math.max(.3, t - .25); break; } }
     const desired = camTarget.clone().addScaledVector(back, distance);
+    if(underwaterView)desired.y=Math.min(desired.y,-.72);
     if (!s.cameraReady) { camera.position.copy(desired); s.cameraReady = true; }
-    camera.position.lerp(desired, 1 - Math.exp(-6 * dt)); camera.lookAt(camTarget);
+    camera.position.lerp(desired, 1 - Math.exp(-6 * dt));
+    if(underwaterView)camera.position.y=Math.min(camera.position.y,-.58);
+    camera.lookAt(camTarget);
     const islandHere = getIslandAt(p.x, p.z, marine.islands);
     const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "swim" ? "מתחת למים" : islandHere ? islandHere.name : locate(world, p.x, p.y, p.z);
     const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || islandHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
@@ -1303,6 +1373,7 @@ export default function Game() {
     h("div", { className: "game-canvas", onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel: (e) => { input.current.zoom += e.deltaY * .005; } },
       h(Canvas, { shadows: quality === "high", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.4) : quality === "balanced" ? Math.min(window.devicePixelRatio || 1, 1.15) : Math.min(window.devicePixelRatio || 1, 1), camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: true, powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); } },
         h("color", { attach: "background", args: [environment.skyColor] }), h("fog", { attach: "fog", args: [environment.fogColor, environment.fogNear, environment.fogFar] }),
+         h(UnderwaterAtmosphere, { enabled: mode === "swim" || mode === "dolphin", fogColor: environment.fogColor, fogNear: environment.fogNear, fogFar: environment.fogFar }),
         h(Sky, { sunPosition: environment.sunPosition, turbidity: environment.turbidity, rayleigh: 1.2 + environment.daylight * .5, mieCoefficient: weather === "fog" ? .012 : .004 }),
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
@@ -1363,7 +1434,8 @@ export default function Game() {
         h("li", null, "תושבי העיר הם דמויות AI: הם מטיילים, עוצרים ומסתכלים סביב, נכנסים למכוניות, נוסעים ומטיסים מסוק, מטוס וטסלה. אפשר להשתלט על כלי רכב שה-AI נוהג בהם כשמתקרבים ולוחצים F."),
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "סירות: F ליד סירה בחוף כדי לעלות. W/S לשוט, A/D לפנות, רווח לבלום, ו־F לרדת כשהסירה בעצירה. אפשר להגיע לאיים."),
-        h("li", null, "צלילה: כשיורדים מהחוף ונכנסים למים חליפת צלילה מופעלת. W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק; חפשו דגים, מדוזות, סוסוני ים ואלמוגים."),
+        h("li", null, "צלילה: כשיורדים מהחוף ונכנסים למים חליפת צלילה מופעלת והמצלמה צוללת איתכם. W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק; חפשו דגים, מדוזות, סוסוני ים, אלמוגים ודולפינים."),
+        h("li", null, "דולפינים: כשדולפין מתקרב בזמן צלילה, לחצו F כדי לעלות עליו. W/S לשוט קדימה ואחורה, A/D לכוון, רווח לבלום ו־F לרדת."),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
         h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),
         h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),

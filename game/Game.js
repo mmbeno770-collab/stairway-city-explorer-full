@@ -766,7 +766,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     else s.dist = THREE.MathUtils.clamp(s.dist + inp.zoom, 2.5, 14);
     inp.zoom = 0;
     const axes = readMoveAxes(keys, inp.joy);
-    const moveX = axes.x, moveZ = axes.z;
+    const moveX = axes.x, moveZ = axes.z, steerX = -moveX;
     const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), jump = keys.has("Space") || inp.up;
     let camTarget = new THREE.Vector3(p.x, p.y + 1.5, p.z), camDist = s.dist, followYaw = null;
     if (s.mode === "elevator") {
@@ -986,8 +986,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         }
         else if (it.type === "heli") { s.target = heliIndices.get(s.near); s.mode = "heli"; onMode("heli"); }
         else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
-        else if (it.type === "boat") { s.target = boatIndices.get(s.near); s.mode = "boat"; s.v.set(0, 0, 0); onMode("boat"); onPrompt("הסירה מוכנה · W קדימה · S אחורה · A/D לפנות"); }
-        else if (it.type === "sled") { s.target = sledIndices.get(s.near); s.mode = "sled"; s.v.set(0, 0, 0); onMode("sled"); onHud("מזחלת שלג · W קדימה · S אחורה · A/D היגוי · F ירידה בעצירה"); onPrompt("עליתם על המזחלת · סעו בזהירות בשלג"); }
+        else if (it.type === "boat") { s.target = boatIndices.get(s.near); s.mode = "boat"; s.v.set(0, 0, 0); onMode("boat"); onPrompt("הסירה מוכנה · W קדימה · S אחורה · A ימינה · D שמאלה"); }
+        else if (it.type === "sled") { s.target = sledIndices.get(s.near); s.mode = "sled"; s.v.set(0, 0, 0); onMode("sled"); onHud("מזחלת שלג · W קדימה · S אחורה · A ימינה · D שמאלה · F ירידה בעצירה"); onPrompt("עליתם על המזחלת · סעו בזהירות בשלג"); }
         else if (it.type === "airVehicle") { s.target = airVehicleIndices.get(it.id); s.mode = "airVehicle"; onMode("airVehicle"); onPrompt(it.id === "plane" ? "מטוס · W/S תנועה · רווח להמראה · Shift להנמכה" : "טסלה מעופפת · W/S נסיעה · רווח לעלייה נמוכה · Shift לירידה"); }
         else if (it.type === "door") {
           const wasOpen = !!doorStatesRef.current[s.near];
@@ -1085,7 +1085,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       const car = cars[s.target];
       if (!car) { s.mode = "walk"; onMode("walk"); }
       else {
-        stepCar(car, { throttle: moveZ, steer: moveX, brake: shift || jump }, dt, carEnv);
+        stepCar(car, { throttle: moveZ, steer: steerX, brake: shift || jump }, dt, carEnv);
         if (act && Math.abs(car.speed) < 1.35) {
           const exit = vehicleExitPoint(car.x, car.z, car.yaw, 1.65, marine.islands, -1);
           p.set(exit.x, 0, exit.z); p.y = terrainGround(p.x, p.z, car.y + .4, .7, RAD); col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
@@ -1095,7 +1095,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           if (root) { root.position.copy(temp.v.set(-.34, .52, .22).applyQuaternion(temp.q).add(new THREE.Vector3(car.x, car.y, car.z))); root.rotation.set(0, car.yaw, 0); }
           poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
           p.set(car.x, car.y, car.z); camTarget.set(car.x, car.y + 1.65, car.z); camDist = s.carDist; followYaw = car.yaw;
-          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud(`רכב · ${Math.round(Math.abs(car.speed) * 3.6)} קמ״ש · W קדימה · S אחורה · A שמאלה · D ימינה · Shift בלימה`); }
+          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud(`רכב · ${Math.round(Math.abs(car.speed) * 3.6)} קמ״ש · W קדימה · S אחורה · A ימינה · D שמאלה · Shift בלימה`); }
         }
       }
     } else if (s.mode === "boat") {
@@ -1107,28 +1107,46 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         else if (Math.abs(throttle) > .025) boat.speed += throttle * 4.6 * dt;
         else boat.speed *= Math.exp(-.72 * dt);
         boat.speed = THREE.MathUtils.clamp(boat.speed, -4.5, 13.5);
-        boat.steering += (moveX - boat.steering) * (1 - Math.exp(-3.8 * dt));
+        boat.steering += (steerX - boat.steering) * (1 - Math.exp(-3.8 * dt));
         boat.yaw += boat.steering * .82 * Math.min(1, Math.abs(boat.speed) / 3.5) * dt * Math.sign(boat.speed || 1);
         const nx = boat.x + Math.sin(boat.yaw) * boat.speed * dt, nz = boat.z + Math.cos(boat.yaw) * boat.speed * dt;
         const coastNow = Math.max(Math.abs(boat.x), Math.abs(boat.z)), coastNext = Math.max(Math.abs(nx), Math.abs(nz));
-        if (isMainlandLand(nx, nz) && coastNext < coastNow) boat.speed *= .2;
-        else if (getIslandAt(nx, nz, marine.islands)) boat.speed *= .18;
-        else { boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
+        const islandAtNext = getIslandAt(nx, nz, marine.islands);
+        const rememberedDock = boat.dockIsland && boat.speed >= 0
+          ? marine.islands.find((item) => item.id === boat.dockIsland &&
+            Math.hypot((boat.x - item.x) / (item.rx * .82), (boat.z - item.z) / (item.rz * .82)) <= 1.16)
+          : null;
+        const dockIsland = islandAtNext || rememberedDock;
+        if (isMainlandLand(nx, nz) && coastNext < coastNow) { boat.dockIsland = null; boat.speed *= .2; }
+        else if (dockIsland) { boat.dockIsland = dockIsland.id; boat.speed *= .18; }
+        else { boat.dockIsland = null; boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
         boat.y = -.16 + Math.sin(s.t * 1.8 + boat.id) * .025;
         p.set(boat.x, boat.y + .36, boat.z);
         if (act && Math.abs(boat.speed) < 1.2) {
-          const island = getIslandAt(boat.x, boat.z, marine.islands);
-          if (island) { p.y = .28; s.mode = "walk"; onMode("walk"); onPrompt("הגעתם אל " + island.name); }
+          const island = marine.islands.find((item) => item.id === boat.dockIsland) || getIslandAt(boat.x, boat.z, marine.islands);
+          if (island) {
+            const dx = island.x - boat.x, dz = island.z - boat.z, distance = Math.hypot(dx, dz) || 1;
+            let landingX = boat.x + dx / distance * 7.5, landingZ = boat.z + dz / distance * 7.5;
+            if (!getIslandAt(landingX, landingZ, marine.islands)) {
+              landingX = boat.x + dx / distance * 14;
+              landingZ = boat.z + dz / distance * 14;
+            }
+            if (!getIslandAt(landingX, landingZ, marine.islands)) { landingX = island.x; landingZ = island.z; }
+            p.set(landingX, .28, landingZ);
+            col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
+            s.face = Math.atan2(dx, dz); s.onGround = true; s.near = -1;
+            s.mode = "walk"; onMode("walk"); onPrompt("הגעתם אל " + island.name + " · אפשר להמשיך ללכת באי");
+          }
           else if (isMainlandLand(boat.landX, boat.landZ)) { p.set(boat.landX, .2, boat.landZ); s.mode = "walk"; onMode("walk"); onPrompt("ירדתם אל החוף"); }
           else { p.y = -2.7; s.mode = "swim"; onMode("swim"); onPrompt("נכנסתם למים · מצב צלילה הופעל"); }
-          boat.speed = 0; s.target = -1; s.v.set(0, 0, 0); onHud("");
+          boat.dockIsland = null; boat.speed = 0; s.target = -1; s.v.set(0, 0, 0); onHud("");
         } else {
           temp.e.set(0, boat.yaw, 0, "YXZ"); temp.q.setFromEuler(temp.e);
           if (root) { root.position.copy(temp.v.set(0, .55, -.25).applyQuaternion(temp.q).add(new THREE.Vector3(boat.x, boat.y, boat.z))); root.rotation.set(0, boat.yaw, 0); }
           poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
           camTarget.set(boat.x, boat.y + 2.1, boat.z); camDist = 8; followYaw = boat.yaw;
           s.hudTimer -= dt;
-          if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("סירה · W/S קדימה ואחורה · A/D היגוי · F ירידה בעצירה"); }
+          if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("סירה · W/S קדימה ואחורה · A ימינה · D שמאלה · F ירידה בעצירה"); }
           onPrompt(Math.abs(boat.speed) < 1.2 ? "F / פעולה — לרדת מהסירה" : "עצרו את הסירה כדי לרדת");
         }
       }
@@ -1141,7 +1159,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         else if (Math.abs(throttle) > .025) sled.speed += throttle * 5.2 * dt;
         else sled.speed *= Math.exp(-1.05 * dt);
         sled.speed = THREE.MathUtils.clamp(sled.speed, -2.8, 13.5);
-        sled.steering += (moveX - sled.steering) * (1 - Math.exp(-4.2 * dt));
+        sled.steering += (steerX - sled.steering) * (1 - Math.exp(-4.2 * dt));
         sled.yaw += sled.steering * 1.18 * Math.min(1, Math.abs(sled.speed) / 2.6) * dt * Math.sign(sled.speed || 1);
         const nx = sled.x + Math.sin(sled.yaw) * sled.speed * dt;
         const nz = sled.z + Math.cos(sled.yaw) * sled.speed * dt;
@@ -1158,7 +1176,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
           camTarget.set(sled.x, 2.05, sled.z); camDist = 7.2; followYaw = sled.yaw;
           s.hudTimer -= dt;
-          if (s.hudTimer <= 0) { s.hudTimer = .22; onHud("מזחלת שלג · W קדימה · S אחורה · A/D פנייה · רווח בלימה"); }
+          if (s.hudTimer <= 0) { s.hudTimer = .22; onHud("מזחלת שלג · W קדימה · S אחורה · A ימינה · D שמאלה · רווח בלימה"); }
           onPrompt(Math.abs(sled.speed) < 1.1 ? "F / פעולה — לרדת מהמזחלת" : "האטו כדי לרדת מהמזחלת");
         }
       }
@@ -1187,7 +1205,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           dolphin.ridden=true; dolphin.active=true;
           s.target=nearestDolphin; s.mode="dolphin"; s.face=dolphin.yaw;
           p.set(dolphin.x,dolphin.y+1.05,dolphin.z); s.v.set(0,0,0);
-          onMode("dolphin"); onHud("רכיבה על דולפין · W קדימה · S אחורה · A/D לכיוון · F לרדת");
+          onMode("dolphin"); onHud("רכיבה על דולפין · W קדימה · S אחורה · A ימינה · D שמאלה · F לרדת");
           onPrompt("עליתם על הדולפין! אפשר לכוון אותו עם W A S D");
         }
       } else onPrompt("");
@@ -1219,7 +1237,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         else if(Math.abs(moveZ)>.025)dolphin.speed+=moveZ*5.8*dt;
         else dolphin.speed*=Math.exp(-.9*dt);
         dolphin.speed=THREE.MathUtils.clamp(dolphin.speed,-3.2,12);
-        dolphin.yaw+=moveX*1.35*Math.min(1,Math.abs(dolphin.speed)/2.8)*dt*Math.sign(dolphin.speed||1);
+        dolphin.yaw+=steerX*1.35*Math.min(1,Math.abs(dolphin.speed)/2.8)*dt*Math.sign(dolphin.speed||1);
         const nx=dolphin.x+Math.sin(dolphin.yaw)*dolphin.speed*dt;
         const nz=dolphin.z+Math.cos(dolphin.yaw)*dolphin.speed*dt;
         if(!getIslandAt(nx,nz,marine.islands)&&!isMainlandLand(nx,nz)){
@@ -1232,7 +1250,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         poseHuman(rig,{mode:"car",phase:0,speed:0,air:false,t:s.t,dt});
         camTarget.set(p.x,p.y+.25,p.z); camDist=6.3; followYaw=dolphin.yaw;
         s.hudTimer-=dt;
-        if(s.hudTimer<=0){s.hudTimer=.25;onHud("רכיבה על דולפין · W קדימה · S אחורה · A/D לכיוון · רווח לבלימה");}
+        if(s.hudTimer<=0){s.hudTimer=.25;onHud("רכיבה על דולפין · W קדימה · S אחורה · A ימינה · D שמאלה · רווח לבלימה");}
         onPrompt("F / פעולה — לרדת מהדולפין");
       }
     } else if (s.mode === "airVehicle") {
@@ -1240,7 +1258,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       if (!vehicle) { s.mode = "walk"; onMode("walk"); }
       else {
         const lift = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
-        stepAirVehicle(vehicle, { throttle: moveZ, steer: moveX, lift, piloted: true }, dt, airEnv);
+        stepAirVehicle(vehicle, { throttle: moveZ, steer: steerX, lift, piloted: true }, dt, airEnv);
         const canExit = canExitAirVehicle(vehicle, airEnv.ground);
         if (act && canExit) {
           const exit = vehicleExitPoint(vehicle.x, vehicle.z, vehicle.yaw, 2.8, marine.islands, -1);
@@ -1262,7 +1280,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           if (s.hudTimer <= 0) {
             s.hudTimer = .2;
             const label = vehicle.id === "plane" ? "מטוס" : "טסלה מעופפת";
-            onHud(label + " · " + Math.round(Math.abs(vehicle.speed) * 3.6) + " קמ״ש · W/S קדימה ואחורה · A/D היגוי · רווח עלייה · Shift הנמכה");
+            onHud(label + " · " + Math.round(Math.abs(vehicle.speed) * 3.6) + " קמ״ש · W/S קדימה ואחורה · A ימינה · D שמאלה · רווח עלייה · Shift הנמכה");
           }
           onPrompt(canExit ? "F / פעולה — לצאת מכלי הטיס" : "כדי לצאת: להנמיך ולעצור");
         }
@@ -1272,7 +1290,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       if (!heli) { s.mode = "walk"; onMode("walk"); }
       else {
         const lift = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
-        stepHeli(heli, { fwd: moveZ, turn: moveX, lift, piloted: true }, dt, heliEnv);
+        stepHeli(heli, { fwd: moveZ, turn: steerX, lift, piloted: true }, dt, heliEnv);
         if (act && canExitHeli(heli)) {
           const exitDistance = 2.6 * (heli.scale || 1);
           const exit = vehicleExitPoint(heli.x, heli.z, heli.yaw, exitDistance, marine.islands, 1);
@@ -1285,7 +1303,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           if (root) { root.position.copy(new THREE.Vector3(0, .69, .5).applyQuaternion(temp.q).add(temp.v.set(heli.x, heli.y, heli.z))); root.quaternion.copy(temp.q); }
           poseHuman(rig, { mode: "heli", phase: 0, speed: 0, air: false, t: s.t, dt });
           p.set(heli.x, heli.y, heli.z); camTarget.set(heli.x, heli.y + 2, heli.z); camDist = s.heliDist; followYaw = heli.yaw;
-          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("מסוק · " + Math.round(Math.hypot(heli.vx, heli.vz) * 3.6) + " קמ״ש · W/S קדימה ואחורה · A/D פנייה · רווח לעלייה · Shift לירידה · גובה " + Math.round(heli.y) + " מ׳"); }
+          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("מסוק · " + Math.round(Math.hypot(heli.vx, heli.vz) * 3.6) + " קמ״ש · W/S קדימה ואחורה · A ימינה · D שמאלה · רווח לעלייה · Shift לירידה · גובה " + Math.round(heli.y) + " מ׳"); }
           onPrompt(canExitHeli(heli) ? "F / פעולה — לצאת מהמסוק" : "");
         }
       }
@@ -1476,11 +1494,11 @@ export default function Game() {
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
         h("li", null, h("b", null, "F"), " — פעולה, פתיחת דלתות, עלייה לכלי רכב ודיבור עם תושבים. התקרבו לתושב ולחצו F כדי לפתוח שיחה."),
         h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
-        h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A שמאלה ו־D ימינה; Shift בלימה ברכב."),
+        h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A ימינה ו־D שמאלה; Shift בלימה ברכב."),
         h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),
         h("li", null, "תושבי העיר הם דמויות AI: הם מטיילים, עוצרים ומסתכלים סביב, נכנסים למכוניות, נוסעים ומטיסים מסוק, מטוס וטסלה. אפשר להשתלט על כלי רכב שה-AI נוהג בהם כשמתקרבים ולוחצים F."),
-        h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
-        h("li", null, "סירות: F ליד סירה בחוף כדי לעלות. W/S לשוט, A/D לפנות, רווח לבלום, ו־F לרדת כשהסירה בעצירה. אפשר להגיע לאיים."),
+        h("li", null, "מסוק: W קדימה, S אחורה, A ימינה, D שמאלה, רווח עלייה, Shift ירידה"),
+        h("li", null, "סירות: F ליד סירה בחוף כדי לעלות. W/S לשוט, A ימינה · D שמאלה, רווח לבלום, ו־F לרדת כשהסירה בעצירה. אפשר להגיע לאיים."),
         h("li", null, "צלילה: כשיורדים מהחוף ונכנסים למים חליפת צלילה מופעלת והמצלמה צוללת איתכם. W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק; חפשו דגים, מדוזות, סוסוני ים, אלמוגים ודולפינים."),
         h("li", null, "דולפינים: כשדולפין מתקרב בזמן צלילה, לחצו F כדי לעלות עליו. W/S לשוט קדימה ואחורה, A/D לכוון, רווח לבלום ו־F לרדת. גם בכפתורי המגע אפשר לכוון את הדולפין."),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),

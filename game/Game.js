@@ -1145,7 +1145,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           onMode("dolphin"); onHud("רכיבה על דולפין · W קדימה · S אחורה · A/D לכיוון · F לרדת");
           onPrompt("עליתם על הדולפין! אפשר לכוון אותו עם W A S D");
         }
-      }
+      } else onPrompt("");
       if(s.mode==="swim"){
       const island = getIslandAt(p.x, p.z, marine.islands);
       if (island) { p.y = .28; s.v.set(0, 0, 0); s.mode = "walk"; s.onGround = true; s.lastPrompt = ""; onMode("walk"); onHud(""); onPrompt("הגעתם אל " + island.name); }
@@ -1260,8 +1260,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     if(underwaterView)camera.position.y=Math.min(camera.position.y,-.58);
     camera.lookAt(camTarget);
     const islandHere = getIslandAt(p.x, p.z, marine.islands);
-    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "swim" ? "מתחת למים" : islandHere ? islandHere.name : locate(world, p.x, p.y, p.z);
-    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || islandHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
+    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "swim" ? "מתחת למים" : s.mode === "dolphin" ? "רכיבה על דולפין" : islandHere ? islandHere.name : locate(world, p.x, p.y, p.z);
+    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || s.mode === "dolphin" || islandHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
@@ -1399,7 +1399,7 @@ export default function Game() {
       h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    hud && (mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     conversation && h("section", { className: "npc-chat-panel hud-panel", role: "dialog", "aria-label": "שיחה עם תושב" },
       h("div", { className: "npc-chat-header" },
         h("div", null, h("strong", null, "שיחה עם " + conversation.npcName), h("span", null, "התושב עוצר ומקשיב לך")),
@@ -1435,7 +1435,7 @@ export default function Game() {
         h("li", null, "מסוק: W קדימה, S אחורה, A שמאלה, D ימינה, רווח עלייה, Shift ירידה"),
         h("li", null, "סירות: F ליד סירה בחוף כדי לעלות. W/S לשוט, A/D לפנות, רווח לבלום, ו־F לרדת כשהסירה בעצירה. אפשר להגיע לאיים."),
         h("li", null, "צלילה: כשיורדים מהחוף ונכנסים למים חליפת צלילה מופעלת והמצלמה צוללת איתכם. W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק; חפשו דגים, מדוזות, סוסוני ים, אלמוגים ודולפינים."),
-        h("li", null, "דולפינים: כשדולפין מתקרב בזמן צלילה, לחצו F כדי לעלות עליו. W/S לשוט קדימה ואחורה, A/D לכוון, רווח לבלום ו־F לרדת."),
+        h("li", null, "דולפינים: כשדולפין מתקרב בזמן צלילה, לחצו F כדי לעלות עליו. W/S לשוט קדימה ואחורה, A/D לכוון, רווח לבלום ו־F לרדת. גם בכפתורי המגע אפשר לכוון את הדולפין."),
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
         h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),
         h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
@@ -1448,7 +1448,7 @@ export default function Game() {
       h("span", { className: "joy-direction down", "aria-hidden": true }, "↓"),
       h("span", { className: "joy-direction left", "aria-hidden": true }, "←"),
       h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
-    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" || mode === "swim" ? "עלייה" : mode === "car" || mode === "boat" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
+    h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" || mode === "swim" ? "עלייה" : mode === "car" || mode === "boat" || mode === "dolphin" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
       h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, חוף וים, 36 סירות, שמונה איים שונים, עולם תת־ימי עם יצורים ימיים, ורכבל עם שמונה תחנות מעל העיר."),

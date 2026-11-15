@@ -597,17 +597,27 @@ function furnish(add, inter, r, theme, x0, x1, z0, z1, y, ground) {
 function roofDecor(add, inter, r, x0, x1, z0, z1, y) {
     const k0 = r(), kind = k0 < .45 ? 0 : k0 < .75 ? 1 : 2, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     if (kind === 0) {
+        // Full-size, flyable helicopter and clearly marked rooftop landing pad.
         add(cx - 3, y, cz - 3, cx + 3, y + .05, cz + 3, "#455a64", "solid", false);
         add(cx - 2, y + .05, cz - .3, cx + 2, y + .07, cz + .3, "#ffeb3b", "glow", false);
         add(cx - 1.4, y + .05, cz - 1.5, cx - .9, y + .07, cz + 1.5, "#ffeb3b", "glow", false);
         add(cx + .9, y + .05, cz - 1.5, cx + 1.4, y + .07, cz + 1.5, "#ffeb3b", "glow", false);
         inter.push({ type: "heli", x: cx, y, z: cz, face: 0 });
     } else if (kind === 1) {
-        for (let i = 0; i < 5; i++) { const px = x0 + 1 + r() * (x1 - x0 - 2), pz = z0 + 1 + r() * (z1 - z0 - 2); add(px - .7, y, pz - .7, px + .7, y + .5, pz + .7, "#8d6e63"); add(px - .8, y + .5, pz - .8, px + .8, y + 1.5, pz + .8, "#4caf50", "solid", false); }
+        // Keep rooftop gardens around the edge, leaving the center clear for its helicopter.
+        const planters = [
+            [x0 + 1.8, z0 + 1.8], [x1 - 1.8, z0 + 1.8],
+            [x0 + 1.8, z1 - 1.8], [x1 - 1.8, z1 - 1.8],
+            [cx, z0 + 1.8]
+        ];
+        for (const [px, pz] of planters) {
+            add(px - .7, y, pz - .7, px + .7, y + .5, pz + .7, "#8d6e63");
+            add(px - .8, y + .5, pz - .8, px + .8, y + 1.5, pz + .8, "#4caf50", "solid", false);
+        }
     } else {
+        // Rooftop utility units sit to the side of the landing area.
         add(x0 + .5, y, z0 + .5, x0 + 2.5, y + 2, z0 + 2.5, "#b0bec5");
         add(x1 - 3.5, y, z0 + .5, x1 - .5, y + 1, z0 + 3.5, "#78909c");
-        add(cx - 2, y, cz - 1, cx + 2, y + .4, cz + 1, "#29b6f6", "glow", false);
     }
 }
 export class Collider {

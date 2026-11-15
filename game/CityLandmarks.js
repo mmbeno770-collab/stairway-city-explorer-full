@@ -1,6 +1,7 @@
-import React, { useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { FLOOR_H } from "./world.js";
 
 const h = React.createElement;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -527,6 +528,110 @@ function AmusementModel({ place }) {
     return h("group", { key: "amusement-model" }, ...rides);
 }
 
+
+const HELI_BODY_GEOMETRY = new THREE.SphereGeometry(1, 14, 10);
+const HELI_COCKPIT_GEOMETRY = new THREE.SphereGeometry(1, 14, 10);
+const HELI_TAIL_GEOMETRY = new THREE.CylinderGeometry(.085, .14, 3.0, 8);
+const HELI_SKID_GEOMETRY = new THREE.BoxGeometry(.075, .075, 2.5);
+const HELI_STRUT_GEOMETRY = new THREE.BoxGeometry(.075, .5, .075);
+const HELI_MAST_GEOMETRY = new THREE.CylinderGeometry(.045, .06, .55, 8);
+const HELI_FIN_GEOMETRY = new THREE.BoxGeometry(.08, .8, .36);
+const HELI_TAIL_ROTOR_GEOMETRY = new THREE.BoxGeometry(.055, .72, .055);
+const HELI_ROTOR_GEOMETRY = new THREE.BoxGeometry(.12, .045, 4.0);
+
+function RooftopHelicopters({ world }) {
+    const placements = useMemo(() => {
+        const spots = [];
+        const activeHelis = (world.interactables || []).filter((item) => item.type === "heli");
+        const add = (x, baseY, z, scale, padSize) => {
+            spots.push({ x, y: baseY + .06, z, scale, padSize, yaw: (spots.length % 7) * .37 });
+        };
+        for (const building of world.buildings || []) {
+            const x = (building.x0 + building.x1) / 2, z = (building.z0 + building.z1) / 2;
+            const roofY = (building.floors?.length || 1) * FLOOR_H;
+            const hasFlyableHeli = activeHelis.some((item) =>
+                Math.abs(item.y - roofY) < 1.1 && Math.hypot(item.x - x, item.z - z) < 2.2
+            );
+            if (!hasFlyableHeli) add(x, roofY, z, .68, 6.2);
+        }
+        for (const home of world.homes || []) {
+            // A small level landing platform sits on the ridge of each pitched house roof.
+            add(home.cx, home.wallHeight + .88, home.cz, .39, 3.25);
+        }
+        const mall = (world.landmarks || []).find((place) => place.type === "mall");
+        if (mall) add(mall.x + 6.2, 7.74, mall.z + 5.7, .66, 4.8);
+        return spots;
+    }, [world]);
+
+    const padRef = useRef(null), bodyRef = useRef(null), cockpitRef = useRef(null);
+    const tailRef = useRef(null), skidRef = useRef(null), strutRef = useRef(null);
+    const mastRef = useRef(null), finRef = useRef(null), tailRotorRef = useRef(null);
+    const rotorARef = useRef(null), rotorBRef = useRef(null);
+    const rotorDummy = useMemo(() => new THREE.Object3D(), []);
+
+    useEffect(() => {
+        if (!placements.length) return;
+        const dummy = new THREE.Object3D();
+        const write = (ref, transforms) => {
+            const mesh = ref.current;
+            if (!mesh) return;
+            transforms.forEach((t, index) => {
+                dummy.position.set(t.x, t.y, t.z);
+                dummy.rotation.set(t.rx || 0, t.ry || 0, t.rz || 0);
+                dummy.scale.set(t.sx, t.sy, t.sz);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(index, dummy.matrix);
+            });
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.computeBoundingSphere();
+        };
+        write(padRef, placements.map((p) => ({ x: p.x, y: p.y - .03, z: p.z, sx: p.padSize, sy: .06, sz: p.padSize, ry: p.yaw })));
+        write(bodyRef, placements.map((p) => ({ x: p.x, y: p.y + .96 * p.scale, z: p.z, sx: .72 * p.scale, sy: .36 * p.scale, sz: 1.12 * p.scale, ry: p.yaw })));
+        write(cockpitRef, placements.map((p) => ({ x: p.x, y: p.y + 1.24 * p.scale, z: p.z + .47 * p.scale, sx: .57 * p.scale, sy: .39 * p.scale, sz: .58 * p.scale, ry: p.yaw })));
+        write(tailRef, placements.map((p) => ({ x: p.x, y: p.y + 1.02 * p.scale, z: p.z - 1.95 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, rx: Math.PI / 2, ry: p.yaw })));
+        write(skidRef, placements.flatMap((p) => [-1, 1].map((side) => ({ x: p.x + side * .57 * p.scale, y: p.y + .15 * p.scale, z: p.z, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw }))));
+        write(strutRef, placements.flatMap((p) => [-1, 1].flatMap((side) => [-1, 1].map((end) => ({ x: p.x + side * .53 * p.scale, y: p.y + .43 * p.scale, z: p.z + end * .72 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw })))));
+        write(mastRef, placements.map((p) => ({ x: p.x, y: p.y + 1.96 * p.scale, z: p.z - .2 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale })));
+        write(finRef, placements.map((p) => ({ x: p.x, y: p.y + 1.5 * p.scale, z: p.z - 3.35 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw })));
+        write(tailRotorRef, placements.map((p) => ({ x: p.x, y: p.y + 1.52 * p.scale, z: p.z - 3.4 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw })));
+    }, [placements]);
+
+    useFrame(({ clock }) => {
+        if (!rotorARef.current || !rotorBRef.current) return;
+        const spin = clock.elapsedTime * 8.5;
+        placements.forEach((p, index) => {
+            rotorDummy.position.set(p.x, p.y + 2.32 * p.scale, p.z - .2 * p.scale);
+            rotorDummy.rotation.set(0, p.yaw + spin + index * .017, 0);
+            rotorDummy.scale.setScalar(p.scale);
+            rotorDummy.updateMatrix();
+            rotorARef.current.setMatrixAt(index, rotorDummy.matrix);
+            rotorDummy.rotation.y += Math.PI / 2;
+            rotorDummy.updateMatrix();
+            rotorBRef.current.setMatrixAt(index, rotorDummy.matrix);
+        });
+        rotorARef.current.instanceMatrix.needsUpdate = true;
+        rotorBRef.current.instanceMatrix.needsUpdate = true;
+    });
+
+    if (!placements.length) return null;
+    const instance = (ref, geometry, material, count) => h("instancedMesh", {
+        ref, args: [geometry, material, count], castShadow: false, receiveShadow: false
+    });
+    return h(React.Fragment, null,
+        instance(padRef, BOX, M.roofStone, placements.length),
+        instance(bodyRef, HELI_BODY_GEOMETRY, M.red, placements.length),
+        instance(cockpitRef, HELI_COCKPIT_GEOMETRY, M.glassBlue, placements.length),
+        instance(tailRef, HELI_TAIL_GEOMETRY, M.metal, placements.length),
+        instance(skidRef, HELI_SKID_GEOMETRY, M.metal, placements.length * 2),
+        instance(strutRef, HELI_STRUT_GEOMETRY, M.metal, placements.length * 4),
+        instance(mastRef, HELI_MAST_GEOMETRY, M.gold, placements.length),
+        instance(finRef, HELI_FIN_GEOMETRY, M.red, placements.length),
+        instance(tailRotorRef, HELI_TAIL_ROTOR_GEOMETRY, M.darkWall, placements.length),
+        instance(rotorARef, HELI_ROTOR_GEOMETRY, M.darkWall, placements.length),
+        instance(rotorBRef, HELI_ROTOR_GEOMETRY, M.darkWall, placements.length)
+    );
+}
+
 export function CityLandmarks({ world }) {
     return h(React.Fragment, null,
         (world.homes || []).map((home) => h(HouseModel, { key: "home-" + home.id, home })),
@@ -535,6 +640,7 @@ export function CityLandmarks({ world }) {
             if (place.type === "sports") return h(SportsModel, { key: "sports-" + index, place });
             if (place.type === "amusement") return h(AmusementModel, { key: "amusement-" + index, place });
             return null;
-        })
+        }),
+        h(RooftopHelicopters, { world, key: "rooftop-helicopters" })
     );
 }

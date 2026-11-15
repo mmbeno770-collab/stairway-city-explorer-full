@@ -598,10 +598,11 @@ function resolveClosedDoors(point, yLo, yHi, radius, world, doorStates) {
 }
 function resolveHelicopterObstacles(point, yLo, yHi, radius, helis) {
   for (const heli of helis) {
-    if (heli.y + 1.95 <= yLo || heli.y >= yHi) continue;
+    const size = heli.scale || 1;
+    if (heli.y + 1.95 * size <= yLo || heli.y >= yHi) continue;
     const dx = point.x - heli.x, dz = point.z - heli.z, c = Math.cos(heli.yaw), s = Math.sin(heli.yaw);
     let lx = dx * c - dz * s, lz = dx * s + dz * c;
-    const halfW = 1.2 + radius, halfL = 4.0 + radius;
+    const halfW = 1.2 * size + radius, halfL = 4.0 * size + radius;
     if (Math.abs(lx) >= halfW || Math.abs(lz) >= halfL) continue;
     const px = halfW - Math.abs(lx), pz = halfL - Math.abs(lz);
     if (px < pz) lx = (lx < 0 ? -1 : 1) * halfW;
@@ -668,7 +669,7 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
   const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
-  const heliEnv = useMemo(() => ({ ground: (x, z, y) => col.groundAt(x, z, y, .6, 1), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStates, airVehicles]);
+  const heliEnv = useMemo(() => ({ ground: (x, z, y, radius = 1) => col.groundAt(x, z, y, .6, Math.max(.2, radius)), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStates, airVehicles]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
   const airEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignoreVehicle) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStates); resolveCarObstacles(p, a, b, radius, cars); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles, ignoreVehicle); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStates, helis, airVehicles]);
   const temp = useMemo(() => ({ e: new THREE.Euler(), q: new THREE.Quaternion(), v: new THREE.Vector3() }), []);
@@ -1064,7 +1065,12 @@ function Player({ world, helis, cars, airVehicles, elevatorCars, activeVehicleRe
       else {
         const lift = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
         stepHeli(heli, { fwd: moveZ, turn: moveX, lift, piloted: true }, dt, heliEnv);
-        if (act && canExitHeli(heli)) { p.set(heli.x + Math.cos(heli.yaw) * 2.6, 0, heli.z - Math.sin(heli.yaw) * 2.6); p.y = col.groundAt(p.x, p.z, heli.y + .5, .6); s.face = heli.yaw; s.mode = "walk"; onMode("walk"); s.target = -1; onPrompt(""); }
+        if (act && canExitHeli(heli)) {
+          const exitDistance = 2.6 * (heli.scale || 1);
+          p.set(heli.x + Math.cos(heli.yaw) * exitDistance, 0, heli.z - Math.sin(heli.yaw) * exitDistance);
+          p.y = col.groundAt(p.x, p.z, heli.y + .5, .6, Math.max(.2, (heli.radius || 1) * .6));
+          s.face = heli.yaw; s.mode = "walk"; onMode("walk"); s.target = -1; onPrompt("");
+        }
         else {
           temp.e.set(heli.pitch, heli.yaw, heli.roll, "YXZ"); temp.q.setFromEuler(temp.e);
           if (root) { root.position.copy(new THREE.Vector3(0, .69, .5).applyQuaternion(temp.q).add(temp.v.set(heli.x, heli.y, heli.z))); root.quaternion.copy(temp.q); }
@@ -1110,7 +1116,7 @@ export default function Game() {
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
-  const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => Object.assign(makeHeli(item.x, item.y, item.z, item.face), { npcControlled: !!item.npcControlled })), [world]);
+  const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => Object.assign(makeHeli(item.x, item.y, item.z, item.face, item.scale || 1, item.padSize || 6), { npcControlled: !!item.npcControlled })), [world]);
   const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled })), [world]);
   const airVehicles = useMemo(() => (world.parkingVehicles || []).map(makeAirVehicle), [world]);
   const activeVehicleRef = useRef({ mode: "walk", target: -1 });
@@ -1196,7 +1202,7 @@ export default function Game() {
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
-        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world }),
+        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),

@@ -50,4 +50,6 @@ function HeliModel({ h }) {
         ] })
     ] });
 }
-export function Helicopters({ helis }) { return _jsx(_Fragment, { children: helis.map((h, i) => _jsx(HeliModel, { h }, i)) }); }
+export function Helicopters({ helis }) {
+    return _jsx(_Fragment, { children: helis.filter((heli) => (heli.scale || 1) >= .95).map((h, i) => _jsx(HeliModel, { h }, i)) });
+}

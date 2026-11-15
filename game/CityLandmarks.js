@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { FLOOR_H } from "./world.js";
 
 const h = React.createElement;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -539,100 +538,86 @@ const HELI_FIN_GEOMETRY = new THREE.BoxGeometry(.08, .8, .36);
 const HELI_TAIL_ROTOR_GEOMETRY = new THREE.BoxGeometry(.055, .72, .055);
 const HELI_ROTOR_GEOMETRY = new THREE.BoxGeometry(.12, .045, 4.0);
 
-function RooftopHelicopters({ world }) {
-    const placements = useMemo(() => {
-        const spots = [];
-        const activeHelis = (world.interactables || []).filter((item) => item.type === "heli");
-        const add = (x, baseY, z, scale, padSize) => {
-            spots.push({ x, y: baseY + .06, z, scale, padSize, yaw: (spots.length % 7) * .37 });
-        };
-        for (const building of world.buildings || []) {
-            const x = (building.x0 + building.x1) / 2, z = (building.z0 + building.z1) / 2;
-            const roofY = (building.floors?.length || 1) * FLOOR_H;
-            const hasFlyableHeli = activeHelis.some((item) =>
-                Math.abs(item.y - roofY) < 1.1 && Math.hypot(item.x - x, item.z - z) < 2.2
-            );
-            if (!hasFlyableHeli) add(x, roofY, z, .68, 6.2);
-        }
-        for (const home of world.homes || []) {
-            // A small level landing platform sits on the ridge of each pitched house roof.
-            add(home.cx, home.wallHeight + .88, home.cz, .39, 3.25);
-        }
-        const mall = (world.landmarks || []).find((place) => place.type === "mall");
-        if (mall) add(mall.x + 6.2, 7.74, mall.z + 5.7, .66, 4.8);
-        return spots;
-    }, [world]);
-
+function RooftopHelicopters({ helis }) {
+    const smallHelis = useMemo(() => (helis || []).filter((heli) => (heli.scale || 1) < .95), [helis]);
     const padRef = useRef(null), bodyRef = useRef(null), cockpitRef = useRef(null);
     const tailRef = useRef(null), skidRef = useRef(null), strutRef = useRef(null);
     const mastRef = useRef(null), finRef = useRef(null), tailRotorRef = useRef(null);
     const rotorARef = useRef(null), rotorBRef = useRef(null);
-    const rotorDummy = useMemo(() => new THREE.Object3D(), []);
-
-    useEffect(() => {
-        if (!placements.length) return;
-        const dummy = new THREE.Object3D();
-        const write = (ref, transforms) => {
-            const mesh = ref.current;
-            if (!mesh) return;
-            transforms.forEach((t, index) => {
-                dummy.position.set(t.x, t.y, t.z);
-                dummy.rotation.set(t.rx || 0, t.ry || 0, t.rz || 0);
-                dummy.scale.set(t.sx, t.sy, t.sz);
-                dummy.updateMatrix();
-                mesh.setMatrixAt(index, dummy.matrix);
-            });
-            mesh.instanceMatrix.needsUpdate = true;
-            mesh.computeBoundingSphere();
-        };
-        write(padRef, placements.map((p) => ({ x: p.x, y: p.y - .03, z: p.z, sx: p.padSize, sy: .06, sz: p.padSize, ry: p.yaw })));
-        write(bodyRef, placements.map((p) => ({ x: p.x, y: p.y + .96 * p.scale, z: p.z, sx: .72 * p.scale, sy: .36 * p.scale, sz: 1.12 * p.scale, ry: p.yaw })));
-        write(cockpitRef, placements.map((p) => ({ x: p.x, y: p.y + 1.24 * p.scale, z: p.z + .47 * p.scale, sx: .57 * p.scale, sy: .39 * p.scale, sz: .58 * p.scale, ry: p.yaw })));
-        write(tailRef, placements.map((p) => ({ x: p.x, y: p.y + 1.02 * p.scale, z: p.z - 1.95 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, rx: Math.PI / 2, ry: p.yaw })));
-        write(skidRef, placements.flatMap((p) => [-1, 1].map((side) => ({ x: p.x + side * .57 * p.scale, y: p.y + .15 * p.scale, z: p.z, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw }))));
-        write(strutRef, placements.flatMap((p) => [-1, 1].flatMap((side) => [-1, 1].map((end) => ({ x: p.x + side * .53 * p.scale, y: p.y + .43 * p.scale, z: p.z + end * .72 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw })))));
-        write(mastRef, placements.map((p) => ({ x: p.x, y: p.y + 1.96 * p.scale, z: p.z - .2 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale })));
-        write(finRef, placements.map((p) => ({ x: p.x, y: p.y + 1.5 * p.scale, z: p.z - 3.35 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw })));
-        write(tailRotorRef, placements.map((p) => ({ x: p.x, y: p.y + 1.52 * p.scale, z: p.z - 3.4 * p.scale, sx: p.scale, sy: p.scale, sz: p.scale, ry: p.yaw })));
-    }, [placements]);
+    const dummy = useMemo(() => new THREE.Object3D(), []);
+    const rootEuler = useMemo(() => new THREE.Euler(), []);
+    const rootQuaternion = useMemo(() => new THREE.Quaternion(), []);
+    const localEuler = useMemo(() => new THREE.Euler(), []);
+    const localQuaternion = useMemo(() => new THREE.Quaternion(), []);
+    const localPosition = useMemo(() => new THREE.Vector3(), []);
 
     useFrame(({ clock }) => {
-        if (!rotorARef.current || !rotorBRef.current) return;
-        const spin = clock.elapsedTime * 8.5;
-        placements.forEach((p, index) => {
-            rotorDummy.position.set(p.x, p.y + 2.32 * p.scale, p.z - .2 * p.scale);
-            rotorDummy.rotation.set(0, p.yaw + spin + index * .017, 0);
-            rotorDummy.scale.setScalar(p.scale);
-            rotorDummy.updateMatrix();
-            rotorARef.current.setMatrixAt(index, rotorDummy.matrix);
-            rotorDummy.rotation.y += Math.PI / 2;
-            rotorDummy.updateMatrix();
-            rotorBRef.current.setMatrixAt(index, rotorDummy.matrix);
+        if (!smallHelis.length) return;
+        const setPart = (ref, index, heli, offset, dimensions, rotation = [0, 0, 0]) => {
+            const size = heli.scale || .68;
+            rootEuler.set(heli.pitch || 0, heli.yaw || 0, heli.roll || 0, "YXZ");
+            rootQuaternion.setFromEuler(rootEuler);
+            localPosition.set(offset[0] * size, offset[1] * size, offset[2] * size).applyQuaternion(rootQuaternion);
+            dummy.position.set(heli.x, heli.y, heli.z).add(localPosition);
+            localEuler.set(rotation[0], rotation[1], rotation[2]);
+            localQuaternion.setFromEuler(localEuler);
+            dummy.quaternion.copy(rootQuaternion).multiply(localQuaternion);
+            dummy.scale.set(dimensions[0] * size, dimensions[1] * size, dimensions[2] * size);
+            dummy.updateMatrix();
+            ref.current?.setMatrixAt(index, dummy.matrix);
+        };
+        smallHelis.forEach((heli, index) => {
+            const homeX = heli.homeX ?? heli.x, homeY = heli.homeY ?? heli.y, homeZ = heli.homeZ ?? heli.z;
+            const padSize = heli.padSize || 6.2;
+            dummy.position.set(homeX, homeY - .03, homeZ);
+            dummy.rotation.set(0, 0, 0);
+            dummy.scale.set(padSize, .06, padSize);
+            dummy.updateMatrix();
+            padRef.current?.setMatrixAt(index, dummy.matrix);
+
+            setPart(bodyRef, index, heli, [0, .96, 0], [.72, .36, 1.12]);
+            setPart(cockpitRef, index, heli, [0, 1.24, .47], [.57, .39, .58]);
+            setPart(tailRef, index, heli, [0, 1.02, -1.95], [1, 1, 1], [Math.PI / 2, 0, 0]);
+            for (const side of [-1, 1]) {
+                setPart(skidRef, index * 2 + (side === 1 ? 1 : 0), heli, [side * .57, .15, 0], [1, 1, 1]);
+                for (const end of [-1, 1]) {
+                    const strutIndex = index * 4 + (side === 1 ? 2 : 0) + (end === 1 ? 1 : 0);
+                    setPart(strutRef, strutIndex, heli, [side * .53, .43, end * .72], [1, 1, 1]);
+                }
+            }
+            setPart(mastRef, index, heli, [0, 1.96, -.2], [1, 1, 1]);
+            setPart(finRef, index, heli, [0, 1.5, -3.35], [1, 1, 1]);
+            const tailSpin = heli.rotor > .05 ? heli.trA : clock.elapsedTime * 10;
+            setPart(tailRotorRef, index, heli, [0, 1.52, -3.4], [1, 1, 1], [0, 0, tailSpin]);
+            const mainSpin = heli.rotor > .05 ? heli.rotA : clock.elapsedTime * 8.5;
+            setPart(rotorARef, index, heli, [0, 2.32, -.2], [1, 1, 1], [0, mainSpin, 0]);
+            setPart(rotorBRef, index, heli, [0, 2.32, -.2], [1, 1, 1], [0, mainSpin + Math.PI / 2, 0]);
         });
-        rotorARef.current.instanceMatrix.needsUpdate = true;
-        rotorBRef.current.instanceMatrix.needsUpdate = true;
+        for (const ref of [padRef, bodyRef, cockpitRef, tailRef, skidRef, strutRef, mastRef, finRef, tailRotorRef, rotorARef, rotorBRef]) {
+            if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
+        }
     });
 
-    if (!placements.length) return null;
+    if (!smallHelis.length) return null;
     const instance = (ref, geometry, material, count) => h("instancedMesh", {
-        ref, args: [geometry, material, count], castShadow: false, receiveShadow: false
+        ref, args: [geometry, material, count], castShadow: false, receiveShadow: false, frustumCulled: false
     });
     return h(React.Fragment, null,
-        instance(padRef, BOX, M.roofStone, placements.length),
-        instance(bodyRef, HELI_BODY_GEOMETRY, M.red, placements.length),
-        instance(cockpitRef, HELI_COCKPIT_GEOMETRY, M.glassBlue, placements.length),
-        instance(tailRef, HELI_TAIL_GEOMETRY, M.metal, placements.length),
-        instance(skidRef, HELI_SKID_GEOMETRY, M.metal, placements.length * 2),
-        instance(strutRef, HELI_STRUT_GEOMETRY, M.metal, placements.length * 4),
-        instance(mastRef, HELI_MAST_GEOMETRY, M.gold, placements.length),
-        instance(finRef, HELI_FIN_GEOMETRY, M.red, placements.length),
-        instance(tailRotorRef, HELI_TAIL_ROTOR_GEOMETRY, M.darkWall, placements.length),
-        instance(rotorARef, HELI_ROTOR_GEOMETRY, M.darkWall, placements.length),
-        instance(rotorBRef, HELI_ROTOR_GEOMETRY, M.darkWall, placements.length)
+        instance(padRef, BOX, M.roofStone, smallHelis.length),
+        instance(bodyRef, HELI_BODY_GEOMETRY, M.red, smallHelis.length),
+        instance(cockpitRef, HELI_COCKPIT_GEOMETRY, M.glassBlue, smallHelis.length),
+        instance(tailRef, HELI_TAIL_GEOMETRY, M.metal, smallHelis.length),
+        instance(skidRef, HELI_SKID_GEOMETRY, M.metal, smallHelis.length * 2),
+        instance(strutRef, HELI_STRUT_GEOMETRY, M.metal, smallHelis.length * 4),
+        instance(mastRef, HELI_MAST_GEOMETRY, M.gold, smallHelis.length),
+        instance(finRef, HELI_FIN_GEOMETRY, M.red, smallHelis.length),
+        instance(tailRotorRef, HELI_TAIL_ROTOR_GEOMETRY, M.darkWall, smallHelis.length),
+        instance(rotorARef, HELI_ROTOR_GEOMETRY, M.darkWall, smallHelis.length),
+        instance(rotorBRef, HELI_ROTOR_GEOMETRY, M.darkWall, smallHelis.length)
     );
 }
 
-export function CityLandmarks({ world }) {
+export function CityLandmarks({ world, helis }) {
     return h(React.Fragment, null,
         (world.homes || []).map((home) => h(HouseModel, { key: "home-" + home.id, home })),
         (world.landmarks || []).map((place, index) => {
@@ -641,6 +626,6 @@ export function CityLandmarks({ world }) {
             if (place.type === "amusement") return h(AmusementModel, { key: "amusement-" + index, place });
             return null;
         }),
-        h(RooftopHelicopters, { world, key: "rooftop-helicopters" })
+        h(RooftopHelicopters, { helis, key: "rooftop-helicopters" })
     );
 }

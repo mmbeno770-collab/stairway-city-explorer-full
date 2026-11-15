@@ -185,9 +185,10 @@ function routeToVisit(person, destination, world) {
 
 function resolveHelicopterBodies(point, yLo, yHi, radius, helis) {
   for (const heli of helis) {
-    if (heli.y + 2.8 <= yLo || heli.y >= yHi) continue;
+    const size = heli.scale || 1;
+    if (heli.y + 2.8 * size <= yLo || heli.y >= yHi) continue;
     const dx = point.x - heli.x, dz = point.z - heli.z;
-    const min = radius + 2.1, d2 = dx * dx + dz * dz;
+    const min = radius + 2.1 * size, d2 = dx * dx + dz * dz;
     if (d2 >= min * min) continue;
     const d = Math.sqrt(Math.max(d2, .0001));
     point.x = heli.x + dx / d * min;

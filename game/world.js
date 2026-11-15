@@ -16,6 +16,11 @@ export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [];
     const elevators = [];
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
+    const addRooftopHelicopter = (x, y, z, scale, padSize) => {
+        const half = padSize / 2;
+        add(x - half, y - .06, z - half, x + half, y, z + half, "#777b78", "heliPad", true);
+        inter.push({ type: "heli", x, y, z, face: 0, scale, padSize, small: true });
+    };
     const addHome = (homeX, homeZ, style, id, lotX0, lotZ0) => {
         const width = style === "villa" ? 9.1 : 8.15, depth = style === "villa" ? 9.8 : 9.1;
         const floors = style === "villa" ? 2 : 1, wallHeight = floors === 2 ? 6.35 : 3.45;
@@ -69,6 +74,7 @@ export function generateWorld(seed = 7) {
         for (const side of [-1, 1]) trees.push({ x: homeX + side * (width * .68), z: homeZ + depth * .55, s: .7 + r() * .18 });
         lamps.push({ x: homeX - width * .65, z: homeZ - depth * .65 }, { x: homeX + width * .65, z: homeZ - depth * .65 });
         add(homeX - .95, .34, z0 - .14, homeX + .95, .58, z0 + .08, "#76543d", "solid", false);
+        addRooftopHelicopter(homeX, wallHeight + .94, homeZ, .39, 3.25);
     };
     const addLandmarkLot = (type, cx, cz) => {
         if (type === "mall") {
@@ -79,6 +85,7 @@ export function generateWorld(seed = 7) {
             add(cx + 10.7, .3, cz - 11, cx + 11, 7.8, cz + 11, "#596b70", "solid", true);
             add(cx - 10.8, 3.82, cz - 10.8, cx + 10.8, 4.02, cz + 10.8, "#899394", "solid", true);
             landmarks.push({ type: "mall", x: cx, z: cz, name: "קניון העיר" });
+            addRooftopHelicopter(cx + 6.2, 7.80, cz + 5.7, .66, 4.8);
             for (let i = 0; i < 8; i++) lamps.push({ x: cx - 9.5 + i * 2.7, z: cz - 12.3 });
             return;
         }
@@ -420,7 +427,9 @@ export function generateWorld(seed = 7) {
                 add(x0, y, z0, x1, y + 1.1, z0 + .25, facade); add(x0, y, z1 - .25, x1, y + 1.1, z1, facade);
                 add(x0, y, z0, x0 + .25, y + 1.1, z1, facade); add(x1 - .25, y, z0, x1, y + 1.1, z1, facade);
                 add(sx1, y, sz0, sx1 + .1, y + 1.1, sz1, "#555");
-                roofDecor(add, inter, r, sx1 + 1, x1 - 1, z0 + 1, z1 - 1, y); break;
+                const roofKind = roofDecor(add, inter, r, sx1 + 1, x1 - 1, z0 + 1, z1 - 1, y);
+                if (roofKind !== 0) addRooftopHelicopter((x0 + x1) / 2, y + .06, (z0 + z1) / 2, .68, 6.2);
+                break;
             }
             wall("x", x0, x1, z0 + t / 2, y, facade, f === 0, glass);
             wall("x", x0, x1, z1 - t / 2, y, facade, false, glass);
@@ -461,7 +470,8 @@ export function generateWorld(seed = 7) {
             add(x - hx * .8, 0, z - hz * .95, x + hx * .8, .35, z + hz * .95, "#1b1b1b", "solid", false);
         }
     }
-    const autonomousHelicopter = inter.find((item) => item.type === "heli" && !item.parking);
+    const autonomousHelicopter = inter.find((item) => item.type === "heli" && !item.parking && (item.scale || 1) >= .95)
+        || inter.find((item) => item.type === "heli" && !item.parking);
     if (autonomousHelicopter) autonomousHelicopter.npcControlled = true;
     const E = CITY_HALF + 4;
     add(-E, 0, -E - .5, E, 1.2, -E, "#9a948a"); add(-E, 0, E, E, 1.2, E + .5, "#9a948a");
@@ -598,11 +608,11 @@ function roofDecor(add, inter, r, x0, x1, z0, z1, y) {
     const k0 = r(), kind = k0 < .45 ? 0 : k0 < .75 ? 1 : 2, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     if (kind === 0) {
         // Full-size, flyable helicopter and clearly marked rooftop landing pad.
-        add(cx - 3, y, cz - 3, cx + 3, y + .05, cz + 3, "#455a64", "solid", false);
+        add(cx - 3, y, cz - 3, cx + 3, y + .05, cz + 3, "#455a64", "solid", true);
         add(cx - 2, y + .05, cz - .3, cx + 2, y + .07, cz + .3, "#ffeb3b", "glow", false);
         add(cx - 1.4, y + .05, cz - 1.5, cx - .9, y + .07, cz + 1.5, "#ffeb3b", "glow", false);
         add(cx + .9, y + .05, cz - 1.5, cx + 1.4, y + .07, cz + 1.5, "#ffeb3b", "glow", false);
-        inter.push({ type: "heli", x: cx, y, z: cz, face: 0 });
+        inter.push({ type: "heli", x: cx, y: y + .05, z: cz, face: 0, scale: 1, padSize: 6 });
     } else if (kind === 1) {
         // Keep rooftop gardens around the edge, leaving the center clear for its helicopter.
         const planters = [
@@ -619,6 +629,7 @@ function roofDecor(add, inter, r, x0, x1, z0, z1, y) {
         add(x0 + .5, y, z0 + .5, x0 + 2.5, y + 2, z0 + 2.5, "#b0bec5");
         add(x1 - 3.5, y, z0 + .5, x1 - .5, y + 1, z0 + 3.5, "#78909c");
     }
+    return kind;
 }
 export class Collider {
     boxes; cell = 4; map = new Map();

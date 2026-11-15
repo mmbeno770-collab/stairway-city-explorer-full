@@ -179,7 +179,10 @@ function MallModel({ place }) {
     add([cx, 8.04, cz - 10.62], [5.6, .04, .035], M.glow, null, "sign-light");
     add([cx, 4.0, cz - 9.9], [21.2, .16, .32], M.gold, null, "upper-canopy");
     add([cx, .75, cz - 10.0], [7.1, .22, 2.2], M.darkWall, null, "entry-canopy");
-    add([cx, 1.95, cz - 9.7], [2.65, 2.95, .12], M.glass, null, "main-entry-glass");
+    add([cx - .68, 1.95, cz - 9.7], [1.24, 2.78, .08], M.glass, null, "main-entry-left-glass");
+    add([cx + .68, 1.95, cz - 9.7], [1.24, 2.78, .08], M.glass, null, "main-entry-right-glass");
+    add([cx - .1, 1.2, cz - 9.82], [.055, .62, .08], M.gold, null, "main-entry-left-handle");
+    add([cx + .1, 1.2, cz - 9.82], [.055, .62, .08], M.gold, null, "main-entry-right-handle");
     add([cx - 1.2, 1.55, cz - 9.82], [.08, 2.25, .12], M.gold, null, "entry-frame-a");
     add([cx + 1.2, 1.55, cz - 9.82], [.08, 2.25, .12], M.gold, null, "entry-frame-b");
 
@@ -282,13 +285,27 @@ function MallModel({ place }) {
     // Glass rails and clearer treads on the two escalators.
     for (const side of [-1, 1]) {
         add([cx + side * 7.2, 2.8, cz - 2.2], [2.8, .15, 6.2], M.darkWall, [0, 0, side * -.24], "escalator-" + side);
-        for (let step = 0; step < 8; step++) add([cx + side * 7.2, 1.25 + step * .24, cz - 4.6 + step * .62], [2.55, .08, .5], M.gold, null, "escalator-step-" + side + "-" + step);
+        for (let step = 0; step < 14; step++) add([cx + side * 7.2, .53 + step * .255, cz - 5.35 + step * .45], [2.55, .08, .54], M.gold, null, "escalator-step-" + side + "-" + step);
         for (const railSide of [-1, 1]) add([cx + side * 7.2 + railSide * 1.25, 2.5, cz - 2.2], [.07, .16, 6.2], M.glassBlue, [0, 0, side * -.24], "escalator-rail-" + side + "-" + railSide);
     }
     for (let i = 0; i < 8; i++) {
         const xx = cx - 9.3 + i * 2.65;
         add([xx, .52, cz - 12.1], [.22, 1.0, .22], M.metal, null, "bollard-" + i);
         add([xx, .9, cz - 12.1], [.34, .12, .34], M.gold, null, "bollard-cap-" + i);
+    }
+    // A proper central atrium fountain, plus a food-court seating corner.
+    add([cx, .4, cz + 1.45], [4.2, .32, 4.2], M.teal, null, "atrium-fountain-basin");
+    addCylinder([cx, .68, cz + 1.45], 1.68, .34, M.roofStone, null, "atrium-fountain-rim", 28);
+    addCylinder([cx, .86, cz + 1.45], .62, .38, M.gold, null, "atrium-fountain-center", 20);
+    pieces.push(h("mesh", { key: "mall-fountain-water", position: [cx, .87, cz + 1.45], material: M.glassBlue }, h("cylinderGeometry", { args: [1.42, 1.42, .035, 28] })));
+    for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        add([cx + Math.cos(a) * 4.5, .48, cz + 1.45 + Math.sin(a) * 4.5], [2.2, .16, .62], M.wood, [0, -a, 0], "atrium-cafe-bench-" + i);
+    }
+    for (let i = 0; i < 3; i++) {
+        const px = cx - 8.4 + i * 8.4;
+        add([px, .56, cz + 5.2], [1.25, .62, 1.25], M.wood, null, "atrium-planter-base-" + i);
+        addCylinder([px, 1.25, cz + 5.2], .35, 1.15, M.green, null, "atrium-planter-tree-" + i, 10);
     }
     return h("group", { key: "mall-model" }, ...pieces);
 }

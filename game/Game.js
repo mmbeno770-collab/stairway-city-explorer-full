@@ -17,7 +17,7 @@ import { ElevatorModel } from "./elevator-system.js";
 import { advanceElevatorTrip, floorHeight, makeElevatorTrip } from "./elevator-sim.js";
 import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./environment.js";
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
-import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, MarineWorld } from "./marine-world.js";
+import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, MarineWorld } from "./marine-world.js";
 
 const h = React.createElement;
 
@@ -44,7 +44,7 @@ function vehicleExitPoint(x, z, yaw, distance, islands, side = -1) {
   return { x: exitX, z: exitZ, island };
 }
 const WALK = 6.2, RUN = 10.5, ACCEL = 16, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", jetSki: "לרכוב באופנוע ים", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 
 function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personality = "סקרן ואוהב לגלות מקומות חדשים") {
   const text = String(message || "").trim().toLocaleLowerCase("he");
@@ -729,6 +729,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
   const airVehicleIndices = useMemo(() => new Map(airVehicles.map((vehicle, index) => [vehicle.id, index])), [airVehicles]);
   const boatIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "boat") map.set(index, n++); }); return map; }, [world]);
   const sledIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "sled") map.set(index, n++); }); return map; }, [world]);
+  const jetSkiIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "jetSki") map.set(index, n++); }); return map; }, [world]);
   const bar = useRef(-1);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
@@ -741,7 +742,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     }
     const p = s.p, root = rig.root;
     divingRef.current = s.mode === "swim" || s.mode === "dolphin";
-    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.y = s.face; }
+    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? Math.PI / 2 : 0, s.face, 0); }
     if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
@@ -924,11 +925,12 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       if (s.mode === "walk" && (s.timer <= 0 || act)) {
         s.timer = .14; let best = -1, bestD = Infinity;
         world.interactables.forEach((it, i) => {
-          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "boat" ? 4.8 : it.type === "sled" ? 3.8 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : it.type === "door" ? 2.7 : 1.8;
+          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "boat" ? 5.5 : it.type === "jetSki" ? 7.4 : it.type === "sled" ? 3.8 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : it.type === "door" ? 2.7 : 1.8;
           if (it.type === "heli") { const item = helis[heliIndices.get(i)]; x = item.x; y = item.y; z = item.z; if (!item.grounded) return; }
           if (it.type === "car") { const item = cars[carIndices.get(i)]; x = item.x; y = item.y; z = item.z; }
           if (it.type === "airVehicle") { const item = airVehicles[airVehicleIndices.get(it.id)]; if (!item) return; x = item.x; y = item.y; z = item.z; }
           if (it.type === "sled") { const item = marine.sleds[sledIndices.get(i)]; if (!item) return; x = item.x; y = item.y; z = item.z; }
+          if (it.type === "jetSki") { const item = marine.jetSkis[jetSkiIndices.get(i)]; if (!item) return; x = item.x; y = item.y; z = item.z; }
           if (Math.abs(p.y - y) > (it.type === "car" || it.type === "airVehicle" ? 1.8 : 1.2)) return;
           const d = Math.hypot(p.x - x, p.z - z); if (d < radius && d < bestD) { best = i; bestD = d; }
         });
@@ -987,6 +989,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         else if (it.type === "heli") { s.target = heliIndices.get(s.near); s.mode = "heli"; onMode("heli"); }
         else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
         else if (it.type === "boat") { s.target = boatIndices.get(s.near); s.mode = "boat"; s.v.set(0, 0, 0); onMode("boat"); onPrompt("הסירה מוכנה · W קדימה · S אחורה · A ימינה · D שמאלה"); }
+        else if (it.type === "jetSki") { s.target = jetSkiIndices.get(s.near); s.mode = "jetSki"; s.v.set(0, 0, 0); onMode("jetSki"); onPrompt("אופנוע הים מוכן · W קדימה · S אחורה · A ימינה · D שמאלה"); }
         else if (it.type === "sled") { s.target = sledIndices.get(s.near); s.mode = "sled"; s.v.set(0, 0, 0); onMode("sled"); onHud("מזחלת שלג · W קדימה · S אחורה · A ימינה · D שמאלה · F ירידה בעצירה"); onPrompt("עליתם על המזחלת · סעו בזהירות בשלג"); }
         else if (it.type === "airVehicle") { s.target = airVehicleIndices.get(it.id); s.mode = "airVehicle"; onMode("airVehicle"); onPrompt(it.id === "plane" ? "מטוס · W/S תנועה · רווח להמראה · Shift להנמכה" : "טסלה מעופפת · W/S נסיעה · רווח לעלייה נמוכה · Shift לירידה"); }
         else if (it.type === "door") {
@@ -1104,9 +1107,9 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       else {
         const throttle = Math.max(-1, Math.min(1, moveZ));
         if (jump) boat.speed *= Math.exp(-6 * dt);
-        else if (Math.abs(throttle) > .025) boat.speed += throttle * 4.6 * dt;
+        else if (Math.abs(throttle) > .025) boat.speed += throttle * 6.2 * dt;
         else boat.speed *= Math.exp(-.72 * dt);
-        boat.speed = THREE.MathUtils.clamp(boat.speed, -4.5, 13.5);
+        boat.speed = THREE.MathUtils.clamp(boat.speed, -4.5, 19.5);
         boat.steering += (steerX - boat.steering) * (1 - Math.exp(-3.8 * dt));
         boat.yaw += boat.steering * .82 * Math.min(1, Math.abs(boat.speed) / 3.5) * dt * Math.sign(boat.speed || 1);
         const nx = boat.x + Math.sin(boat.yaw) * boat.speed * dt, nz = boat.z + Math.cos(boat.yaw) * boat.speed * dt;
@@ -1120,7 +1123,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         if (isMainlandLand(nx, nz) && coastNext < coastNow) { boat.dockIsland = null; boat.speed *= .2; }
         else if (dockIsland) { boat.dockIsland = dockIsland.id; boat.speed *= .18; }
         else { boat.dockIsland = null; boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
-        boat.y = -.16 + Math.sin(s.t * 1.8 + boat.id) * .025;
+        boat.y = getWaterHeight(boat.x, boat.z, s.t);
         p.set(boat.x, boat.y + .36, boat.z);
         if (act && Math.abs(boat.speed) < 1.2) {
           const island = marine.islands.find((item) => item.id === boat.dockIsland) || getIslandAt(boat.x, boat.z, marine.islands);
@@ -1148,6 +1151,39 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           s.hudTimer -= dt;
           if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("סירה · W/S קדימה ואחורה · A ימינה · D שמאלה · F ירידה בעצירה"); }
           onPrompt(Math.abs(boat.speed) < 1.2 ? "F / פעולה — לרדת מהסירה" : "עצרו את הסירה כדי לרדת");
+        }
+      }
+    } else if (s.mode === "jetSki") {
+      const jetSki = marine.jetSkis[s.target];
+      if (!jetSki) { s.mode = "walk"; s.target = -1; onMode("walk"); onHud(""); }
+      else {
+        const throttle = Math.max(-1, Math.min(1, moveZ));
+        if (jump) jetSki.speed *= Math.exp(-7.5 * dt);
+        else if (Math.abs(throttle) > .025) jetSki.speed += throttle * 8.4 * dt;
+        else jetSki.speed *= Math.exp(-.68 * dt);
+        jetSki.speed = THREE.MathUtils.clamp(jetSki.speed, -3.8, 25);
+        jetSki.steering += (steerX - jetSki.steering) * (1 - Math.exp(-5.2 * dt));
+        jetSki.yaw += jetSki.steering * 1.12 * Math.min(1, Math.abs(jetSki.speed) / 3.2) * dt * Math.sign(jetSki.speed || 1);
+        const nx = THREE.MathUtils.clamp(jetSki.x + Math.sin(jetSki.yaw) * jetSki.speed * dt, -1050, 1050);
+        const nz = THREE.MathUtils.clamp(jetSki.z + Math.cos(jetSki.yaw) * jetSki.speed * dt, -1050, 1050);
+        if (!getIslandAt(nx, nz, marine.islands) && !isMainlandLand(nx, nz)) { jetSki.x = nx; jetSki.z = nz; }
+        else jetSki.speed *= .2;
+        jetSki.y = getWaterHeight(jetSki.x, jetSki.z, s.t);
+        p.set(jetSki.x, jetSki.y + .47, jetSki.z);
+        if (act && Math.abs(jetSki.speed) < 1.15) {
+          p.set(jetSki.landX, .2, jetSki.landZ);
+          col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
+          s.face = jetSki.yaw; s.onGround = true; s.near = -1;
+          s.mode = "walk"; s.target = -1; s.v.set(0, 0, 0);
+          onMode("walk"); onHud(""); onPrompt("ירדתם מאופנוע הים אל החוף");
+        } else {
+          temp.e.set(0, jetSki.yaw, 0, "YXZ"); temp.q.setFromEuler(temp.e);
+          if (root) { root.position.copy(temp.v.set(0, .57, -.36).applyQuaternion(temp.q).add(new THREE.Vector3(jetSki.x, jetSki.y, jetSki.z))); root.rotation.set(0, jetSki.yaw, 0); }
+          poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
+          camTarget.set(jetSki.x, jetSki.y + 1.7, jetSki.z); camDist = 6.2; followYaw = jetSki.yaw;
+          s.hudTimer -= dt;
+          if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("אופנוע ים · " + Math.round(Math.abs(jetSki.speed) * 3.6) + " קמ״ש · W קדימה · S אחורה · A ימינה · D שמאלה · רווח בלימה"); }
+          onPrompt(Math.abs(jetSki.speed) < 1.15 ? "F / פעולה — לרדת מאופנוע הים" : "האטו כדי לרדת מאופנוע הים");
         }
       }
     } else if (s.mode === "sled") {
@@ -1216,7 +1252,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       else {
         if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
         s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.1;
-        poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z) * .55, air: false, t: s.t, dt });
+        poseHuman(rig, { mode: "swim", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z) * .55, air: false, t: s.t, dt });
         camTarget.set(p.x, p.y + .35, p.z); camDist = 4.9; followYaw = s.face;
         s.hudTimer -= dt;
         if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("צלילה · W/A/S/D לשחייה · רווח לעלייה · Shift להעמקה · אפשר לשחות עד האיים"); }
@@ -1324,7 +1360,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     if(underwaterView)camera.position.y=Math.min(camera.position.y,-.58);
     camera.lookAt(camTarget);
     const islandHere = getIslandAt(p.x, p.z, marine.islands);
-    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "swim" ? "מתחת למים" : s.mode === "dolphin" ? "רכיבה על דולפין" : islandHere ? islandHere.name : locate(world, p.x, p.y, p.z);
+    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "jetSki" ? "רוכבים באופנוע ים" : s.mode === "swim" ? "מתחת למים" : s.mode === "dolphin" ? "רכיבה על דולפין" : islandHere ? islandHere.name : locate(world, p.x, p.y, p.z);
     const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || s.mode === "dolphin" || islandHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
@@ -1343,6 +1379,7 @@ export default function Game() {
     city.boxes.push(...createIslandCollisionBoxes(marine.islands));
     city.interactables.push(...marine.boats.map(boat => ({ ...boat, type: "boat" })));
     city.interactables.push(...(marine.sleds||[]).map(sled => ({ ...sled, type: "sled" })));
+    city.interactables.push(...(marine.jetSkis||[]).map(jetSki => ({ ...jetSki, type: "jetSki" })));
     return city;
   }, [marine]);
   const boats = marine.boats;

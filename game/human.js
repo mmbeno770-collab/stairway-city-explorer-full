@@ -168,7 +168,21 @@ export function poseHuman(R, P) {
     R.chest.scale.set(1 + breath * 0.009, 1 + breath * 0.004, 0.68 + breath * 0.009);
     R.head.rotation.set(0, 0, 0); R.spine.rotation.set(0, 0, 0); R.hips.position.y = 0.95; R.bar.visible = false;
     for (let i = 0; i < 2; i++) { sh[i].rotation.set(0, 0, side[i] * 0.055); el[i].rotation.set(0, 0, 0); an[i].rotation.set(0, 0, 0); }
-    if (P.mode === "climb") {
+    if (P.mode === "swim") {
+        const cycle = P.phase;
+        for (let i = 0; i < 2; i++) {
+            const ph = cycle + (i ? Math.PI : 0), kick = Math.sin(ph * 1.55), pull = Math.max(0, Math.cos(ph));
+            sh[i].rotation.set(-1.12 + Math.sin(ph) * 0.24, 0, side[i] * 0.2);
+            el[i].rotation.set(-0.72 - pull * 0.42, 0, side[i] * 0.06);
+            th[i].rotation.set(0.16 + kick * 0.18, 0, side[i] * 0.035);
+            kn[i].rotation.x = 0.18 + pull * 0.48;
+            an[i].rotation.x = -0.16 - kick * 0.12;
+        }
+        R.spine.rotation.set(-0.055 + Math.sin(cycle * 0.5) * 0.018, 0, Math.sin(cycle) * 0.018);
+        R.head.rotation.set(0.1, Math.sin(P.t * 0.6) * 0.025, 0);
+        R.hips.position.y = 0.95 + Math.sin(P.t * 3.4) * 0.012;
+        R.root.rotation.x = Math.PI / 2;
+    } else if (P.mode === "climb") {
         for (let i = 0; i < 2; i++) {
             const ph = P.phase + (i ? Math.PI : 0);
             const reach = Math.sin(ph), lift = (1 + Math.cos(ph)) * 0.5;

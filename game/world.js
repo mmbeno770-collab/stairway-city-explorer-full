@@ -88,6 +88,11 @@ export function generateWorld(seed = 7) {
             add(cx - 11, .3, cz - 11, cx - 10.7, 7.8, cz + 11, "#596b70", "solid", true);
             add(cx + 10.7, .3, cz - 11, cx + 11, 7.8, cz + 11, "#596b70", "solid", true);
             add(cx - 10.8, 3.82, cz - 10.8, cx + 10.8, 4.02, cz + 10.8, "#899394", "solid", true);
+            // Walkable escalator treads: every rise is below the player's step height.
+            for (const side of [-1, 1]) for (let step = 0; step < 14; step++) {
+                const top = .57 + step * .255, z = cz - 5.35 + step * .45, x = cx + side * 7.2;
+                add(x - 1.28, .31, z - .27, x + 1.28, top, z + .27, "#aa9568", "mallStep", true);
+            }
             landmarks.push({ type: "mall", x: cx, z: cz, name: "קניון העיר" });
             addRooftopHelicopter(cx + 6.2, 7.80, cz + 5.7, .66, 4.8);
             for (let i = 0; i < 8; i++) lamps.push({ x: cx - 9.5 + i * 2.7, z: cz - 12.3 });

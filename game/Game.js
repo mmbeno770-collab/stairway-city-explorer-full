@@ -48,7 +48,7 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personal
   if (/(מה אפשר לעשות|מה יש כאן|מה יש בעיר|אטרקציות|לבקר)/.test(text)) return "אפשר לחקור עשרות בניינים, להיכנס לחנויות ולחדרים, לעלות במדרגות, לנסוע ברכבים, לטוס ולעלות ברכבל.";
   if (/(איפה|מיקום|בניין|קומה|מדרגות|גג)/.test(text)) return pick(["יש כאן הרבה בניינים. הדלתות מובילות ללובי, ומשם אפשר לעלות במדרגות.", "אני אוהב לעלות לקומות הגבוהות ולראות את העיר מלמעלה.", "אפשר להיכנס לבניינים ולגלות שבכל קומה יש חלל אחר."]);
   if (/(מכונית|רכב|אוטובוס|ג'יפ|חניון|מירוץ)/.test(text)) return pick(["בחניון המרכזי יש מכוניות, ג'יפ, אוטובוס ומכונית מרוץ.", "אני אוהב לעמוד ליד הכביש ולראות את התנועה. יש כאן כמה כלי רכב מעניינים.", "אפשר לבחור רכב, להיכנס אליו ולנסוע ברחובות העיר."]);
-  if (/(מטוס|מסוק|טס|טיסה|טסלה|רכבל)/.test(text)) return pick(["אפשר להטיס מסוק או מטוס ולראות את העיר מלמעלה.", "הטסלה המעופפת מיוחדת מאוד. היא יכולה לעלות ולרדת באוויר.", "הרכבל עובר בין ארבע תחנות ומציע נוף יפה של כל העיר."]);
+  if (/(מטוס|מסוק|טס|טיסה|טסלה|רכבל)/.test(text)) return pick(["אפשר להטיס מסוק או מטוס ולראות את העיר מלמעלה.", "הטסלה המעופפת מיוחדת מאוד. היא יכולה לעלות ולרדת באוויר.", "הרכבל עובר בין שמונה תחנות ומחבר את כל חלקי העיר."]);
   if (/(תושב|אנשים|דמויות|תושבים|ai|בינה)/.test(text)) return pick(["לכל אחד מאיתנו יש מסלול משלו, ואנחנו יכולים לעבור בין בניינים ולפגוש תושבים אחרים.", "אנחנו מסתובבים בעיר, עוקפים מכשולים, עוצרים לשיחות ומבקרים במקומות שונים.", "אפשר לבקש ממני לבוא איתך, או לבקש שאמשיך בסיור עצמאי."]);
   if (/(מזג אוויר|גשם|שמש|סערה|עננים)/.test(text)) return "אפשר לשנות את מזג האוויר ואת השעה בלוח הסביבה שבצד המסך.";
   if (/(תודה|מעולה|יופי|נהדר)/.test(text)) return pick(["בשמחה! תמיד נחמד לפגוש תושבים חדשים.", "אין בעד מה. שיהיה לך טיול נעים!", "בכיף! אולי נתראה בהמשך הסיבוב."]);
@@ -160,10 +160,14 @@ function cableLoopRoute(from) {
   return route;
 }
 const CABLE_BENDS = [
-  [{ x: -42, y: 54, z: -119 }, { x: 34, y: 52, z: -116 }],
-  [{ x: 120, y: 55, z: -38 }, { x: 115, y: 51, z: 43 }],
-  [{ x: 38, y: 55, z: 120 }, { x: -42, y: 57, z: 116 }],
-  [{ x: -121, y: 56, z: 32 }, { x: -116, y: 52, z: -43 }]
+  [{ x: -120, y: 54, z: -160 }, { x: -62, y: 51, z: -112 }],
+  [{ x: 62, y: 51, z: -112 }, { x: 120, y: 54, z: -160 }],
+  [{ x: 160, y: 56, z: -120 }, { x: 112, y: 53, z: -62 }],
+  [{ x: 112, y: 53, z: 62 }, { x: 160, y: 56, z: 120 }],
+  [{ x: 120, y: 54, z: 160 }, { x: 62, y: 52, z: 112 }],
+  [{ x: -62, y: 52, z: 112 }, { x: -120, y: 54, z: 160 }],
+  [{ x: -160, y: 56, z: 120 }, { x: -112, y: 53, z: 62 }],
+  [{ x: -112, y: 53, z: -62 }, { x: -160, y: 56, z: -120 }]
 ];
 
 function makeCableCurve() {
@@ -462,7 +466,8 @@ function Ground({ wet, buildings }) {
     surfaceTexture.needsUpdate = true;
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
     const ctx = canvas.getContext("2d"), total = GRID * BLOCK + 40, p = size / total, to = (v) => (v + total / 2) * p;
-    ctx.fillStyle = "#668452"; ctx.fillRect(0, 0, size, size);
+    // A pale sandy border around the city forms its beach.
+    ctx.fillStyle = "#dfc991"; ctx.fillRect(0, 0, size, size);
     ctx.fillStyle = "#303b43"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
@@ -531,7 +536,7 @@ function Ground({ wet, buildings }) {
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -5.1, 0] }, h("planeGeometry", { args: [1200, 1200] }), h("meshStandardMaterial", { color: "#6f9a52", roughness: wet ? .72 : 1 }))
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.16, 0], receiveShadow: true }, h("planeGeometry", { args: [1600, 1600] }), h("meshStandardMaterial", { color: "#247d9b", roughness: .28, metalness: .18, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: .035, envMapIntensity: 1.15 }))
   );
 }
 

@@ -12,12 +12,12 @@ const COASTER_CURVE = new THREE.CatmullRomCurve3([
 ], true, "centripetal");
 
 const RIDE_STOPS = [
-  { type: "ferris", label: "הגלגל הענק", boardX: -5.4, boardZ: -3.1, radius: 3.0, exitX: -8.0, exitZ: -3.1 },
-  { type: "carousel", label: "הקרוסלה", boardX: 6.5, boardZ: 1.8, radius: 3.2, exitX: 8.8, exitZ: 1.8 },
+  { type: "ferris", label: "הגלגל הענק", boardX: -5.4, boardZ: 1.2, radius: 3.1, exitX: -8.0, exitZ: 1.2 },
+  { type: "carousel", label: "הקרוסלה", boardX: 6.5, boardZ: 2.5, radius: 3.3, exitX: 10.2, exitZ: 2.5 },
   { type: "drop", label: "מתקן הנפילה", boardX: 7.2, boardZ: -9.6, radius: 2.8, exitX: 9.8, exitZ: -9.6 },
   { type: "coaster", label: "רכבת ההרים", boardX: -4.5, boardZ: -4.0, radius: 3.1, exitX: -7.0, exitZ: -5.5 },
-  { type: "swing", label: "נדנדת השרשראות", boardX: -11.0, boardZ: -6.0, radius: 2.9, exitX: -13.0, exitZ: -6.0 },
-  { type: "bumper", label: "מכוניות מתנגשות", boardX: -1.4, boardZ: 6.5, radius: 3.1, exitX: -4.0, exitZ: 7.5 },
+  { type: "swing", label: "נדנדת השרשראות", boardX: -11.0, boardZ: -6.0, radius: 3.0, exitX: -14.4, exitZ: -6.0 },
+  { type: "bumper", label: "מכוניות מתנגשות", boardX: -1.4, boardZ: 7.0, radius: 3.5, exitX: -6.2, exitZ: 10.0 },
   { type: "train", label: "רכבת הילדים", boardX: 10.8, boardZ: -3.8, radius: 3.1, exitX: 12.8, exitZ: -3.8 }
 ];
 

@@ -742,7 +742,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     }
     const p = s.p, root = rig.root;
     divingRef.current = s.mode === "swim" || s.mode === "dolphin";
-    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? Math.PI / 2 : 0, s.face, 0); }
+    if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? (s.waterSwimBlend || 0) * Math.PI / 2 : 0, s.face, 0); }
     if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
@@ -918,7 +918,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       p.y = ny;
       if (p.y < -20) { p.set(...world.spawn); s.v.set(0, 0, 0); }
       if (!isMainlandLand(p.x, p.z) && !getIslandAt(p.x, p.z, marine.islands)) {
-        p.y = -2.7; s.v.set(0, 0, 0); s.mode = "swim"; s.onGround = false;
+        p.y = -2.7; s.v.set(0, 0, 0); s.waterSwimBlend = 0; s.mode = "swim"; s.onGround = false;
         s.lastPrompt = ""; onMode("swim"); onPrompt("נכנסתם למים · חליפת צלילה הופעלה"); onHud("");
       }
       s.timer -= dt;
@@ -1217,13 +1217,19 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         }
       }
     } else if (s.mode === "swim") {
-      const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), speed = shift ? 4.2 : 5.6;
+      // Underwater movement defaults to upright walking. Holding Shift blends into a surface-swim stroke.
+      s.waterSwimBlend = THREE.MathUtils.damp(s.waterSwimBlend || 0, shift ? 1 : 0, 5.5, dt);
+      const swimBlend = s.waterSwimBlend;
+      const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw);
+      const speed = THREE.MathUtils.lerp(3.35, 5.35, swimBlend);
       s.v.x += (worldMove.x * speed - s.v.x) * (1 - Math.exp(-4.5 * dt));
       s.v.z += (worldMove.z * speed - s.v.z) * (1 - Math.exp(-4.5 * dt));
       p.x += s.v.x * dt; p.z += s.v.z * dt;
-      const vertical = (jump ? 1 : 0) - (shift || inp.down ? 1 : 0);
-      if (vertical) p.y = THREE.MathUtils.clamp(p.y + vertical * 3.2 * dt, -22, -1.2);
-      else p.y += (-2.6 - p.y) * (1 - Math.exp(-.32 * dt));
+      const surfaceHeight = getWaterHeight(p.x, p.z, s.t);
+      const targetHeight = THREE.MathUtils.lerp(-2.7, surfaceHeight - .04, swimBlend);
+      const vertical = (jump ? 1 : 0) - (inp.down ? 1 : 0);
+      if (vertical) p.y = THREE.MathUtils.clamp(p.y + vertical * 3.2 * dt, -22, surfaceHeight + .16);
+      else p.y += (targetHeight - p.y) * (1 - Math.exp(-2.7 * dt));
       if (Math.hypot(worldMove.x, worldMove.z) > .1) {
         const target = Math.atan2(worldMove.x, worldMove.z); let delta = target - s.face;
         delta = Math.atan2(Math.sin(delta), Math.cos(delta)); s.face += delta * (1 - Math.exp(-4 * dt)); followYaw = s.face;
@@ -1251,11 +1257,12 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       else if (isMainlandLand(p.x, p.z)) { p.y = .2; s.v.set(0, 0, 0); s.mode = "walk"; s.onGround = true; s.lastPrompt = ""; onMode("walk"); onHud(""); onPrompt("חזרתם לחוף העיר"); }
       else {
         if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
-        s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.1;
-        poseHuman(rig, { mode: "swim", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z) * .55, air: false, t: s.t, dt });
-        camTarget.set(p.x, p.y + .35, p.z); camDist = 4.9; followYaw = s.face;
+        s.phase += Math.hypot(s.v.x, s.v.z) * dt * THREE.MathUtils.lerp(1.35, 1.05, swimBlend);
+        poseHuman(rig, { mode: "water", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), swimBlend, air: false, t: s.t, dt });
+        camTarget.set(p.x, p.y + THREE.MathUtils.lerp(1.45, .45, swimBlend), p.z);
+        camDist = THREE.MathUtils.lerp(6.2, 4.9, swimBlend); followYaw = s.face;
         s.hudTimer -= dt;
-        if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("צלילה · W/A/S/D לשחייה · רווח לעלייה · Shift להעמקה · אפשר לשחות עד האיים"); }
+        if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("הליכה במים · Shift לשחייה על פני המים · רווח לעלייה · כפתור ירידה לצלילה עמוקה"); }
       }
       }
     } else if (s.mode === "dolphin") {

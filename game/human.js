@@ -168,7 +168,26 @@ export function poseHuman(R, P) {
     R.chest.scale.set(1 + breath * 0.009, 1 + breath * 0.004, 0.68 + breath * 0.009);
     R.head.rotation.set(0, 0, 0); R.spine.rotation.set(0, 0, 0); R.hips.position.y = 0.95; R.bar.visible = false;
     for (let i = 0; i < 2; i++) { sh[i].rotation.set(0, 0, side[i] * 0.055); el[i].rotation.set(0, 0, 0); an[i].rotation.set(0, 0, 0); }
-    if (P.mode === "swim") {
+    if (P.mode === "water") {
+        const blend = THREE.MathUtils.clamp(P.swimBlend ?? 0, 0, 1), amp = Math.min(1, P.speed / 3.6), run = THREE.MathUtils.clamp((P.speed - 4.5) / 3.5, 0, 1), cycle = P.phase;
+        for (let i = 0; i < 2; i++) {
+            const ph = cycle + (i ? Math.PI : 0), wave = Math.sin(ph), kick = Math.sin(ph * 1.55), pull = Math.max(0, Math.cos(ph));
+            const walkThigh = -wave * (0.47 + 0.3 * run) * amp;
+            const walkKnee = amp * (0.06 + Math.max(0, Math.cos(ph)) * (0.62 + 0.65 * run));
+            const walkShoulder = wave * (0.39 + 0.22 * run) * amp;
+            const swimShoulder = -1.12 + Math.sin(ph) * 0.24;
+            th[i].rotation.x = lerp(walkThigh, 0.16 + kick * 0.18, blend);
+            kn[i].rotation.x = lerp(walkKnee, 0.18 + pull * 0.48, blend);
+            an[i].rotation.x = lerp(-walkThigh * 0.32 - walkKnee * 0.18, -0.16 - kick * 0.12, blend);
+            sh[i].rotation.set(lerp(walkShoulder, swimShoulder, blend), 0, lerp(side[i] * 0.055, side[i] * 0.2, blend));
+            el[i].rotation.x = lerp(-(0.12 + 0.22 * amp + 0.72 * run), -0.72 - pull * 0.42, blend);
+        }
+        const walkSpine = 0.025 * amp + 0.12 * run;
+        R.spine.rotation.set(lerp(walkSpine, -0.055 + Math.sin(cycle * 0.5) * 0.018, blend), lerp(Math.sin(cycle) * 0.065 * amp, Math.sin(cycle) * 0.018, blend), 0);
+        R.head.rotation.set(lerp(-walkSpine * 0.45 + Math.sin(P.t * 1.2) * 0.012, 0.1, blend), Math.sin(P.t * 0.6) * 0.025, 0);
+        R.hips.position.y = lerp(0.95 - Math.abs(Math.cos(P.phase)) * 0.026 * amp - run * 0.025, 0.95 + Math.sin(P.t * 3.4) * 0.012, blend);
+        R.root.rotation.x = blend * Math.PI / 2;
+    } else if (P.mode === "swim") {
         const cycle = P.phase;
         for (let i = 0; i < 2; i++) {
             const ph = cycle + (i ? Math.PI : 0), kick = Math.sin(ph * 1.55), pull = Math.max(0, Math.cos(ph));

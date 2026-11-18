@@ -330,10 +330,39 @@ function SledModel({sled}){
   React.createElement("mesh",{position:[0,.48,1.55],material:landmarkWood},React.createElement("boxGeometry",{args:[.1,.12,1.05]}))
  );
 }
+
+const islandAccentColors={tropical:"#78a95d",winter:"#ffffff",summer:"#b4d27a",forest:"#79a45c",volcanic:"#a76042",desert:"#e5c27d",crystal:"#b5e1dc",lagoon:"#9acb9e"};
+function createIslandTexture(baseHex,accentHex,seed,repeat){
+ const size=128,data=new Uint8Array(size*size*4);
+ const base=new THREE.Color(baseHex),accent=new THREE.Color(accentHex),shadow=base.clone().multiplyScalar(.72),color=new THREE.Color();
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const u=x/size,v=y/size;
+  const broad=.5+.25*Math.sin(u*6.4+Math.cos(v*4.8+seed))+.25*Math.cos(v*7.2-Math.sin(u*5.1+seed*.7));
+  const medium=Math.sin(u*39+v*17+seed)*Math.cos(v*33-u*11+seed*.4);
+  const grain=Math.sin((x*17+y*31+seed)*.73)*Math.cos((y*23-x*7+seed)*.51);
+  const variation=THREE.MathUtils.clamp(.55+broad*.27+medium*.1+grain*.045,0,1);
+  color.copy(shadow).lerp(base,variation);
+  color.lerp(accent,Math.max(0,broad-.78)*.72);
+  color.convertLinearToSRGB();
+  const offset=(y*size+x)*4;
+  data[offset]=Math.round(color.r*255);data[offset+1]=Math.round(color.g*255);data[offset+2]=Math.round(color.b*255);data[offset+3]=255;
+ }
+ const texture=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
+ texture.colorSpace=THREE.SRGBColorSpace;
+ texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+ texture.repeat.set(repeat,repeat);
+ texture.magFilter=THREE.LinearFilter;texture.minFilter=THREE.LinearMipmapLinearFilter;
+ texture.generateMipmaps=true;texture.needsUpdate=true;
+ return texture;
+}
+
 function IslandModel({island}){
  const base=useMemo(()=>islandShape(island,1.06,true),[island]),top=useMemo(()=>islandShape(island,.86,false),[island]);
  const beach=useMemo(()=>beachGeometry(island),[island]);
- const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.sand,roughness:.96}),[island.sand]),beachMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.sand,roughness:.84}),[island.sand]),grassMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.color,roughness:.94}),[island.color]);
+ const textureSeed=Math.abs(Math.floor(island.x*17+island.z*11));
+ const sandTexture=useMemo(()=>createIslandTexture(island.sand,"#f7e8c7",textureSeed,.035),[island.sand,textureSeed]);
+ const grassTexture=useMemo(()=>createIslandTexture(island.color,islandAccentColors[island.biome]||"#86aa72",textureSeed+19,.028),[island.color,island.biome,textureSeed]);
+ const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({map:sandTexture,roughness:.96}),[sandTexture]),beachMat=useMemo(()=>new THREE.MeshStandardMaterial({map:sandTexture,roughness:.84}),[sandTexture]),grassMat=useMemo(()=>new THREE.MeshStandardMaterial({map:grassTexture,roughness:.94}),[grassTexture]);
  return React.createElement("group",{position:[0,0,0]},
   React.createElement("mesh",{geometry:base,position:[island.x,-1.85,island.z],material:sandMat,receiveShadow:true,castShadow:true}),
   React.createElement("mesh",{geometry:beach,position:[island.x,.285,island.z],material:beachMat,receiveShadow:true}),

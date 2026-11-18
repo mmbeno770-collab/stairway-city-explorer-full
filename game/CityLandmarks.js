@@ -429,6 +429,16 @@ function Carousel({ x, z }) {
     );
 }
 
+const COASTER_CURVE = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-5.0, 3.1, -1.0),
+    new THREE.Vector3(-4.4, 5.2, -4.4),
+    new THREE.Vector3(-1.0, 4.25, -5.4),
+    new THREE.Vector3(3.4, 3.5, -4.0),
+    new THREE.Vector3(5.0, 4.0, -.5),
+    new THREE.Vector3(4.1, 5.5, 3.7),
+    new THREE.Vector3(.4, 4.35, 4.8),
+    new THREE.Vector3(-3.9, 3.55, 3.2)
+], true, "centripetal");
 const COASTER_TRACK_GEOMETRY = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
     new THREE.Vector3(-5.0, 3.1, -1.0),
     new THREE.Vector3(-4.4, 5.2, -4.4),

@@ -565,7 +565,7 @@ function Ground({ wet, buildings }) {
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], position: [0, -.16, 0], receiveShadow: true }, h("planeGeometry", { args: [2400, 2400] }), h("meshPhysicalMaterial", { color: "#42b8d2", roughness: .13, metalness: .045, transparent: true, opacity: .62, transmission: .22, thickness: 1.15, ior: 1.33, clearcoat: 1, clearcoatRoughness: .08, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: .018, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.2 }))
+
   );
 }
 
@@ -1481,7 +1481,7 @@ export default function Game() {
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
-        h(MarineWorld, { marine, boats, divingRef }),
+        h(MarineWorld, { marine, boats, divingRef, quality }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),

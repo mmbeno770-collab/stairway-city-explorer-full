@@ -4,19 +4,23 @@ import * as THREE from "three";
 import { CITY_HALF } from "./world.js";
 
 export const MAINLAND_SHORE = CITY_HALF + 20;
-const WATER_LEVEL = -.28;
+const WATER_LEVEL = -.18;
 export function getWaterHeight(x, z, time = 0) {
- return WATER_LEVEL + Math.sin(x * .018 + time * 1.18) * .14 + Math.sin(z * .022 - time * .94) * .09 + Math.sin((x + z) * .011 + time * .72) * .055;
+ return WATER_LEVEL
+  + Math.sin(x * .013 + time * 1.08) * .19
+  + Math.sin(z * .019 - time * .9) * .12
+  + Math.sin((x + z) * .009 + time * .68) * .07
+  + Math.sin(x * .036 - z * .031 + time * 2.0) * .018;
 }
 const seeds = [
- {id:"palm",name:"אי הדקלים",biome:"tropical",x:0,z:-470,rx:84,rz:62,color:"#39864e",sand:"#ead29a",trees:22,animals:["turtle","parrot","monkey","parrot","turtle","crab","toucan","monkey","parrot","turtle","crab","otter","duck","peacock","squirrel","raccoon","seaLion"]},
- {id:"frost",name:"אי הקרח",biome:"winter",x:505,z:-15,rx:68,rz:94,color:"#d9edf1",sand:"#dce8ed",trees:19,animals:["penguin","penguin","seal","polarBear","arcticFox","penguin","seal","moose","polarBear","arcticFox","penguin","arcticFox","snowOwl","reindeer","hare","snowFox","walrus"]},
- {id:"sunny",name:"אי הקיץ",biome:"summer",x:5,z:505,rx:115,rz:78,color:"#83b95a",sand:"#e7d19a",trees:17,animals:["deer","rabbit","rabbit","deer","fox","rabbit","flamingo","deer","rabbit","flamingo","duck","squirrel","peacock","hedgehog","horse","goose"]},
- {id:"green",name:"אי היער",biome:"forest",x:-505,z:35,rx:108,rz:80,color:"#477b42",sand:"#c7b27d",trees:29,animals:["deer","fox","deer","fox","rabbit","bear","wolf","owl","rabbit","deer","fox","owl","boar","squirrel","raccoon","woodpecker","badger","horse"]},
- {id:"lava",name:"אי הלבה",biome:"volcanic",x:620,z:440,rx:82,rz:68,color:"#765044",sand:"#a87959",trees:9,animals:["lizard","lizard","goat","ibex","lizard","fox","ibex","goat","lizard","eagle","wildBoar","mountainGoat","vulture","gecko"]},
- {id:"dune",name:"אי הדיונות",biome:"desert",x:-650,z:-420,rx:67,rz:56,color:"#c7a25e",sand:"#e4c78e",trees:11,animals:["fox","lizard","rabbit","camel","fennec","camel","lizard","fox","eagle","fennec","scorpion","desertOwl","jerboa","gazelle","vulture"]},
- {id:"crystal",name:"אי הקריסטלים",biome:"crystal",x:-690,z:400,rx:74,rz:100,color:"#70a9ad",sand:"#a8c9cc",trees:13,animals:["fox","parrot","rabbit","owl","deer","fox","parrot","rabbit","ibex","owl","peacock","mountainGoat","squirrel","badger","eagle"]},
- {id:"lagoon",name:"אי הלגונה",biome:"lagoon",x:395,z:-700,rx:115,rz:70,color:"#5b9d78",sand:"#f0d9a7",trees:23,animals:["turtle","parrot","turtle","parrot","flamingo","crab","turtle","parrot","crab","flamingo","monkey","otter","duck","seaLion","seagull","ray","pelican"]}
+ {id:"palm",name:"אי הדקלים",biome:"tropical",x:0,z:-470,rx:84,rz:62,color:"#39864e",sand:"#ead29a",trees:34,animals:["turtle","parrot","monkey","parrot","turtle","crab","toucan","monkey","parrot","turtle","crab","otter","duck","peacock","squirrel","raccoon","seaLion"]},
+ {id:"frost",name:"אי הקרח",biome:"winter",x:505,z:-15,rx:68,rz:94,color:"#d9edf1",sand:"#dce8ed",trees:28,animals:["penguin","penguin","seal","polarBear","arcticFox","penguin","seal","moose","polarBear","arcticFox","penguin","arcticFox","snowOwl","reindeer","hare","snowFox","walrus"]},
+ {id:"sunny",name:"אי הקיץ",biome:"summer",x:5,z:505,rx:115,rz:78,color:"#83b95a",sand:"#e7d19a",trees:25,animals:["deer","rabbit","rabbit","deer","fox","rabbit","flamingo","deer","rabbit","flamingo","duck","squirrel","peacock","hedgehog","horse","goose"]},
+ {id:"green",name:"אי היער",biome:"forest",x:-505,z:35,rx:108,rz:80,color:"#477b42",sand:"#c7b27d",trees:40,animals:["deer","fox","deer","fox","rabbit","bear","wolf","owl","rabbit","deer","fox","owl","boar","squirrel","raccoon","woodpecker","badger","horse"]},
+ {id:"lava",name:"אי הלבה",biome:"volcanic",x:620,z:440,rx:82,rz:68,color:"#765044",sand:"#a87959",trees:13,animals:["lizard","lizard","goat","ibex","lizard","fox","ibex","goat","lizard","eagle","wildBoar","mountainGoat","vulture","gecko"]},
+ {id:"dune",name:"אי הדיונות",biome:"desert",x:-650,z:-420,rx:67,rz:56,color:"#c7a25e",sand:"#e4c78e",trees:15,animals:["fox","lizard","rabbit","camel","fennec","camel","lizard","fox","eagle","fennec","scorpion","desertOwl","jerboa","gazelle","vulture"]},
+ {id:"crystal",name:"אי הקריסטלים",biome:"crystal",x:-690,z:400,rx:74,rz:100,color:"#70a9ad",sand:"#a8c9cc",trees:19,animals:["fox","parrot","rabbit","owl","deer","fox","parrot","rabbit","ibex","owl","peacock","mountainGoat","squirrel","badger","eagle"]},
+ {id:"lagoon",name:"אי הלגונה",biome:"lagoon",x:395,z:-700,rx:115,rz:70,color:"#5b9d78",sand:"#f0d9a7",trees:34,animals:["turtle","parrot","turtle","parrot","flamingo","crab","turtle","parrot","crab","flamingo","monkey","otter","duck","seaLion","seagull","ray","pelican"]}
 ];
 function randomFrom(seed){let v=seed>>>0;return()=>{v=(v*1664525+1013904223)>>>0;return v/4294967296;};}
 function outlineFor(seed){const r=randomFrom(seed);return Array.from({length:18},(_,i)=>{const a=i/18*Math.PI*2;const d=.88+r()*.16+Math.sin(a*3+seed)*.045;return[Math.cos(a)*d,Math.sin(a)*d];});}
@@ -26,7 +30,8 @@ export function createMarineWorld(){
   const r=randomFrom(400+index*71),outline=outlineFor(93+index*31);
   const trees=Array.from({length:s.trees},()=>{const a=r()*Math.PI*2,d=.16+r()*.56;return{x:s.x+Math.cos(a)*s.rx*d,z:s.z+Math.sin(a)*s.rz*d,scale:.72+r()*.6,type:["tropical","lagoon"].includes(s.biome)?"palm":s.biome==="winter"?"snowpine":["desert","volcanic"].includes(s.biome)?"cactus":s.biome==="crystal"?"crystal":s.biome==="forest"?"pine":"broadleaf"};});
   const animals=s.animals.map((type,i)=>{const a=i/s.animals.length*Math.PI*2+r()*.4,d=.24+r()*.35;return{type,x:s.x+Math.cos(a)*s.rx*d,z:s.z+Math.sin(a)*s.rz*d,phase:r()*Math.PI*2,scale:.8+r()*.45};});
-  return{...s,outline,trees,animals};
+  const rocks=Array.from({length:11+Math.floor(r()*8)},()=>{const a=r()*Math.PI*2,d=.63+r()*.2;return{x:s.x+Math.cos(a)*s.rx*d,z:s.z+Math.sin(a)*s.rz*d,scale:.45+r()*.85,yaw:r()*Math.PI*2,tilt:(r()-.5)*.28};});
+  return{...s,outline,trees,animals,rocks};
  });
  const boats=[],colors=["#d64b3d","#e3b64e","#397c9c","#e9e9df","#35775e"],along=[-180,-135,-90,-45,0,45,90,135,180];
  for(let side=0;side<4;side++)for(let i=0;i<along.length;i++){
@@ -73,30 +78,84 @@ const glass=new THREE.MeshPhysicalMaterial({color:"#9ed9e4",transparent:true,opa
 const OCEAN_VERTEX = `
 uniform float uTime;
 varying float vWave;
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
 void main(){
  vec3 p=position;
- float wave=sin(p.x*.018+uTime*1.18)*.14+sin(p.y*.022-uTime*.94)*.09+sin((p.x-p.y)*.011+uTime*.72)*.055;
- p.z+=wave;
+ float a=p.x*.013+uTime*1.08;
+ float b=p.y*.019-uTime*.9;
+ float c=(p.x+p.y)*.009+uTime*.68;
+ float d=p.x*.036-p.y*.031+uTime*2.0;
+ float wave=sin(a)*.19+sin(b)*.12+sin(c)*.07+sin(d)*.018;
+ float slopeX=cos(a)*.013*.19+cos(c)*.009*.07+cos(d)*.036*.018;
+ float slopeZ=cos(b)*.019*.12+cos(c)*.009*.07-cos(d)*.031*.018;
+ p.z=wave;
+ vec4 worldPosition=modelMatrix*vec4(p,1.0);
+ vWorldPosition=worldPosition.xyz;
+ vWorldNormal=normalize(mat3(modelMatrix)*vec3(-slopeX,-slopeZ,1.0));
  vWave=wave;
- gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);
+ gl_Position=projectionMatrix*viewMatrix*worldPosition;
 }`;
 const OCEAN_FRAGMENT = `
+uniform vec3 uSunDirection;
 varying float vWave;
+varying vec3 vWorldPosition;
+varying vec3 vWorldNormal;
 void main(){
- vec3 deep=vec3(.012,.19,.30);
- vec3 crest=vec3(.11,.49,.58);
- float light=smoothstep(.055,.19,vWave);
- vec3 color=mix(deep,crest,light);
- gl_FragColor=vec4(color,.91);
+ vec3 normal=normalize(vWorldNormal);
+ vec3 viewDirection=normalize(cameraPosition-vWorldPosition);
+ vec3 sunDirection=normalize(uSunDirection);
+ vec3 halfVector=normalize(viewDirection+sunDirection);
+ float diffuse=max(dot(normal,sunDirection),0.0);
+ float fresnel=pow(1.0-max(dot(normal,viewDirection),0.0),4.0);
+ float specular=pow(max(dot(normal,halfVector),0.0),96.0);
+ float broadWave=smoothstep(-0.3,0.22,vWave);
+ float foam=smoothstep(0.245,0.365,vWave);
+ vec3 deep=vec3(0.008,0.105,0.19);
+ vec3 blue=vec3(0.018,0.30,0.40);
+ vec3 color=mix(deep,blue,broadWave);
+ color*=0.68+diffuse*0.48;
+ color=mix(color,vec3(0.36,0.70,0.72),fresnel*0.52);
+ color=mix(color,vec3(0.72,0.91,0.88),foam*0.48);
+ color+=vec3(0.78,0.91,1.0)*specular*(0.65+diffuse*1.2);
+ gl_FragColor=vec4(color,1.0);
+ #include <tonemapping_fragment>
+ #include <colorspace_fragment>
 }`;
-function OceanSurface(){
+function OceanSurface({quality}){
  const material=useMemo(()=>new THREE.ShaderMaterial({
-  uniforms:{uTime:{value:0}},vertexShader:OCEAN_VERTEX,fragmentShader:OCEAN_FRAGMENT,
-  transparent:true,depthWrite:false,side:THREE.DoubleSide
+  uniforms:{uTime:{value:0},uSunDirection:{value:new THREE.Vector3(.36,.82,.44)}},
+  vertexShader:OCEAN_VERTEX,fragmentShader:OCEAN_FRAGMENT,
+  transparent:false,depthWrite:true,side:THREE.DoubleSide
  }),[]);
- const geometry=useMemo(()=>new THREE.PlaneGeometry(2400,2400,160,160),[]);
+ const segments=quality==="high"?192:quality==="low"?104:144;
+ const geometry=useMemo(()=>new THREE.PlaneGeometry(2400,2400,segments,segments),[segments]);
  useFrame(({clock})=>{material.uniforms.uTime.value=clock.elapsedTime;});
  return React.createElement("mesh",{geometry,material,rotation:[-Math.PI/2,0,0],position:[0,WATER_LEVEL,0],frustumCulled:false});
+}
+function beachGeometry(island){
+ const shape=new THREE.Shape();
+ island.outline.forEach(([x,z],i)=>{const px=x*island.rx*1.015,pz=z*island.rz*1.015;if(i===0)shape.moveTo(px,pz);else shape.lineTo(px,pz);});
+ shape.closePath();
+ const inner=new THREE.Path();
+ for(let i=island.outline.length-1;i>=0;i--){const [x,z]=island.outline[i],px=x*island.rx*.86,pz=z*island.rz*.86;if(i===island.outline.length-1)inner.moveTo(px,pz);else inner.lineTo(px,pz);}
+ inner.closePath();shape.holes.push(inner);
+ const geometry=new THREE.ShapeGeometry(shape,24);geometry.rotateX(-Math.PI/2);return geometry;
+}
+function IslandFoam({island}){
+ const ref=useRef(null);
+ const geometry=useMemo(()=>{
+  const points=island.outline.map(([x,z])=>new THREE.Vector3(x*island.rx*1.035,0,z*island.rz*1.035));
+  const curve=new THREE.CatmullRomCurve3(points,true,"centripetal");
+  return new THREE.TubeGeometry(curve,180,.14,5,true);
+ },[island]);
+ const material=useMemo(()=>new THREE.MeshStandardMaterial({color:"#c9f5ef",emissive:"#357b8d",emissiveIntensity:.5,transparent:true,opacity:.6,depthWrite:false,roughness:.3}),[]);
+ useFrame(({clock})=>{
+  if(!ref.current)return;
+  ref.current.position.y=WATER_LEVEL+.1+Math.sin(clock.elapsedTime*.8+island.x*.01)*.025;
+  material.opacity=.42+Math.sin(clock.elapsedTime*1.4+island.z*.01)*.13;
+ });
+ return React.createElement("mesh",{ref,geometry,material,position:[island.x,0,island.z],renderOrder:2});
 }
 function JetSkiModel({jetSki}){
  const root=useRef(null),paint=useMemo(()=>new THREE.MeshPhysicalMaterial({color:jetSki.color,metalness:.48,roughness:.2,clearcoat:1}),[jetSki.color]);
@@ -120,13 +179,21 @@ function JetSkiModel({jetSki}){
  );
 }
 function BoatModel({boat}){
- const root=useRef(null),paint=useMemo(()=>new THREE.MeshPhysicalMaterial({color:boat.color,metalness:.46,roughness:.22,clearcoat:1,clearcoatRoughness:.12}),[boat.color]);
- useFrame(({clock})=>{if(!root.current)return;root.current.position.set(boat.x,boat.y+Math.sin(clock.elapsedTime*1.8+boat.id)*.045,boat.z);root.current.rotation.y=boat.yaw;root.current.rotation.z=Math.sin(clock.elapsedTime*1.25+boat.id)*.018;root.current.rotation.x=Math.sin(clock.elapsedTime*1.05+boat.id*.7)*.012;});
+ const root=useRef(null),wake=useRef(null),paint=useMemo(()=>new THREE.MeshPhysicalMaterial({color:boat.color,metalness:.46,roughness:.22,clearcoat:1,clearcoatRoughness:.12}),[boat.color]);
+ const wakeMaterial=useMemo(()=>new THREE.MeshBasicMaterial({color:"#bdeef2",transparent:true,opacity:.36,depthWrite:false,side:THREE.DoubleSide}),[]);
+ useFrame(({clock})=>{if(!root.current)return;root.current.position.set(boat.x,boat.y+Math.sin(clock.elapsedTime*1.8+boat.id)*.045,boat.z);root.current.rotation.y=boat.yaw;root.current.rotation.z=Math.sin(clock.elapsedTime*1.25+boat.id)*.018;root.current.rotation.x=Math.sin(clock.elapsedTime*1.05+boat.id*.7)*.012;const speed=Math.abs(boat.speed||0);if(wake.current){wake.current.visible=speed>1.4;wake.current.scale.z=.55+Math.min(2.2,speed*.13);wakeMaterial.opacity=THREE.MathUtils.clamp(speed*.026,0,.48);}});
  return React.createElement("group",{ref:root,scale:boat.scale||1.42},
+  React.createElement("group",{ref:wake,position:[0,-.27,-3.0]},
+   ...[-1,1].map(side=>React.createElement("mesh",{key:"wake-"+side,position:[side*.55,0,-1.45],rotation:[-Math.PI/2,0,side*.09],material:wakeMaterial},React.createElement("planeGeometry",{args:[.62,4.8]}))),
+   React.createElement("mesh",{position:[0,.005,-1.15],rotation:[-Math.PI/2,0,0],material:wakeMaterial},React.createElement("planeGeometry",{args:[1.6,2.8]}))
+  ),
   React.createElement("mesh",{geometry:hullShape,position:[0,-.42,0],material:paint,castShadow:true,receiveShadow:true}),
   React.createElement("mesh",{position:[0,.22,-.28],material:deck},React.createElement("boxGeometry",{args:[1.78,.08,3.5]})),
   React.createElement("mesh",{position:[0,.36,-.85],material:metal},React.createElement("boxGeometry",{args:[1.45,.42,.42]})),
   React.createElement("mesh",{position:[0,.72,-.85],material:glass},React.createElement("boxGeometry",{args:[1.18,.48,.035]})),
+  React.createElement("mesh",{position:[0,1.08,-.88],material:deck},React.createElement("boxGeometry",{args:[1.55,.13,.82]})),
+  ...[-1,1].map(side=>React.createElement("mesh",{key:"cabin-side-window-"+side,position:[side*.72,.75,-.9],material:glass},React.createElement("boxGeometry",{args:[.035,.35,.62]}))),
+  ...[-1,1].map(side=>React.createElement("mesh",{key:"lounge-seat-"+side,position:[side*.48,.42,1.05],material:deck},React.createElement("boxGeometry",{args:[.62,.22,.92]}))),
   React.createElement("mesh",{position:[0,.42,-1.75],material:deck},React.createElement("boxGeometry",{args:[1.65,.18,.52]})),
   React.createElement("mesh",{position:[0,.3,-2.28],material:metal},React.createElement("boxGeometry",{args:[1.22,.48,.28]})),
   React.createElement("mesh",{position:[0,.27,1.95],material:deck},React.createElement("boxGeometry",{args:[1.12,.08,.58]})),
@@ -140,7 +207,16 @@ function BoatModel({boat}){
   React.createElement("mesh",{position:[0,.98,-.9],material:metal},React.createElement("boxGeometry",{args:[1.28,.08,.08]})),
   React.createElement("mesh",{position:[0,1.02,-.9],material:glass},React.createElement("boxGeometry",{args:[1.1,.34,.035]})),
   React.createElement("mesh",{position:[0,.56,1.42],material:metal},React.createElement("boxGeometry",{args:[.62,.08,.55]})),
-  React.createElement("mesh",{position:[0,.72,1.4],material:deck},React.createElement("boxGeometry",{args:[.72,.22,.32]}))
+  React.createElement("mesh",{position:[0,.72,1.4],material:deck},React.createElement("boxGeometry",{args:[.72,.22,.32]})),
+  React.createElement("mesh",{position:[0,.43,.92],material:metal},React.createElement("cylinderGeometry",{args:[.21,.21,.28,12]})),
+  React.createElement("mesh",{position:[0,.58,.92],material:deck},React.createElement("cylinderGeometry",{args:[.25,.25,.05,12]}))
+ );
+}
+function IslandRock({rock,island}){
+ const material=island.biome==="winter"?snow:island.biome==="volcanic"?landmarkStone:island.biome==="crystal"?crystal:landmarkStone;
+ return React.createElement("group",{position:[rock.x,.28,rock.z],rotation:[rock.tilt,rock.yaw,rock.tilt*.45],scale:rock.scale},
+  React.createElement("mesh",{material,castShadow:true,receiveShadow:true,scale:[1.15,.76,.92]},React.createElement("dodecahedronGeometry",{args:[1,0]})),
+  React.createElement("mesh",{material,position:[.48,.08,.16],scale:[.48,.55,.58]},React.createElement("dodecahedronGeometry",{args:[1,0]}))
  );
 }
 function islandShape(island,scale,extrude){
@@ -170,8 +246,16 @@ function IslandTree({tree}){
  );
 }
 function IslandAnimal({animal}){
- const ref=useRef(null);
- useFrame(({clock})=>{if(ref.current){ref.current.position.y=.27+Math.sin(clock.elapsedTime*1.5+animal.phase)*.035;ref.current.rotation.y=animal.phase+Math.sin(clock.elapsedTime*.4+animal.phase)*.15;}});
+ const ref=useRef(null),legRefs=useRef([]),wingRefs=useRef([]);
+ const birdTypes=["parrot","toucan","owl","eagle","snowOwl","desertOwl","peacock","woodpecker","vulture","seagull","pelican"];
+ useFrame(({clock})=>{
+  if(!ref.current)return;
+  const t=clock.elapsedTime,phase=t*.34+animal.phase,stride=Math.sin(t*5+animal.phase);
+  ref.current.position.set(animal.x+Math.sin(phase)*.48,.27+Math.sin(t*2.1+animal.phase)*.035,animal.z+Math.cos(phase*.8)*.34);
+  ref.current.rotation.y=Math.atan2(Math.cos(phase)*.48,-Math.sin(phase*.8)*.27);
+  legRefs.current.forEach((leg,i)=>{if(leg)leg.rotation.x=stride*(i%2?-.24:.24);});
+  wingRefs.current.forEach((wing,i)=>{if(wing)wing.rotation.z=(i===0?-1:1)*Math.sin(t*6.2+animal.phase)*.36;});
+ });
  const animalColor={penguin:"#273b46",fox:"#bd7042",arcticFox:"#f2eee4",deer:"#a97c4d",moose:"#765538",lizard:"#5d9363",seal:"#829ca5",polarBear:"#ece9df",bear:"#765b49",wolf:"#8d9195",owl:"#92765a",parrot:"#27a77b",toucan:"#253b40",monkey:"#9a6842",crab:"#d65b45",goat:"#ded6c1",ibex:"#96734d",turtle:"#607b49",rabbit:"#d3c7b5",flamingo:"#e58e9f",camel:"#bf925d",fennec:"#d5b47a",eagle:"#715b45",otter:"#705c4d",duck:"#c7a45d",peacock:"#267c83",squirrel:"#9b6946",raccoon:"#65686a",seaLion:"#687f89",snowOwl:"#eee9df",reindeer:"#8a6447",hare:"#c9c0b6",snowFox:"#e9e3d9",walrus:"#71645d",hedgehog:"#88735d",goose:"#e4e0d6",boar:"#665044",woodpecker:"#b64e3e",badger:"#77736c",mountainGoat:"#ddd7c8",vulture:"#6b5c4a",gecko:"#739b63",scorpion:"#9b7951",desertOwl:"#d7c19a",jerboa:"#c8a77d",gazelle:"#c08c5c",seagull:"#e7e9e4",ray:"#526b78",pelican:"#d9d5c8",wildBoar:"#665044"}[animal.type]||"#72876a";
  const bodyMat=new THREE.MeshStandardMaterial({color:animalColor,roughness:.9}),white=new THREE.MeshStandardMaterial({color:"#f1f1e9"}),feetMat=new THREE.MeshStandardMaterial({color:animal.type==="penguin"?"#eaa64a":"#51493e"});
  return React.createElement("group",{ref,position:[animal.x,.27,animal.z],scale:animal.scale},
@@ -191,7 +275,8 @@ function IslandAnimal({animal}){
    React.createElement("mesh",{key:"camel-hump-b",position:[.2,.98,-.08],material:bodyMat},React.createElement("sphereGeometry",{args:[.28,.34,.3]}))
   ]:[]),
   ...(["deer","reindeer","moose"].includes(animal.type)?[-1,1].map(side=>React.createElement("mesh",{key:"antler-"+side,position:[side*.14,1.36,.2],rotation:[0,0,side*.32],material:feetMat},React.createElement("cylinderGeometry",{args:[.025,.045,.52,6]}))):[]),
-  ...Array.from({length:animal.type==="parrot"||animal.type==="penguin"?2:4},(_,i)=>React.createElement("mesh",{key:"leg-"+i,position:[((i%2)?1:-1)*.25,.22,i<2?.23:-.2],material:feetMat},React.createElement("cylinderGeometry",{args:[.055,.07,.42,6]})))
+  ...(birdTypes.includes(animal.type)?[-1,1].map((side,i)=>React.createElement("mesh",{key:"wing-"+side,ref:n=>{wingRefs.current[i]=n;},position:[side*.38,.78,-.02],rotation:[0,0,side*.12],material:bodyMat,scale:[.3,.055,.48]},React.createElement("sphereGeometry",{args:[1,10,8]}))):[]),
+  ...Array.from({length:animal.type==="parrot"||animal.type==="penguin"?2:4},(_,i)=>React.createElement("mesh",{key:"leg-"+i,ref:n=>{legRefs.current[i]=n;},position:[((i%2)?1:-1)*.25,.22,i<2?.23:-.2],material:feetMat},React.createElement("cylinderGeometry",{args:[.055,.07,.42,6]})))
  );
 }
 function IslandLandmark({island}){
@@ -247,11 +332,15 @@ function SledModel({sled}){
 }
 function IslandModel({island}){
  const base=useMemo(()=>islandShape(island,1.06,true),[island]),top=useMemo(()=>islandShape(island,.86,false),[island]);
- const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.sand,roughness:.96}),[island.sand]),grassMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.color,roughness:.94}),[island.color]);
+ const beach=useMemo(()=>beachGeometry(island),[island]);
+ const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.sand,roughness:.96}),[island.sand]),beachMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.sand,roughness:.84}),[island.sand]),grassMat=useMemo(()=>new THREE.MeshStandardMaterial({color:island.color,roughness:.94}),[island.color]);
  return React.createElement("group",{position:[0,0,0]},
   React.createElement("mesh",{geometry:base,position:[island.x,-1.85,island.z],material:sandMat,receiveShadow:true,castShadow:true}),
-  React.createElement("mesh",{geometry:top,position:[island.x,.28,island.z],material:grassMat,receiveShadow:true}),
+  React.createElement("mesh",{geometry:beach,position:[island.x,.285,island.z],material:beachMat,receiveShadow:true}),
+  React.createElement("mesh",{geometry:top,position:[island.x,.29,island.z],material:grassMat,receiveShadow:true}),
+  React.createElement(IslandFoam,{island}),
   React.createElement(IslandLandmark,{island}),
+  ...island.rocks.map((rock,i)=>React.createElement(IslandRock,{key:"rock-"+i,rock,island})),
   ...island.trees.map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
   ...island.animals.map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal}))
  );
@@ -259,33 +348,89 @@ function IslandModel({island}){
 const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];
 const jellyMat=new THREE.MeshPhysicalMaterial({color:"#c6a5eb",transparent:true,opacity:.64,roughness:.14,metalness:.08,transmission:.25});
 const coralMats=["#e77a73","#e6b45e","#77c5b3"].map(color=>new THREE.MeshStandardMaterial({color,roughness:.88}));
-function UnderwaterLife({divingRef,islands}){
- const root=useRef(null),fishRefs=useRef([]),tailRefs=useRef([]),jellyRefs=useRef([]),horseRefs=useRef([]);
- const fish=useMemo(()=>{const r=randomFrom(8128);return Array.from({length:72},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=24+r()*118;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d,y:-3.5-r()*8,color:fishColors[i%fishColors.length],speed:.55+r()*.55,phase:r()*Math.PI*2,size:.65+r()*.55};});},[islands]);
- const jellies=useMemo(()=>Array.from({length:12},(_,i)=>({x:-520+(i%6)*205,z:260*Math.sin(i*2.1),y:-5-(i%4)*2,phase:i*1.7})),[]);
- const horses=useMemo(()=>Array.from({length:14},(_,i)=>({x:-650+i*98,z:310*Math.cos(i*1.4),y:-8-(i%4)*1.5,phase:i*1.1})),[]);
+const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];
+const jellyMat=new THREE.MeshPhysicalMaterial({color:"#c6a5eb",transparent:true,opacity:.64,roughness:.14,metalness:.08,transmission:.25});
+const coralMats=["#e77a73","#e6b45e","#77c5b3"].map(color=>new THREE.MeshStandardMaterial({color,roughness:.88}));
+const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];
+const jellyMat=new THREE.MeshPhysicalMaterial({color:"#c6a5eb",transparent:true,opacity:.64,roughness:.14,metalness:.08,transmission:.25});
+const coralMats=["#e77a73","#e6b45e","#77c5b3"].map(color=>new THREE.MeshStandardMaterial({color,roughness:.88}));
+const fishMaterialCache=new Map();
+function fishMaterial(color){
+ if(!fishMaterialCache.has(color))fishMaterialCache.set(color,new THREE.MeshStandardMaterial({color,roughness:.34,metalness:.08}));
+ return fishMaterialCache.get(color);
+}
+const fishTailGeometry=(()=>{
+ const shape=new THREE.Shape();shape.moveTo(0,0);shape.lineTo(-.42,.3);shape.lineTo(-.3,0);shape.lineTo(-.42,-.3);shape.closePath();
+ return new THREE.ShapeGeometry(shape);
+})();
+function UnderwaterLife({divingRef,islands,quality}){
+ const root=useRef(null),fishRefs=useRef([]),tailRefs=useRef([]),jellyRefs=useRef([]),horseRefs=useRef([]),bubbleRefs=useRef([]),rayRefs=useRef([]),rayWingRefs=useRef([]);
+ const fishCount=quality==="high"?82:quality==="low"?38:58;
+ const jellyCount=quality==="high"?14:quality==="low"?7:10;
+ const horseCount=quality==="high"?16:quality==="low"?7:11;
+ const bubbleCount=quality==="high"?42:quality==="low"?16:28;
+ const rayCount=quality==="high"?5:quality==="low"?2:4;
+ const coralCount=quality==="high"?9:quality==="low"?4:6;
+ const fish=useMemo(()=>{const r=randomFrom(8128);return Array.from({length:fishCount},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=38+r()*132;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d,y:-3.5-r()*10,color:fishColors[i%fishColors.length],speed:.48+r()*.78,phase:r()*Math.PI*2,size:.58+r()*.72,school:i%8};});},[islands,fishCount]);
+ const jellies=useMemo(()=>Array.from({length:jellyCount},(_,i)=>({x:-560+(i%7)*185,z:270*Math.sin(i*2.1),y:-5-(i%4)*2.2,phase:i*1.7})),[jellyCount]);
+ const horses=useMemo(()=>Array.from({length:horseCount},(_,i)=>({x:-690+i*92,z:320*Math.cos(i*1.4),y:-8-(i%4)*1.5,phase:i*1.1})),[horseCount]);
+ const bubbles=useMemo(()=>{const r=randomFrom(5511);return Array.from({length:bubbleCount},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=24+r()*90;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d,y:-18+r()*13,phase:r()*Math.PI*2,size:.055+r()*.11,speed:.45+r()*.7};});},[islands,bubbleCount]);
+ const rays=useMemo(()=>Array.from({length:rayCount},(_,i)=>{const island=islands[(i*3)%islands.length];return{x:island.x+Math.cos(i*1.7)*island.rx*.85,z:island.z+Math.sin(i*1.7)*island.rz*.85,y:-9-(i%3)*2,phase:i*1.3,speed:.26+i*.025};}),[islands,rayCount]);
  const horseTube=useMemo(()=>{const c=new THREE.CatmullRomCurve3([new THREE.Vector3(0,-.42,0),new THREE.Vector3(-.12,-.18,0),new THREE.Vector3(.02,.02,0),new THREE.Vector3(.19,.22,0),new THREE.Vector3(.2,.43,0)]);return new THREE.TubeGeometry(c,18,.075,8,false);},[]);
- useFrame(({clock})=>{if(root.current)root.current.visible=!!divingRef.current;const t=clock.elapsedTime;
-  fish.forEach((f,i)=>{const n=fishRefs.current[i];if(!n)return;const p=t*f.speed+f.phase;n.position.set(f.x+Math.sin(p)*7,f.y+Math.sin(p*1.7)*.7,f.z+Math.cos(p*.7)*5);n.rotation.y=Math.atan2(Math.cos(p*.7)*3.5,Math.cos(p)*7*f.speed);if(tailRefs.current[i])tailRefs.current[i].rotation.y=Math.sin(p*8)*.48;});
-  jellies.forEach((f,i)=>{const n=jellyRefs.current[i];if(n){n.position.set(f.x,f.y+Math.sin(t*.8+f.phase)*1.1,f.z);n.rotation.z=Math.sin(t+f.phase)*.08;}});
-  horses.forEach((f,i)=>{const n=horseRefs.current[i];if(n){n.position.set(f.x+Math.sin(t*.42+f.phase)*2,f.y+Math.sin(t*.7+f.phase)*.35,f.z);n.rotation.y=Math.sin(t*.4+f.phase)*.2;}});
+ const floorGeometry=useMemo(()=>new THREE.PlaneGeometry(2400,2400),[]);
+ const floorMaterial=useMemo(()=>new THREE.MeshStandardMaterial({color:"#082e43",roughness:1,metalness:0}),[]);
+ const bubbleMaterial=useMemo(()=>new THREE.MeshPhysicalMaterial({color:"#a9edf5",transparent:true,opacity:.44,roughness:.1,metalness:.05,transmission:.3,depthWrite:false}),[]);
+ const rayMaterial=useMemo(()=>new THREE.MeshPhysicalMaterial({color:"#526e83",roughness:.35,metalness:.08,clearcoat:.8}),[]);
+ useFrame(({clock})=>{
+  if(root.current)root.current.visible=!!divingRef.current;
+  const t=clock.elapsedTime;
+  fish.forEach((f,i)=>{
+   const n=fishRefs.current[i];if(!n)return;
+   const p=t*f.speed+f.phase;
+   n.position.set(f.x+Math.sin(p)*12,f.y+Math.sin(p*1.7)*.9,f.z+Math.cos(p*.72)*8);
+   n.rotation.y=Math.atan2(Math.cos(p*.72)*5.8,Math.cos(p)*12*f.speed);
+   if(tailRefs.current[i])tailRefs.current[i].rotation.y=Math.sin(p*8)*.58;
+  });
+  jellies.forEach((f,i)=>{const n=jellyRefs.current[i];if(n){n.position.set(f.x,f.y+Math.sin(t*.8+f.phase)*1.25,f.z);n.rotation.z=Math.sin(t+f.phase)*.1;}});
+  horses.forEach((f,i)=>{const n=horseRefs.current[i];if(n){n.position.set(f.x+Math.sin(t*.42+f.phase)*2.3,f.y+Math.sin(t*.7+f.phase)*.4,f.z);n.rotation.y=Math.sin(t*.4+f.phase)*.22;}});
+  bubbles.forEach((f,i)=>{const n=bubbleRefs.current[i];if(n){const rise=((f.y+18+t*f.speed)%17)-18;n.position.set(f.x+Math.sin(t*1.1+f.phase)*.48,rise,f.z+Math.cos(t*.8+f.phase)*.42);}});
+  rays.forEach((f,i)=>{
+   const n=rayRefs.current[i];if(!n)return;
+   const p=t*f.speed+f.phase;
+   n.position.set(f.x+Math.sin(p)*8,f.y+Math.sin(p*1.3)*.42,f.z+Math.cos(p*.7)*6);
+   n.rotation.y=Math.atan2(Math.cos(p)*8,-Math.sin(p*.7)*4.2);
+   const wings=rayWingRefs.current[i]||[];
+   wings.forEach((wing,side)=>{if(wing)wing.rotation.z=(side===0?1:-1)*(.12+Math.sin(t*2.8+f.phase)*.22);});
+  });
  });
  return React.createElement("group",{ref:root,visible:false},
+  React.createElement("mesh",{geometry:floorGeometry,material:floorMaterial,rotation:[-Math.PI/2,0,0],position:[0,-25,0],receiveShadow:true}),
+  ...rays.map((f,i)=>React.createElement("group",{key:"manta-"+i,ref:n=>{rayRefs.current[i]=n;}},
+   React.createElement("mesh",{material:rayMaterial,scale:[.78,.12,1.25]},React.createElement("sphereGeometry",{args:[1,20,14]})),
+   ...[-1,1].map((side,j)=>React.createElement("mesh",{key:"ray-wing-"+side,ref:n=>{if(!rayWingRefs.current[i])rayWingRefs.current[i]=[];rayWingRefs.current[i][j]=n;},position:[side*.78,-.02,0],scale:[1.05,.055,.72],material:rayMaterial},React.createElement("sphereGeometry",{args:[1,16,10]}))),
+   React.createElement("mesh",{material:rayMaterial,position:[0,-.02,-1.25],scale:[.05,.05,.8]},React.createElement("coneGeometry",{args:[.08,1.7,7]}))
+  )),
   ...fish.map((f,i)=>React.createElement("group",{key:"fish-"+i,ref:n=>{fishRefs.current[i]=n;},scale:f.size},
-   React.createElement("mesh",{material:new THREE.MeshStandardMaterial({color:f.color,roughness:.34,metalness:.08})},React.createElement("sphereGeometry",{args:[.62,16,10]})),
-   React.createElement("group",{ref:n=>{tailRefs.current[i]=n;},position:[0,0,-.68]},React.createElement("mesh",{rotation:[0,0,Math.PI/2],material:new THREE.MeshStandardMaterial({color:f.color})},React.createElement("coneGeometry",{args:[.38,.58,3]}))),
-   React.createElement("mesh",{position:[0,.13,.43],material:new THREE.MeshBasicMaterial({color:"#101c25"})},React.createElement("sphereGeometry",{args:[.055,8,6]}))
+   React.createElement("mesh",{material:fishMaterial(f.color),scale:[.48,.3,.82]},React.createElement("sphereGeometry",{args:[.62,18,12]})),
+   React.createElement("group",{ref:n=>{tailRefs.current[i]=n;},position:[0,0,-.68]},
+    React.createElement("mesh",{geometry:fishTailGeometry,material:fishMaterial(f.color),position:[0,0,-.12]}),
+    React.createElement("mesh",{material:fishMaterial(f.color),position:[0,.12,-.05],rotation:[0,0,.38],scale:[.1,.24,.27]},React.createElement("sphereGeometry",{args:[1,10,8]}))
+   ),
+   React.createElement("mesh",{material:fishMaterial(f.color),position:[0,.29,-.12],rotation:[0,0,Math.PI]},React.createElement("coneGeometry",{args:[.2,.34,4]})),
+   ...[-1,1].map(side=>React.createElement("mesh",{key:"pectoral-"+side,material:fishMaterial(f.color),position:[side*.37,-.02,-.05],rotation:[side*.12,0,side*.42],scale:[.28,.055,.35]},React.createElement("sphereGeometry",{args:[1,10,8]}))),
+   ...[-1,1].map(side=>React.createElement("mesh",{key:"eye-"+side,material:new THREE.MeshBasicMaterial({color:"#10151c"}),position:[side*.24,.1,.34]},React.createElement("sphereGeometry",{args:[.055,8,6]})))
   )),
   ...jellies.map((f,i)=>React.createElement("group",{key:"jelly-"+i,ref:n=>{jellyRefs.current[i]=n;}},
    React.createElement("mesh",{material:jellyMat},React.createElement("sphereGeometry",{args:[.56,16,12,0,Math.PI*2,0,Math.PI/2]})),
-   ...Array.from({length:6},(_,j)=>React.createElement("mesh",{key:j,position:[Math.cos(j)*.3,-.55,Math.sin(j)*.3],material:jellyMat},React.createElement("cylinderGeometry",{args:[.025,.012,1+(j%3)*.25,6]})))
+   ...Array.from({length:8},(_,j)=>React.createElement("mesh",{key:j,position:[Math.cos(j*Math.PI/4)*.3,-.55,Math.sin(j*Math.PI/4)*.3],material:jellyMat},React.createElement("cylinderGeometry",{args:[.025,.012,1+(j%3)*.25,6]})))
   )),
   ...horses.map((f,i)=>React.createElement("group",{key:"seahorse-"+i,ref:n=>{horseRefs.current[i]=n;}},
    React.createElement("mesh",{geometry:horseTube,material:new THREE.MeshStandardMaterial({color:"#e2b15d",roughness:.4})}),
    React.createElement("mesh",{position:[.2,.43,0],material:new THREE.MeshStandardMaterial({color:"#e5bf78"})},React.createElement("sphereGeometry",{args:[.17,12,10]})),
    React.createElement("mesh",{position:[.26,.45,.13],material:new THREE.MeshBasicMaterial({color:"#161b20"})},React.createElement("sphereGeometry",{args:[.035,8,6]}))
   )),
-  ...islands.flatMap((island,index)=>Array.from({length:8},(_,i)=>{const a=i/8*Math.PI*2;return React.createElement("group",{key:"coral-"+index+"-"+i,position:[island.x+Math.cos(a)*island.rx*.9,-12.5,island.z+Math.sin(a)*island.rz*.9],scale:.8+(i%3)*.22},
+  ...bubbles.map((f,i)=>React.createElement("mesh",{key:"bubble-"+i,ref:n=>{bubbleRefs.current[i]=n;},scale:f.size,material:bubbleMaterial},React.createElement("sphereGeometry",{args:[1,10,8]}))),
+  ...islands.flatMap((island,index)=>Array.from({length:coralCount},(_,i)=>{const a=i/coralCount*Math.PI*2;return React.createElement("group",{key:"coral-"+index+"-"+i,position:[island.x+Math.cos(a)*island.rx*.9,-15.8,island.z+Math.sin(a)*island.rz*.9],scale:.85+(i%3)*.25},
    React.createElement("mesh",{material:coralMats[(i+index)%3],position:[0,.8,0]},React.createElement("cylinderGeometry",{args:[.12,.22,1.6,7]})),
    React.createElement("mesh",{material:coralMats[(i+index+1)%3],position:[.24,1.25,.05],rotation:[0,0,-.48]},React.createElement("cylinderGeometry",{args:[.09,.14,1.2,7]})),
    React.createElement("mesh",{material:coralMats[(i+index+2)%3],position:[-.22,1.1,-.06],rotation:[0,0,.52]},React.createElement("cylinderGeometry",{args:[.09,.14,1.05,7]}))
@@ -348,14 +493,14 @@ function DolphinSchool({dolphins,divingRef}){
  );
 }
 
-export function MarineWorld({marine,boats,divingRef}){
+export function MarineWorld({marine,boats,divingRef,quality="balanced"}){
  return React.createElement(React.Fragment,null,
   ...marine.islands.map(island=>React.createElement(IslandModel,{key:island.id,island})),
-  React.createElement(OceanSurface),
+  React.createElement(OceanSurface,{quality}),
   ...boats.map(boat=>React.createElement(BoatModel,{key:"boat-"+boat.id,boat})),
   ...(marine.jetSkis||[]).map(jetSki=>React.createElement(JetSkiModel,{key:"jet-ski-"+jetSki.id,jetSki})),
   ...(marine.sleds||[]).map(sled=>React.createElement(SledModel,{key:"sled-"+sled.id,sled})),
-  React.createElement(UnderwaterLife,{divingRef,islands:marine.islands}),
+  React.createElement(UnderwaterLife,{divingRef,islands:marine.islands,quality}),
   React.createElement(DolphinSchool,{dolphins:marine.dolphins,divingRef})
  );
 }

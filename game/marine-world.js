@@ -388,7 +388,6 @@ function createSeabedGeometry(segments,islands){
  }
  positions.needsUpdate=true;
  geometry.setAttribute("color",new THREE.BufferAttribute(colors,3));
- geometry.rotateX(-Math.PI/2);
  geometry.computeVertexNormals();
  return geometry;
 }

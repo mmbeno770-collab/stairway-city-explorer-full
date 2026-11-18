@@ -166,8 +166,8 @@ export function poseHuman(R, P) {
     if (!R.root || !R.thigh0 || !R.thigh1 || !R.knee0 || !R.knee1 || !R.ankle0 || !R.ankle1 || !R.shoulder0 || !R.shoulder1 || !R.elbow0 || !R.elbow1 || !R.hips || !R.spine || !R.chest || !R.head || !R.bar) return;
     const th = [R.thigh0, R.thigh1], kn = [R.knee0, R.knee1], an = [R.ankle0, R.ankle1], sh = [R.shoulder0, R.shoulder1], el = [R.elbow0, R.elbow1], side = [-1, 1], breath = Math.sin(P.t * 1.55);
     R.chest.scale.set(1 + breath * 0.009, 1 + breath * 0.004, 0.68 + breath * 0.009);
-    R.head.rotation.set(0, 0, 0); R.spine.rotation.set(0, 0, 0); R.hips.position.y = 0.95; R.bar.visible = false;
-    for (let i = 0; i < 2; i++) { sh[i].rotation.set(0, 0, side[i] * 0.055); el[i].rotation.set(0, 0, 0); an[i].rotation.set(0, 0, 0); }
+    R.head.rotation.set(0, 0, 0); R.spine.rotation.set(0, 0, 0); R.hips.position.set(0, 0.95, 0); R.hips.rotation.set(0, 0, 0); R.bar.visible = false;
+    for (let i = 0; i < 2; i++) { sh[i].rotation.set(0, 0, side[i] * 0.055); el[i].rotation.set(0, 0, 0); an[i].position.set(0, -0.42, 0); an[i].rotation.set(0, 0, 0); if (R["hand" + i]) R["hand" + i].rotation.set(0, 0, 0); }
     if (P.mode === "water") {
         const blend = THREE.MathUtils.clamp(P.swimBlend ?? 0, 0, 1), amp = Math.min(1, P.speed / 3.6), run = THREE.MathUtils.clamp((P.speed - 4.5) / 3.5, 0, 1), cycle = P.phase;
         for (let i = 0; i < 2; i++) {
@@ -216,20 +216,32 @@ export function poseHuman(R, P) {
         R.chest.scale.set(1.004, 1.002, 0.69);
         R.head.rotation.set(-0.13 + Math.sin(P.phase) * 0.018, 0, Math.sin(P.phase * 0.5) * 0.025);
     } else if (P.mode === "walk" && !P.air) {
-        const amp = Math.min(1, P.speed / 4.2), run = THREE.MathUtils.clamp((P.speed - 4.5) / 3.5, 0, 1), swing = Math.sin(P.phase);
+        const speed = Math.max(0, P.speed || 0);
+        const amp = THREE.MathUtils.clamp(speed / 3.5, 0, 1);
+        const run = THREE.MathUtils.clamp((speed - 7.2) / 3.3, 0, 1);
+        const phase = P.phase, wave = Math.sin(phase), idle = 1 - amp;
         for (let i = 0; i < 2; i++) {
-            const ph = P.phase + (i ? Math.PI : 0), wave = Math.sin(ph);
-            th[i].rotation.x = -wave * (0.47 + 0.3 * run) * amp;
-            kn[i].rotation.x = amp * (0.06 + Math.max(0, Math.cos(ph)) * (0.62 + 0.65 * run));
-            an[i].rotation.x = -th[i].rotation.x * 0.32 - kn[i].rotation.x * 0.18;
-            sh[i].rotation.x = wave * (0.39 + 0.22 * run) * amp + Math.sin(P.t + i) * 0.025 * (1 - amp);
-            el[i].rotation.x = -(0.12 + 0.22 * amp + 0.72 * run);
+            const ph = phase + (i ? Math.PI : 0);
+            const swing = Math.sin(ph), forward = Math.max(0, Math.cos(ph));
+            const hipSwing = -swing * (0.43 + run * 0.18) * amp;
+            const kneeBend = Math.pow(forward, 1.35) * (0.66 + run * 0.32) * amp;
+            const footLift = Math.pow(forward, 1.7) * (0.065 + run * 0.025) * amp;
+            th[i].rotation.set(hipSwing, 0, side[i] * (0.018 + Math.abs(swing) * 0.012) * amp);
+            kn[i].rotation.set(kneeBend, 0, 0);
+            an[i].position.set(0, -0.42 + footLift, 0);
+            an[i].rotation.set(-hipSwing * 0.32 - kneeBend * 0.22 - forward * 0.075 * amp, 0, side[i] * 0.012 * amp);
+            const armSwing = swing * (0.34 + run * 0.13) * amp;
+            sh[i].rotation.set(armSwing + Math.sin(P.t * 1.4 + i) * 0.018 * idle, 0, side[i] * (0.055 + swing * 0.025 * amp));
+            el[i].rotation.set(-0.1 - amp * (0.18 + run * 0.11 + forward * 0.08), 0, side[i] * 0.025);
+            if (R["hand" + i]) R["hand" + i].rotation.set(0.035 * swing * amp, 0, side[i] * 0.025 * amp);
         }
-        R.spine.rotation.x = 0.025 * amp + 0.12 * run; R.spine.rotation.y = swing * 0.065 * amp;
-        R.head.rotation.x = -R.spine.rotation.x * 0.45 + Math.sin(P.t * 1.2) * 0.012;
-        R.head.rotation.y = Math.sin(P.t * 0.55) * 0.025;
-        R.head.rotation.z = Math.sin(P.t * 0.72) * 0.018 * (1 - amp);
-        R.hips.position.y = 0.95 - Math.abs(Math.cos(P.phase)) * 0.026 * amp - run * 0.025;
+        const bodyBounce = Math.sin(phase * 2) * (0.012 + run * 0.008) * amp;
+        R.hips.position.set(Math.sin(phase) * 0.008 * amp, 0.95 + bodyBounce, 0);
+        R.hips.rotation.set(0, wave * 0.022 * amp, Math.sin(phase + Math.PI / 2) * 0.012 * amp);
+        R.spine.rotation.set(0.018 + run * 0.055, -wave * 0.018 * amp, Math.sin(phase + Math.PI / 2) * 0.008 * amp);
+        R.head.rotation.set(-0.012 - run * 0.018 + Math.sin(P.t * 1.15) * 0.008, Math.sin(P.t * 0.42) * (0.035 + idle * 0.035), Math.sin(P.t * 0.7) * 0.012 * idle);
+        R.root.rotation.x = 0;
+        R.root.rotation.z = 0;
     } else if (P.mode === "walk" && P.air) {
         th[0].rotation.x = -0.7; kn[0].rotation.x = 0.95; th[1].rotation.x = -0.12; kn[1].rotation.x = 0.42;
         for (let i = 0; i < 2; i++) { sh[i].rotation.set(-0.42, 0, side[i] * 0.38); el[i].rotation.x = -0.48; an[i].rotation.x = 0.12; }

@@ -222,7 +222,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       visitTarget: null, followPlayer: false, ridingElevator: false, elevatorId: -1, elevatorTrip: null, elevatorDestination: 0,
       doorIndex: findBuildingDoor(world, building), waypoint: (i * 3 + 1) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
-      yaw: i * .71, speed: 1.05 + (i % 9) * .2, phase: i * 1.2,
+      yaw: i * .71, speed: 1.05 + (i % 9) * .2, moveSpeed: 0, phase: i * 1.2,
       wait: (i % 4) * .55, actionWait: 0, stuck: 0, hidden: false,
       visiting: false, visitCountdown: 5 + (i % 11) * 4.8,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
@@ -377,7 +377,9 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           rig.root.rotation.y = person.yaw;
           rig.root.visible = true;
         }
-        poseHuman(rig, { mode: "walk", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+        person.moveSpeed = THREE.MathUtils.damp(person.moveSpeed || 0, 0, 7, dt);
+        person.phase += person.moveSpeed * dt * 2.1;
+        poseHuman(rig, { mode: "walk", phase: person.phase, speed: person.moveSpeed, air: false, t: now + person.tOffset, dt });
         continue;
       }
       const player = playerPositionRef?.current;
@@ -420,8 +422,10 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           const angle = Math.atan2(companion.x - person.x, companion.z - person.z);
           person.yaw = angle; companion.yaw = angle + Math.PI;
           person.wait = Math.max(person.wait, 1.8); companion.wait = Math.max(companion.wait, 1.8);
-          person.bubbleText = "מה נשמע?"; person.bubbleUntil = now + 2.4;
-          companion.bubbleText = "הכול טוב, תודה!"; companion.bubbleUntil = now + 2.4;
+          const openers = ["מה נשמע? איך הולך?", "היי, מזמן לא דיברנו.", "איזה יום נעים לטיול.", "לאן אתה ממשיך מכאן?"];
+          const answers = ["הכול טוב, תודה. ואתך?", "בסדר גמור, בדיוק יצאתי לסיבוב.", "מעולה. אולי ניפגש שוב בהמשך.", "אני בדרך לבדוק מקום חדש בעיר."];
+          person.bubbleText = openers[Math.floor(nextRandom(person) * openers.length)]; person.bubbleUntil = now + 2.8;
+          companion.bubbleText = answers[Math.floor(nextRandom(companion) * answers.length)]; companion.bubbleUntil = now + 2.8;
           person.socialCooldown = 28; companion.socialCooldown = 31;
         } else person.socialCooldown = 5 + (person.rngState % 500) / 100;
       }
@@ -433,7 +437,9 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           rig.root.rotation.y = person.yaw + Math.sin(now * .6 + person.tOffset) * .13;
           rig.root.visible = true;
         }
-        poseHuman(rig, { mode: "walk", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+        person.moveSpeed = THREE.MathUtils.damp(person.moveSpeed || 0, 0, 7, dt);
+        person.phase += person.moveSpeed * dt * 2.1;
+        poseHuman(rig, { mode: "walk", phase: person.phase, speed: person.moveSpeed, air: false, t: now + person.tOffset, dt });
         continue;
       }
       const following = !!(person.followPlayer && player);
@@ -444,7 +450,9 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           rig.root.rotation.y = person.yaw;
           rig.root.visible = true;
         }
-        poseHuman(rig, { mode: "walk", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+        person.moveSpeed = THREE.MathUtils.damp(person.moveSpeed || 0, 0, 7, dt);
+        person.phase += person.moveSpeed * dt * 2.1;
+        poseHuman(rig, { mode: "walk", phase: person.phase, speed: person.moveSpeed, air: false, t: now + person.tOffset, dt });
         continue;
       }
       const target = following
@@ -516,9 +524,12 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         }
         continue;
       }
-      const speed = following ? 2.9 : person.visiting ? 1.8 : person.speed;
+      const maxSpeed = following ? 2.9 : person.visiting ? 1.8 : person.speed;
       const nx = dx / Math.max(distance, .001), nz = dz / Math.max(distance, .001);
-      const stepLength = speed * dt, yLo = person.y + .12, yHi = person.y + 1.72;
+      const brakingDistance = Math.max(0, distance - threshold);
+      const targetSpeed = Math.min(maxSpeed, Math.sqrt(2 * 3.2 * brakingDistance));
+      person.moveSpeed = THREE.MathUtils.damp(person.moveSpeed || 0, targetSpeed, 6.5, dt);
+      const stepLength = Math.min(person.moveSpeed * dt, brakingDistance), yLo = person.y + .12, yHi = person.y + 1.72;
       const resolveMove = (candidate) => {
         collider.resolve(candidate, person.y + .58, yHi, .31);
         resolvePeople(candidate, yLo, yHi, .31, walkers, person);

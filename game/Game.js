@@ -1226,7 +1226,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       s.v.z += (worldMove.z * speed - s.v.z) * (1 - Math.exp(-4.5 * dt));
       p.x += s.v.x * dt; p.z += s.v.z * dt;
       const surfaceHeight = getWaterHeight(p.x, p.z, s.t);
-      const targetHeight = THREE.MathUtils.lerp(-2.7, surfaceHeight - .04, swimBlend);
+      const targetHeight = THREE.MathUtils.lerp(-2.7, surfaceHeight + .12, swimBlend);
       const vertical = (jump ? 1 : 0) - (inp.down ? 1 : 0);
       if (vertical) p.y = THREE.MathUtils.clamp(p.y + vertical * 3.2 * dt, -22, surfaceHeight + .16);
       else p.y += (targetHeight - p.y) * (1 - Math.exp(-2.7 * dt));

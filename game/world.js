@@ -87,7 +87,10 @@ export function generateWorld(seed = 7) {
             add(cx - 11, .3, cz + 10.65, cx + 11, 7.8, cz + 11, "#4b5a60", "solid", true);
             add(cx - 11, .3, cz - 11, cx - 10.7, 7.8, cz + 11, "#596b70", "solid", true);
             add(cx + 10.7, .3, cz - 11, cx + 11, 7.8, cz + 11, "#596b70", "solid", true);
-            add(cx - 10.8, 3.82, cz - 10.8, cx + 10.8, 4.02, cz + 10.8, "#899394", "solid", true);
+            add(cx - 10.8, 3.82, cz - 10.8, cx - 4.5, 4.02, cz + 10.8, "#899394", "solid", true);
+            add(cx + 4.5, 3.82, cz - 10.8, cx + 10.8, 4.02, cz + 10.8, "#899394", "solid", true);
+            add(cx - 4.5, 3.82, cz - 10.8, cx + 4.5, 4.02, cz - 4.4, "#899394", "solid", true);
+            add(cx - 4.5, 3.82, cz + 4.4, cx + 4.5, 4.02, cz + 10.8, "#899394", "solid", true);
             // Walkable escalator treads: every rise is below the player's step height.
             for (const side of [-1, 1]) for (let step = 0; step < 14; step++) {
                 const top = .57 + step * .255, z = cz - 5.35 + step * .45, x = cx + side * 7.2;

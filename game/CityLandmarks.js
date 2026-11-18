@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { getCoasterCartPose, getDropTowerCabinY, getParkRidePose } from "./park-rides.js";
 
 const h = React.createElement;
 const BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -172,9 +173,15 @@ function MallModel({ place }) {
     add([cx, 3.7, cz + 8.5], [21.8, 7.1, .32], M.darkWall, null, "rear-wall");
     add([cx - 10.8, 3.7, cz], [.32, 7.1, 17.2], M.darkWall, null, "west-wall");
     add([cx + 10.8, 3.7, cz], [.32, 7.1, 17.2], M.darkWall, null, "east-wall");
-    add([cx, 3.82, cz], [21.1, .28, 19.3], M.roofStone, null, "upper-floor");
-    add([cx, 7.55, cz], [22.4, .38, 22.4], M.darkWall, null, "roof-deck");
-    add([cx, 7.82, cz], [9.4, .16, 5.4], M.glassBlue, null, "skylight");
+    add([cx - 7.65, 3.82, cz], [6.3, .28, 19.3], M.roofStone, null, "upper-floor-west");
+    add([cx + 7.65, 3.82, cz], [6.3, .28, 19.3], M.roofStone, null, "upper-floor-east");
+    add([cx, 3.82, cz - 7.6], [9.0, .28, 6.4], M.roofStone, null, "upper-floor-front");
+    add([cx, 3.82, cz + 7.6], [9.0, .28, 6.4], M.roofStone, null, "upper-floor-back");
+    add([cx - 7.95, 7.55, cz], [6.5, .38, 22.4], M.darkWall, null, "roof-deck-west");
+    add([cx + 7.95, 7.55, cz], [6.5, .38, 22.4], M.darkWall, null, "roof-deck-east");
+    add([cx, 7.55, cz - 3.95], [9.4, .38, 2.5], M.darkWall, null, "roof-deck-front");
+    add([cx, 7.55, cz + 3.95], [9.4, .38, 2.5], M.darkWall, null, "roof-deck-back");
+    add([cx, 7.68, cz], [9.4, .12, 5.4], M.glassBlue, null, "skylight");
     add([cx, 8.0, cz - 10.25], [9.2, .22, .65], M.teal, null, "main-sign");
     add([cx, 8.04, cz - 10.62], [5.6, .04, .035], M.glow, null, "sign-light");
     add([cx, 4.0, cz - 9.9], [21.2, .16, .32], M.gold, null, "upper-canopy");
@@ -288,6 +295,18 @@ function MallModel({ place }) {
         for (let step = 0; step < 14; step++) add([cx + side * 7.2, .53 + step * .255, cz - 5.35 + step * .45], [2.55, .08, .54], M.gold, null, "escalator-step-" + side + "-" + step);
         for (const railSide of [-1, 1]) add([cx + side * 7.2 + railSide * 1.25, 2.5, cz - 2.2], [.07, .16, 6.2], M.glassBlue, [0, 0, side * -.24], "escalator-rail-" + side + "-" + railSide);
     }
+    // Safe glass balustrades frame the open atrium on the upper gallery.
+    for (const side of [-1, 1]) {
+        add([cx + side * 4.58, 4.55, cz], [.11, 1.02, 8.75], M.glassBlue, null, "atrium-glass-rail-x-" + side);
+        add([cx + side * 4.58, 5.08, cz], [.16, .1, 8.82], M.gold, null, "atrium-handrail-x-" + side);
+        add([cx, 4.55, cz + side * 4.48], [9.25, 1.02, .11], M.glassBlue, null, "atrium-glass-rail-z-" + side);
+        add([cx, 5.08, cz + side * 4.48], [9.32, .1, .16], M.gold, null, "atrium-handrail-z-" + side);
+    }
+    for (let i = 0; i < 6; i++) {
+        const xx = cx - 8.0 + i * 3.2;
+        add([xx, 7.28, cz + 7.0], [1.65, .08, .18], M.glow, null, "mall-ceiling-light-" + i);
+    }
+
     for (let i = 0; i < 8; i++) {
         const xx = cx - 9.3 + i * 2.65;
         add([xx, .52, cz - 12.1], [.22, 1.0, .22], M.metal, null, "bollard-" + i);
@@ -356,13 +375,17 @@ function SportsModel({ place }) {
 }
 
 function FerrisWheel({ x, z }) {
-    const wheel = useRef(null);
-    useFrame((_, dt) => { if (wheel.current) wheel.current.rotation.z += dt * .095; });
+    const wheel = useRef(null), cabins = useRef([]);
+    useFrame(({ clock }) => {
+        const angle = clock.elapsedTime * .095;
+        if (wheel.current) wheel.current.rotation.z = angle;
+        cabins.current.forEach((cabin) => { if (cabin) cabin.rotation.z = -angle; });
+    });
     const radius = 5.0, spokes = [];
     for (let i = 0; i < 10; i++) {
         const a = i * Math.PI * 2 / 10;
         spokes.push(beam([0, 8.1, 0], [Math.cos(a) * radius, 8.1 + Math.sin(a) * radius, 0], .095, M.gold, "spoke-" + i));
-        spokes.push(h("group", { key: "cabin-" + i, position: [Math.cos(a) * radius, 8.1 + Math.sin(a) * radius, 0] },
+        spokes.push(h("group", { key: "cabin-" + i, ref: (node) => { cabins.current[i] = node; }, position: [Math.cos(a) * radius, 8.1 + Math.sin(a) * radius, 0] },
             box([0, -.45, 0], [.85, .75, .72], SIGN_MATERIALS[i % SIGN_MATERIALS.length], null, "cabin-body-" + i),
             box([0, -.04, 0], [.9, .1, .78], M.gold, null, "cabin-roof-" + i)
         ));
@@ -381,7 +404,7 @@ function FerrisWheel({ x, z }) {
 
 function Carousel({ x, z }) {
     const ride = useRef(null);
-    useFrame((_, dt) => { if (ride.current) ride.current.rotation.y += dt * .22; });
+    useFrame(({ clock }) => { if (ride.current) ride.current.rotation.y = clock.elapsedTime * .22; });
     const horses = [];
     for (let i = 0; i < 8; i++) {
         const a = i * Math.PI / 4, px = Math.cos(a) * 2.15, pz = Math.sin(a) * 2.15;
@@ -406,7 +429,7 @@ function Carousel({ x, z }) {
     );
 }
 
-const COASTER_CURVE = new THREE.CatmullRomCurve3([
+const COASTER_TRACK_GEOMETRY = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
     new THREE.Vector3(-5.0, 3.1, -1.0),
     new THREE.Vector3(-4.4, 5.2, -4.4),
     new THREE.Vector3(-1.0, 4.25, -5.4),
@@ -415,19 +438,15 @@ const COASTER_CURVE = new THREE.CatmullRomCurve3([
     new THREE.Vector3(4.1, 5.5, 3.7),
     new THREE.Vector3(.4, 4.35, 4.8),
     new THREE.Vector3(-3.9, 3.55, 3.2)
-], true, "centripetal");
-const COASTER_TRACK_GEOMETRY = new THREE.TubeGeometry(COASTER_CURVE, 128, .16, 10, true);
+], true, "centripetal"), 128, .16, 10, true);
 
 function RollerCoaster({ x, z }) {
     const cart = useRef(null);
     useFrame(({ clock }) => {
         if (!cart.current) return;
-        const progress = (clock.elapsedTime * .052) % 1;
-        const position = COASTER_CURVE.getPointAt(progress);
-        const tangent = COASTER_CURVE.getTangentAt(progress);
-        cart.current.position.copy(position);
-        cart.current.position.y += .17;
-        cart.current.rotation.set(0, Math.atan2(tangent.x, tangent.z), Math.atan2(tangent.y, Math.hypot(tangent.x, tangent.z)));
+        const pose = getCoasterCartPose(clock.elapsedTime);
+        cart.current.position.set(pose.x - .5, pose.y, pose.z + 3.0);
+        cart.current.rotation.set(0, pose.yaw, pose.pitch);
     });
     const supports = [];
     for (let i = 0; i < 16; i++) {
@@ -445,7 +464,7 @@ function RollerCoaster({ x, z }) {
 
 function SwingRide({ x, z }) {
     const rotating = useRef(null);
-    useFrame((_, dt) => { if (rotating.current) rotating.current.rotation.y += dt * .52; });
+    useFrame(({ clock }) => { if (rotating.current) rotating.current.rotation.y = clock.elapsedTime * .52; });
     const seats = [];
     for (let i = 0; i < 10; i++) {
         const angle = i * Math.PI * 2 / 10, px = Math.cos(angle) * 2.45, pz = Math.sin(angle) * 2.45;
@@ -495,7 +514,7 @@ function BumperCars({ x, z }) {
 
 function MiniTrain({ x, z }) {
     const train = useRef(null);
-    useFrame((_, dt) => { if (train.current) train.current.rotation.y += dt * .28; });
+    useFrame(({ clock }) => { if (train.current) train.current.rotation.y = clock.elapsedTime * .28; });
     const coaches = [];
     for (let i = 0; i < 3; i++) {
         const angle = i * Math.PI * 2 / 3, px = Math.cos(angle) * 2.05, pz = Math.sin(angle) * 2.05;
@@ -512,6 +531,21 @@ function MiniTrain({ x, z }) {
     );
 }
 
+function DropTower({ x, z }) {
+    const cabin = useRef(null);
+    useFrame(({ clock }) => {
+        if (cabin.current) cabin.current.position.y = getDropTowerCabinY(clock.elapsedTime);
+    });
+    return h("group", { position: [x, 0, z] },
+        cylinder([0, 4.2, 0], .48, 8.2, M.purple, null, "drop-tower-mast"),
+        cylinder([0, 8.35, 0], 1.25, .24, M.gold, null, "drop-tower-cap", 24),
+        h("group", { ref: cabin, position: [0, 1.35, 0] },
+            box([0, 0, 0], [2.25, 1.0, 2.05], M.red, null, "drop-tower-cabin"),
+            box([0, .42, -.78], [1.8, .12, .12], M.gold, null, "drop-tower-front-bar")
+        )
+    );
+}
+
 function AmusementModel({ place }) {
     const { x: cx, z: cz } = place;
     const rides = [];
@@ -519,9 +553,7 @@ function AmusementModel({ place }) {
     rides.push(box([cx, .32, cz - 14.2], [27.8, .16, .5], M.wood, null, "park-entrance-walkway"));
     rides.push(h(FerrisWheel, { x: cx - 5.4, z: cz + 1.2, key: "ferris" }));
     rides.push(h(Carousel, { x: cx + 6.5, z: cz + 5.2, key: "carousel" }));
-    rides.push(cylinder([cx + 7.2, 4.2, cz - 7.0], .48, 8.2, M.purple, null, "drop-tower"));
-    rides.push(cylinder([cx + 7.2, 8.35, cz - 7.0], 1.25, .24, M.gold, null, "tower-top", 24));
-    rides.push(box([cx + 7.2, 3.0, cz - 7.0], [2.25, 1.0, 2.05], M.red, null, "tower-cabin"));
+    rides.push(h(DropTower, { x: cx + 7.2, z: cz - 7.0, key: "drop-tower" }));
     rides.push(h(RollerCoaster, { x: cx + .5, z: cz - 3.0, key: "roller-coaster" }));
     rides.push(h(SwingRide, { x: cx - 11.0, z: cz - 3.4, key: "swing-ride" }));
     rides.push(h(BumperCars, { x: cx - 1.4, z: cz + 10.0, key: "bumper-cars" }));

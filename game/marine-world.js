@@ -102,6 +102,7 @@ varying float vWave;
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 void main(){
+ if(max(abs(vWorldPosition.x),abs(vWorldPosition.z)) < ${MAINLAND_SHORE.toFixed(1)}) discard;
  vec3 normal=normalize(vWorldNormal);
  vec3 viewDirection=normalize(cameraPosition-vWorldPosition);
  vec3 sunDirection=normalize(uSunDirection);

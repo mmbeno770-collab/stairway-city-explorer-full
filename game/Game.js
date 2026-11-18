@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, Sky } from "@react-three/drei";
 import * as THREE from "three";
 import { Collider, generateWorld, locate, CITY_HALF, BLOCK, GRID, CABLE_STATIONS } from "./world.js";
+import { getParkRideLocations, getParkRidePose } from "./park-rides.js";
 import { Human, poseHuman, BARBELL } from "./human.js";
 import { Citizens } from "./citizens.js";
 import { Helicopters } from "./helicopter.js";
@@ -769,7 +770,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, nearParkRide: null, parkRide: null, parkRideStart: 0, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, climbVelocity: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
   const terrainGround = (x, z, y, step = .6, radius = .6) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, step, Math.max(.2, radius));
   const heliEnv = useMemo(() => ({ ground: (x, z, y, radius = 1) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, .6, Math.max(.2, radius)), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStatesRef, airVehicles, marine]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStatesRef, helis, airVehicles]);
@@ -785,6 +786,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
   const boatIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "boat") map.set(index, n++); }); return map; }, [world]);
   const sledIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "sled") map.set(index, n++); }); return map; }, [world]);
   const jetSkiIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "jetSki") map.set(index, n++); }); return map; }, [world]);
+  const parkRides = useMemo(() => getParkRideLocations((world.landmarks || []).find((place) => place.type === "amusement")), [world]);
   const bar = useRef(-1);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
@@ -849,28 +851,29 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     } else if (s.mode === "cable-ladder") {
       const station = CABLE_STATIONS[s.cableStation] || CABLE_STATIONS[0];
       const climbingInput = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0) + inp.joy.y;
-      const climbRate = 2.8;
+      const climbTargetSpeed = (s.cableDescending ? Math.max(0, -climbingInput) : Math.max(0, climbingInput)) * 2.35;
+      s.climbVelocity = THREE.MathUtils.damp(s.climbVelocity || 0, climbTargetSpeed, 8.5, dt);
+      const climbSpeed = s.climbVelocity;
       const climbDirection = s.cableDescending ? -1 : 1;
-      const climbSpeed = (s.cableDescending ? Math.max(0, -climbingInput) : Math.max(0, climbingInput)) * climbRate;
-      if (climbSpeed > .02) {
+      if (climbSpeed > .015) {
         p.y = THREE.MathUtils.clamp(p.y + climbSpeed * climbDirection * dt, 0, station.y);
-        s.climbPhase += climbSpeed * dt * 1.55;
+        s.climbPhase += climbSpeed * dt * (Math.PI / .38);
       }
       if (s.cableDescending && p.y <= .025) {
         p.set(station.x - 5.55, .02, station.z);
-        s.cableDescending = false; s.cableStation = -1; s.climbPhase = 0;
+        s.cableDescending = false; s.cableStation = -1; s.climbPhase = 0; s.climbVelocity = 0;
         s.mode = "walk"; s.v.set(0, 0, 0); s.face = -Math.PI / 2; onMode("walk"); onPrompt("");
       } else if (!s.cableDescending && p.y >= station.y - .025) {
         p.set(station.x - 3.7, station.y, station.z);
-        s.climbPhase = 0; s.face = Math.PI / 2;
+        s.climbPhase = 0; s.climbVelocity = 0; s.face = Math.PI / 2;
         s.mode = "cable-platform"; onMode("cable-platform");
         const previous = (s.cableStation + CABLE_STATIONS.length - 1) % CABLE_STATIONS.length;
         cableRide.current = { active: false, approaching: true, docked: false, station: s.cableStation, route: [previous, s.cableStation], progress: .91, doorsOpen: false };
         s.lastPrompt = ""; onPrompt("הגעתם לרציף — הקרונית מתקרבת");
       }
-      if (root) { root.position.copy(p); root.rotation.set(0, s.face, Math.sin(s.climbPhase) * .025); }
+      if (root) { root.position.copy(p); root.rotation.set(-.025, s.face, Math.sin(s.climbPhase) * .035); }
       poseHuman(rig, { mode: "climb", phase: s.climbPhase, speed: climbSpeed, direction: climbDirection, air: false, t: s.t, dt });
-      camTarget.set(p.x + .4, p.y + 1.25, p.z); camDist = 4.6;
+      camTarget.set(p.x + .4, p.y + 1.25, p.z); camDist = 4.1;
     } else if (s.mode === "cable-platform") {
       const station = CABLE_STATIONS[s.cableStation] || CABLE_STATIONS[0];
       const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), wx = worldMove.x, wz = worldMove.z;
@@ -903,7 +906,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           onMode("cable"); onPrompt("↑ / W — קדימה · ↓ / S — אחורה · F — יציאה ליד תחנה");
           onHud("רכבל · ↑ קדימה · ↓ אחורה · F יציאה בתחנה");
         } else if (atLadder) {
-          s.cableDescending = true; s.climbPhase = 0; p.x = station.x - 5.55; p.z = station.z; s.face = Math.PI / 2;
+          s.cableDescending = true; s.climbPhase = 0; s.climbVelocity = 0; p.x = station.x - 5.55; p.z = station.z; s.face = Math.PI / 2;
           s.mode = "cable-ladder"; s.v.set(0, 0, 0); s.lastPrompt = "";
           onMode("cable-ladder"); onPrompt("החזיקו ↓ / S כדי לרדת בסולם");
         } else if (currentRide?.approaching) onPrompt("הקרונית עדיין מתקרבת — המתינו ליד הרציף");
@@ -1004,14 +1007,37 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           const distance = Math.hypot(p.x - item.x, p.z - item.z);
           if (distance < nearestDoorD) { nearestDoor = index; nearestDoorD = distance; }
         });
-        if (nearestDoor >= 0) { best = nearestDoor; bestD = nearestDoorD; nearestPerson = -1; }
-        else if (nearestPerson >= 0 && nearestPersonD < bestD) best = -1;
+        let nearestParkRide = null, nearestParkRideD = Infinity;
+        if (nearestDoor < 0) parkRides.forEach((ride) => {
+          const distance = Math.hypot(p.x - ride.x, p.z - ride.z);
+          if (Math.abs(p.y) < 1.4 && distance < ride.radius && distance < nearestParkRideD) {
+            nearestParkRide = ride;
+            nearestParkRideD = distance;
+          }
+        });
+        if (nearestDoor >= 0) { best = nearestDoor; bestD = nearestDoorD; nearestPerson = -1; nearestParkRide = null; }
+        else if (nearestParkRide && nearestParkRideD < bestD && nearestParkRideD < nearestPersonD) {
+          best = -1; nearestPerson = -1;
+        } else {
+          nearestParkRide = null;
+          if (nearestPerson >= 0 && nearestPersonD < bestD) best = -1;
+        }
+        s.nearParkRide = nearestParkRide;
         s.nearPerson = nearestPerson;
         s.near = best;
         const person = nearestPerson >= 0 && best < 0 ? citizensRef.current[nearestPerson] : null;
         const it = best >= 0 ? world.interactables[best] : null, actionText = it ? (it.type === "door" && doorStatesRef.current[best] ? "לסגור דלת" : PROMPTS[it.type]) : "";
-        const text = person ? `F / פעולה — לדבר עם ${person.name}` : it ? `F / פעולה — ${actionText}` : "";
+        const text = person ? `F / פעולה — לדבר עם ${person.name}` : nearestParkRide ? `F / פעולה — לעלות על ${nearestParkRide.label}` : it ? `F / פעולה — ${actionText}` : "";
         if (text !== s.lastPrompt) { s.lastPrompt = text; onPrompt(text); }
+      }
+      if (act && s.nearParkRide && s.mode === "walk" && s.onGround) {
+        const ride = s.nearParkRide;
+        const pose = getParkRidePose(ride.type, ride.parkX, ride.parkZ, s.t, 0);
+        s.parkRide = ride; s.parkRideStart = s.t; s.mode = "park-ride";
+        s.v.set(0, 0, 0); p.set(pose.x, pose.y, pose.z); s.face = pose.yaw;
+        s.nearParkRide = null; s.near = -1; s.lastPrompt = "";
+        onMode("park-ride"); onPrompt("עליתם על " + ride.label + " · F לירידה");
+        onHud(ride.label + " · F לירידה בטוחה");
       }
       if (act && s.nearPerson >= 0 && s.mode === "walk" && s.onGround) {
         const person = citizensRef?.current?.[s.nearPerson];
@@ -1078,7 +1104,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         }
         else if (it.type === "cable") {
           s.cableStation = Math.max(0, Math.min(CABLE_STATIONS.length - 1, it.stationId || 0));
-          s.cableDescending = false; s.climbPhase = 0;
+          s.cableDescending = false; s.climbPhase = 0; s.climbVelocity = 0;
           p.set(it.x - .35, 0, it.z); s.face = Math.PI / 2;
           s.mode = "cable-ladder"; s.v.set(0, 0, 0);
           onMode("cable-ladder"); onPrompt("החזיקו ↑ / W כדי לטפס — הידיים והרגליים נעות יחד עם הסולם");
@@ -1088,6 +1114,27 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
       poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: !s.onGround, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z);
+    } else if (s.mode === "park-ride") {
+      const ride = s.parkRide;
+      if (!ride) {
+        s.mode = "walk"; onMode("walk"); onHud(""); onPrompt("");
+      } else if (act) {
+        p.set(ride.exitX, 0, ride.exitZ);
+        p.y = col.groundAt(p.x, p.z, .1, STEP, RAD);
+        s.face = Math.PI; s.v.set(0, 0, 0); s.parkRide = null; s.nearParkRide = null;
+        s.mode = "walk"; s.hudTimer = 0; onMode("walk"); onHud(""); onPrompt("ירדתם מהמתקן");
+      } else {
+        const pose = getParkRidePose(ride.type, ride.parkX, ride.parkZ, s.t, 0);
+        p.set(pose.x, pose.y, pose.z); s.face = pose.yaw;
+        if (root) { root.position.copy(p); root.rotation.set(pose.pitch || 0, pose.yaw, pose.roll || 0); }
+        poseHuman(rig, { mode: "sit", phase: 0, speed: 0, air: false, t: s.t, dt });
+        camTarget.set(p.x, p.y + 1.28, p.z);
+        camDist = ride.type === "ferris" ? 7.2 : ride.type === "coaster" ? 6.4 : 4.8;
+        followYaw = pose.yaw;
+        s.hudTimer -= dt;
+        if (s.hudTimer <= 0) { s.hudTimer = .25; onHud(ride.label + " · F לירידה"); }
+        onPrompt("F / פעולה — לרדת מ" + ride.label);
+      }
     } else if (s.mode === "talk") {
       const person = (citizensRef?.current || []).find((item) => item.id === s.talkTarget);
       s.v.set(0, 0, 0);
@@ -1409,6 +1456,12 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     helis.forEach((heli, i) => { if (!(s.mode === "heli" && i === s.target) && heli.rotor > 0) stepHeli(heli, { fwd: 0, turn: 0, lift: 0, piloted: false }, dt, heliEnv); });
     airVehicles.forEach((vehicle, i) => { if (!(s.mode === "airVehicle" && i === s.target)) stepAirVehicle(vehicle, { throttle: 0, steer: 0, lift: 0, piloted: false }, dt, airEnv); });
     if (followYaw !== null && performance.now() / 1000 - inp.lastDrag > 1.2) { let d = followYaw - s.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); s.yaw += d * (1 - Math.exp(-2.5 * dt)); }
+    const mall = (world.landmarks || []).find((place) => place.type === "mall");
+    const insideMall = !!mall && s.mode === "walk" && Math.abs(p.x - mall.x) < 10.0 && Math.abs(p.z - mall.z) < 9.8 && p.y > -.1 && p.y < 7.0;
+    if (insideMall) {
+      camTarget.y = p.y + 1.42;
+      camDist = Math.min(camDist, 4.1);
+    }
     const underwaterView=s.mode==="swim"||s.mode==="dolphin";
     const cameraPitch=underwaterView?-0.1:s.pitch;
     const back = new THREE.Vector3(-Math.sin(s.yaw) * Math.cos(cameraPitch), Math.sin(cameraPitch), -Math.cos(s.yaw) * Math.cos(cameraPitch));
@@ -1417,6 +1470,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     for (let t = .3; t <= camDist; t += .3) { const test = camTarget.clone().addScaledVector(back, t); if (col.pointInside(test.x, test.y, test.z, .2) || (!underground && test.y < .2)) { distance = Math.max(.3, t - .25); break; } }
     const desired = camTarget.clone().addScaledVector(back, distance);
     if(underwaterView)desired.y=Math.min(desired.y,-.72);
+    if(insideMall) desired.y=Math.min(desired.y,p.y+2.9);
     if (!s.cameraReady) { camera.position.copy(desired); s.cameraReady = true; }
     camera.position.lerp(desired, 1 - Math.exp(-6 * dt));
     if(underwaterView)camera.position.y=Math.min(camera.position.y,-.58);
@@ -1564,7 +1618,7 @@ export default function Game() {
       h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    hud && (mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable" || mode === "park-ride") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     conversation && h("section", { className: "npc-chat-panel hud-panel", role: "dialog", "aria-label": "שיחה עם תושב" },
       h("div", { className: "npc-chat-header" },
         h("div", null, h("strong", null, "שיחה עם " + conversation.npcName), h("span", null, "התושב עוצר ומקשיב לך")),

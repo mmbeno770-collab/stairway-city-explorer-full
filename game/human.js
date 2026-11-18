@@ -204,17 +204,20 @@ export function poseHuman(R, P) {
     } else if (P.mode === "climb") {
         for (let i = 0; i < 2; i++) {
             const ph = P.phase + (i ? Math.PI : 0);
-            const reach = Math.sin(ph), lift = (1 + Math.cos(ph)) * 0.5;
-            sh[i].rotation.set(-1.68 + reach * 0.22, 0, side[i] * (0.08 + lift * 0.025));
-            el[i].rotation.set(-0.86 - lift * 0.3, 0, side[i] * 0.035);
-            th[i].rotation.set(-0.16 + Math.max(0, Math.sin(ph)) * 0.26, 0, side[i] * 0.025);
-            kn[i].rotation.x = 0.42 + lift * 0.56;
-            an[i].rotation.x = -0.16 - lift * 0.12;
+            const reach = (1 + Math.sin(ph)) * 0.5;
+            const lift = (1 + Math.cos(ph)) * 0.5;
+            sh[i].rotation.set(-1.48 + reach * 0.24, 0, side[i] * (0.075 + lift * 0.035));
+            el[i].rotation.set(-0.72 - reach * 0.52, 0, side[i] * 0.035);
+            th[i].rotation.set(-0.08 + Math.max(0, Math.sin(ph)) * 0.34, 0, side[i] * 0.025);
+            kn[i].rotation.x = 0.48 + lift * 0.72;
+            an[i].rotation.x = -0.18 - lift * 0.16;
+            if (R["hand" + i]) R["hand" + i].rotation.set(-0.48 + reach * 0.12, 0, side[i] * 0.12);
         }
-        R.hips.position.y = 0.95 + Math.sin(P.phase * 2) * 0.018;
-        R.spine.rotation.set(-0.13, Math.sin(P.phase * 0.5) * 0.025, 0);
+        R.hips.position.y = 0.95 + Math.sin(P.phase * 2) * 0.022;
+        R.hips.rotation.z = Math.sin(P.phase) * 0.018;
+        R.spine.rotation.set(-0.17 + Math.sin(P.phase * 0.5) * 0.018, Math.sin(P.phase * 0.5) * 0.025, 0);
         R.chest.scale.set(1.004, 1.002, 0.69);
-        R.head.rotation.set(-0.13 + Math.sin(P.phase) * 0.018, 0, Math.sin(P.phase * 0.5) * 0.025);
+        R.head.rotation.set(-0.16 + Math.sin(P.phase) * 0.025, 0, Math.sin(P.phase * 0.5) * 0.03);
     } else if (P.mode === "walk" && !P.air) {
         const speed = Math.max(0, P.speed || 0);
         const amp = THREE.MathUtils.clamp(speed / 3.5, 0, 1);

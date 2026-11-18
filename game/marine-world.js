@@ -348,12 +348,6 @@ function IslandModel({island}){
 const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];
 const jellyMat=new THREE.MeshPhysicalMaterial({color:"#c6a5eb",transparent:true,opacity:.64,roughness:.14,metalness:.08,transmission:.25});
 const coralMats=["#e77a73","#e6b45e","#77c5b3"].map(color=>new THREE.MeshStandardMaterial({color,roughness:.88}));
-const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];
-const jellyMat=new THREE.MeshPhysicalMaterial({color:"#c6a5eb",transparent:true,opacity:.64,roughness:.14,metalness:.08,transmission:.25});
-const coralMats=["#e77a73","#e6b45e","#77c5b3"].map(color=>new THREE.MeshStandardMaterial({color,roughness:.88}));
-const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];
-const jellyMat=new THREE.MeshPhysicalMaterial({color:"#c6a5eb",transparent:true,opacity:.64,roughness:.14,metalness:.08,transmission:.25});
-const coralMats=["#e77a73","#e6b45e","#77c5b3"].map(color=>new THREE.MeshStandardMaterial({color,roughness:.88}));
 const fishMaterialCache=new Map();
 function fishMaterial(color){
  if(!fishMaterialCache.has(color))fishMaterialCache.set(color,new THREE.MeshStandardMaterial({color,roughness:.34,metalness:.08}));

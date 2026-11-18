@@ -357,22 +357,65 @@ const fishTailGeometry=(()=>{
  const shape=new THREE.Shape();shape.moveTo(0,0);shape.lineTo(-.42,.3);shape.lineTo(-.3,0);shape.lineTo(-.42,-.3);shape.closePath();
  return new THREE.ShapeGeometry(shape);
 })();
+
+function seabedHeight(x,z,islands){
+ let reef=0;
+ for(const island of islands){
+  const dx=(x-island.x)/island.rx,dz=(z-island.z)/island.rz;
+  const radial=Math.sqrt(dx*dx+dz*dz);
+  const shelf=Math.exp(-Math.pow((radial-1.03)/.36,2));
+  reef=Math.max(reef,shelf);
+ }
+ const detail=Math.sin(x*.018)*Math.cos(z*.021)*.16+Math.sin((x-z)*.037)*.09+Math.cos((x+z)*.012)*.08;
+ return Math.max(0,.22+reef*6.35+detail);
+}
+function createSeabedGeometry(segments,islands){
+ const geometry=new THREE.PlaneGeometry(2400,2400,segments,segments);
+ const positions=geometry.attributes.position;
+ const colors=new Float32Array(positions.count*3);
+ const deep=new THREE.Color("#082b40"),reef=new THREE.Color("#1c5358"),rock=new THREE.Color("#496b61"),sand=new THREE.Color("#a39a70"),color=new THREE.Color();
+ for(let i=0;i<positions.count;i++){
+  const x=positions.getX(i),z=-positions.getY(i);
+  const elevation=seabedHeight(x,z,islands);
+  positions.setZ(i,elevation);
+  const shelf=THREE.MathUtils.clamp((elevation-.45)/6.2,0,1);
+  color.copy(deep).lerp(reef,shelf*.92);
+  color.lerp(rock,Math.min(.32,Math.max(0,elevation-3.7)*.045));
+  color.lerp(sand,THREE.MathUtils.clamp((shelf-.76)*2.25,0,.36));
+  const grain=.94+Math.sin(x*.11+z*.07)*.025+Math.cos(z*.15-x*.04)*.02;
+  color.multiplyScalar(grain);
+  color.toArray(colors,i*3);
+ }
+ positions.needsUpdate=true;
+ geometry.setAttribute("color",new THREE.BufferAttribute(colors,3));
+ geometry.rotateX(-Math.PI/2);
+ geometry.computeVertexNormals();
+ return geometry;
+}
+const kelpBladeGeometry=new THREE.ConeGeometry(.16,1.4,6);
+const kelpMaterials=["#2d806b","#3c9a78","#246b68"].map(color=>new THREE.MeshStandardMaterial({color,roughness:.84}));
+const sunbeamMaterial=new THREE.MeshBasicMaterial({color:"#65cbd5",transparent:true,opacity:.045,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
+
 function UnderwaterLife({divingRef,islands,quality}){
- const root=useRef(null),fishRefs=useRef([]),tailRefs=useRef([]),jellyRefs=useRef([]),horseRefs=useRef([]),bubbleRefs=useRef([]),rayRefs=useRef([]),rayWingRefs=useRef([]);
+ const root=useRef(null),fishRefs=useRef([]),tailRefs=useRef([]),jellyRefs=useRef([]),horseRefs=useRef([]),bubbleRefs=useRef([]),rayRefs=useRef([]),rayWingRefs=useRef([]),kelpRefs=useRef([]);
  const fishCount=quality==="high"?82:quality==="low"?38:58;
  const jellyCount=quality==="high"?14:quality==="low"?7:10;
  const horseCount=quality==="high"?16:quality==="low"?7:11;
  const bubbleCount=quality==="high"?42:quality==="low"?16:28;
  const rayCount=quality==="high"?5:quality==="low"?2:4;
  const coralCount=quality==="high"?9:quality==="low"?4:6;
+ const kelpPerIsland=quality==="high"?14:quality==="low"?4:9;
  const fish=useMemo(()=>{const r=randomFrom(8128);return Array.from({length:fishCount},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=38+r()*132;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d,y:-3.5-r()*10,color:fishColors[i%fishColors.length],speed:.48+r()*.78,phase:r()*Math.PI*2,size:.58+r()*.72,school:i%8};});},[islands,fishCount]);
  const jellies=useMemo(()=>Array.from({length:jellyCount},(_,i)=>({x:-560+(i%7)*185,z:270*Math.sin(i*2.1),y:-5-(i%4)*2.2,phase:i*1.7})),[jellyCount]);
  const horses=useMemo(()=>Array.from({length:horseCount},(_,i)=>({x:-690+i*92,z:320*Math.cos(i*1.4),y:-8-(i%4)*1.5,phase:i*1.1})),[horseCount]);
  const bubbles=useMemo(()=>{const r=randomFrom(5511);return Array.from({length:bubbleCount},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=24+r()*90;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d,y:-18+r()*13,phase:r()*Math.PI*2,size:.055+r()*.11,speed:.45+r()*.7};});},[islands,bubbleCount]);
  const rays=useMemo(()=>Array.from({length:rayCount},(_,i)=>{const island=islands[(i*3)%islands.length];return{x:island.x+Math.cos(i*1.7)*island.rx*.85,z:island.z+Math.sin(i*1.7)*island.rz*.85,y:-9-(i%3)*2,phase:i*1.3,speed:.26+i*.025};}),[islands,rayCount]);
+ const kelp=useMemo(()=>{const r=randomFrom(271828);return islands.flatMap(island=>Array.from({length:kelpPerIsland},()=>{const a=r()*Math.PI*2,d=1.02+r()*.48,x=island.x+Math.cos(a)*island.rx*d,z=island.z+Math.sin(a)*island.rz*d;return{x,z,y:-25+seabedHeight(x,z,islands)+.08,height:1.8+r()*1.8,size:.72+r()*.62,phase:r()*Math.PI*2};}));},[islands,kelpPerIsland]);
+ const sunbeams=useMemo(()=>islands.map((island,i)=>({x:island.x+Math.cos(i*2.1)*island.rx*.45,z:island.z+Math.sin(i*2.1)*island.rz*.45,radius:2.5+(i%3)*.45})),[islands]);
  const horseTube=useMemo(()=>{const c=new THREE.CatmullRomCurve3([new THREE.Vector3(0,-.42,0),new THREE.Vector3(-.12,-.18,0),new THREE.Vector3(.02,.02,0),new THREE.Vector3(.19,.22,0),new THREE.Vector3(.2,.43,0)]);return new THREE.TubeGeometry(c,18,.075,8,false);},[]);
- const floorGeometry=useMemo(()=>new THREE.PlaneGeometry(2400,2400),[]);
- const floorMaterial=useMemo(()=>new THREE.MeshStandardMaterial({color:"#082e43",roughness:1,metalness:0}),[]);
+ const floorSegments=quality==="high"?176:quality==="low"?88:128;
+ const floorGeometry=useMemo(()=>createSeabedGeometry(floorSegments,islands),[floorSegments,islands]);
+ const floorMaterial=useMemo(()=>new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,metalness:0}),[]);
  const bubbleMaterial=useMemo(()=>new THREE.MeshPhysicalMaterial({color:"#a9edf5",transparent:true,opacity:.44,roughness:.1,metalness:.05,transmission:.3,depthWrite:false}),[]);
  const rayMaterial=useMemo(()=>new THREE.MeshPhysicalMaterial({color:"#526e83",roughness:.35,metalness:.08,clearcoat:.8}),[]);
  useFrame(({clock})=>{
@@ -396,9 +439,14 @@ function UnderwaterLife({divingRef,islands,quality}){
    const wings=rayWingRefs.current[i]||[];
    wings.forEach((wing,side)=>{if(wing)wing.rotation.z=(side===0?1:-1)*(.12+Math.sin(t*2.8+f.phase)*.22);});
   });
+  kelp.forEach((plant,i)=>{const n=kelpRefs.current[i];if(n){n.rotation.z=Math.sin(t*.82+plant.phase)*.12;n.rotation.x=Math.cos(t*.68+plant.phase)*.08;}});
  });
  return React.createElement("group",{ref:root,visible:false},
   React.createElement("mesh",{geometry:floorGeometry,material:floorMaterial,rotation:[-Math.PI/2,0,0],position:[0,-25,0],receiveShadow:true}),
+  ...sunbeams.map((beam,i)=>React.createElement("mesh",{key:"sunbeam-"+i,position:[beam.x,-8.2,beam.z],rotation:[Math.PI,0,0],material:sunbeamMaterial},React.createElement("coneGeometry",{args:[beam.radius,17,8,1,true]}))),
+  ...kelp.map((plant,i)=>React.createElement("group",{key:"kelp-"+i,ref:n=>{kelpRefs.current[i]=n;},position:[plant.x,plant.y,plant.z],scale:plant.size},
+   ...[0,1,2].map((blade)=>React.createElement("mesh",{key:blade,geometry:kelpBladeGeometry,material:kelpMaterials[(i+blade)%kelpMaterials.length],position:[Math.cos(blade*2.1)*.13,plant.height*(.28+blade*.1),Math.sin(blade*2.1)*.13],rotation:[.12*Math.cos(blade*2.1),blade*2.1,.22*Math.sin(blade*2.1)],scale:[.82,plant.height*(.42+(blade%2)*.08),.82]}))
+  )),
   ...rays.map((f,i)=>React.createElement("group",{key:"manta-"+i,ref:n=>{rayRefs.current[i]=n;}},
    React.createElement("mesh",{material:rayMaterial,scale:[.78,.12,1.25]},React.createElement("sphereGeometry",{args:[1,20,14]})),
    ...[-1,1].map((side,j)=>React.createElement("mesh",{key:"ray-wing-"+side,ref:n=>{if(!rayWingRefs.current[i])rayWingRefs.current[i]=[];rayWingRefs.current[i][j]=n;},position:[side*.78,-.02,0],scale:[1.05,.055,.72],material:rayMaterial},React.createElement("sphereGeometry",{args:[1,16,10]}))),
@@ -424,7 +472,7 @@ function UnderwaterLife({divingRef,islands,quality}){
    React.createElement("mesh",{position:[.26,.45,.13],material:new THREE.MeshBasicMaterial({color:"#161b20"})},React.createElement("sphereGeometry",{args:[.035,8,6]}))
   )),
   ...bubbles.map((f,i)=>React.createElement("mesh",{key:"bubble-"+i,ref:n=>{bubbleRefs.current[i]=n;},scale:f.size,material:bubbleMaterial},React.createElement("sphereGeometry",{args:[1,10,8]}))),
-  ...islands.flatMap((island,index)=>Array.from({length:coralCount},(_,i)=>{const a=i/coralCount*Math.PI*2;return React.createElement("group",{key:"coral-"+index+"-"+i,position:[island.x+Math.cos(a)*island.rx*.9,-15.8,island.z+Math.sin(a)*island.rz*.9],scale:.85+(i%3)*.25},
+  ...islands.flatMap((island,index)=>Array.from({length:coralCount},(_,i)=>{const a=i/coralCount*Math.PI*2,coralX=island.x+Math.cos(a)*island.rx*.9,coralZ=island.z+Math.sin(a)*island.rz*.9;return React.createElement("group",{key:"coral-"+index+"-"+i,position:[coralX,-25+seabedHeight(coralX,coralZ,islands)+.08,coralZ],scale:.85+(i%3)*.25},
    React.createElement("mesh",{material:coralMats[(i+index)%3],position:[0,.8,0]},React.createElement("cylinderGeometry",{args:[.12,.22,1.6,7]})),
    React.createElement("mesh",{material:coralMats[(i+index+1)%3],position:[.24,1.25,.05],rotation:[0,0,-.48]},React.createElement("cylinderGeometry",{args:[.09,.14,1.2,7]})),
    React.createElement("mesh",{material:coralMats[(i+index+2)%3],position:[-.22,1.1,-.06],rotation:[0,0,.52]},React.createElement("cylinderGeometry",{args:[.09,.14,1.05,7]}))

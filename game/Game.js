@@ -49,7 +49,7 @@ const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש 
 function getNpcTopic(message, previousTopic = "") {
   const text = String(message || "").toLocaleLowerCase("he");
   const topics = [
-    ["sea", /(ים|אי|איים|דג|צלילה|שחייה|סירה|חוף|אלמוג)/],
+    ["sea", /(בים|במים|חוף|חופים|אי\b|איים|דגים|דג|צלילה|שחייה|סירה|אלמוג)/],
     ["vehicles", /(רכב|מכונית|אוטובוס|ג'יפ|חניון|מכוניות|נהיגה|מירוץ)/],
     ["flight", /(מטוס|מסוק|טס|טיסה|מעופפת|רכבל)/],
     ["buildings", /(בניין|קומה|דלת|מדרגות|גג|לובי|חדר|מעלית)/],

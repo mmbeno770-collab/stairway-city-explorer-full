@@ -2,7 +2,7 @@ import React, { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import { Human, poseHuman } from "./human.js";
+import { Human, poseHuman, applyHumanAppearance } from "./human.js";
 import { Collider, BLOCK, CITY_HALF } from "./world.js";
 import { makeElevatorTrip, advanceElevatorTrip } from "./elevator-sim.js";
 import { stepCar, resolveCarObstacles } from "./car-sim.js";
@@ -11,6 +11,32 @@ import { stepAirVehicle, resolveAirVehicleObstacles } from "./air-vehicle-sim.js
 
 const h = React.createElement;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const CITIZEN_SHIRTS = ["#8b3f4a", "#3f7c58", "#bb8741", "#556b9a", "#8a689b", "#4f8c8f", "#b26b4f", "#6e7b4e", "#8b8e98", "#d0ad88"];
+const CITIZEN_PANTS = ["#343434", "#4d5969", "#5c463b", "#365b4a", "#6b566f", "#766b58"];
+const CITIZEN_SKIN = ["#a96f55", "#d39a7d", "#8f5a43", "#c78d70", "#e0ae8d", "#b8795e"];
+const CITIZEN_HAIR = ["#241a16", "#4b3025", "#6b4b32", "#77706a", "#342b28"];
+const CITIZEN_HEADWEAR = ["#283f6b", "#5a3544", "#345846", "#6b5a3b", "#4f5665", "#654b82"];
+
+function makeCitizenAppearance(index) {
+  const shirt = CITIZEN_SHIRTS[(index * 3) % CITIZEN_SHIRTS.length];
+  const pants = CITIZEN_PANTS[(index * 5 + 1) % CITIZEN_PANTS.length];
+  const skin = CITIZEN_SKIN[(index * 3 + 2) % CITIZEN_SKIN.length];
+  const hair = CITIZEN_HAIR[(index * 2 + 1) % CITIZEN_HAIR.length];
+  return {
+    shirt, shirtHighlight: shirt,
+    pants, pantsHighlight: pants,
+    skin, skinHighlight: skin, skinShadow: skin,
+    hair, hairHighlight: hair,
+    shoe: index % 2 === 0 ? "#3b4148" : "#51463d",
+    shoeDark: "#24282d",
+    headwearColor: CITIZEN_HEADWEAR[index % CITIZEN_HEADWEAR.length],
+    headwearTrim: "#c5b17b",
+    headwear: index % 2 === 0,
+    backpack: index % 3 !== 1,
+    scale: .92 + (index % 6) * .025
+  };
+}
 const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 const localOffset = (x, z, ox, oz, yaw) => {
   const c = Math.cos(yaw), s = Math.sin(yaw);
@@ -207,8 +233,8 @@ function routeToVisit(person, destination, world) {
     const crossingZ = rowNorth + (upper ? 4.2 : BLOCK - 4.2);
     sourceEdge = { x: sourceLoop[sourceExitIndex].x, z: crossingZ };
     targetEdge = { x: targetLoop[targetEntryIndex].x, z: crossingZ };
-    crossA = { x: boundaryX - Math.sign(dx) * 3.6, z: crossingZ };
-    crossB = { x: boundaryX + Math.sign(dx) * 3.6, z: crossingZ };
+    crossA = { x: boundaryX - Math.sign(dx) * 3.6, z: crossingZ, action: "crossingWait" };
+    crossB = { x: boundaryX + Math.sign(dx) * 3.6, z: crossingZ, action: "crossingFinish" };
   } else {
     const east = (person.rngState & 1) === 0;
     sourceExitIndex = dz > 0 ? 4 : 0;
@@ -218,13 +244,42 @@ function routeToVisit(person, destination, world) {
     const crossingX = columnWest + (east ? BLOCK - 4.2 : 4.2);
     sourceEdge = { x: crossingX, z: sourceLoop[sourceExitIndex].z };
     targetEdge = { x: crossingX, z: targetLoop[targetEntryIndex].z };
-    crossA = { x: crossingX, z: boundaryZ - Math.sign(dz) * 3.6 };
-    crossB = { x: crossingX, z: boundaryZ + Math.sign(dz) * 3.6 };
+    crossA = { x: crossingX, z: boundaryZ - Math.sign(dz) * 3.6, action: "crossingWait" };
+    crossB = { x: crossingX, z: boundaryZ + Math.sign(dz) * 3.6, action: "crossingFinish" };
   }
 
   const toCrosswalk = loopPath(sourceLoop, startIndex, sourceExitIndex);
   const alongDestinationSidewalk = loopPath(targetLoop, targetEntryIndex, targetDoorIndex);
   return [...toCrosswalk, sourceEdge, crossA, crossB, targetEdge, ...alongDestinationSidewalk.slice(1), ...visitRoute];
+}
+
+function pedestrianCrossingStatus(from, to, cars) {
+  if (!from || !to) return { safe: false, car: null };
+  const dx = to.x - from.x, dz = to.z - from.z, length = Math.hypot(dx, dz);
+  if (length < .1) return { safe: true, car: null };
+  const ux = dx / length, uz = dz / length;
+  let blockingCar = null, closestTime = Infinity;
+  for (const car of cars) {
+    const speed = Math.abs(car.speed || 0);
+    if (speed < .65) continue;
+    const vx = Math.sin(car.yaw) * car.speed, vz = Math.cos(car.yaw) * car.speed;
+    const clearance = Math.max(2.9, (car.length || 4.15) * .5 + .85);
+    let minDistance = Infinity, minTime = 0;
+    // Predict the car's path for six seconds; a moving vehicle near any part of the crossing keeps the pedestrian waiting.
+    for (let sample = 0; sample <= 20; sample++) {
+      const time = sample * .3;
+      const px = car.x + vx * time, pz = car.z + vz * time;
+      const along = clamp((px - from.x) * ux + (pz - from.z) * uz, 0, length);
+      const nearestX = from.x + ux * along, nearestZ = from.z + uz * along;
+      const separation = Math.hypot(px - nearestX, pz - nearestZ);
+      if (separation < minDistance) { minDistance = separation; minTime = time; }
+    }
+    if (minDistance < clearance && minTime < closestTime) {
+      closestTime = minTime;
+      blockingCar = car;
+    }
+  }
+  return { safe: !blockingCar, car: blockingCar };
 }
 
 function resolveHelicopterBodies(point, yLo, yHi, radius, helis) {
@@ -331,7 +386,7 @@ function pedestrianPathObstacleClearance(person, direction, lookAhead, collider,
 function makeCitizens(world, cars, helis, airVehicles, collider) {
   const walkers = [];
   const buildings = world.buildings || [];
-  const walkerCount = Math.min(60, buildings.length);
+  const walkerCount = Math.min(84, buildings.length);
   for (let i = 0; i < walkerCount; i++) {
     const building = buildings[(i * 5 + 3) % buildings.length];
     const route = makeWalkRoute(building);
@@ -339,6 +394,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
     const routineProfile = ROUTINE_PROFILES[i % ROUTINE_PROFILES.length];
     walkers.push({
       id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
+      appearance: makeCitizenAppearance(i), appearanceRoot: null,
       routineProfile, routineCooldown: 4 + (i % 7) * 2.4, routineTimer: 0, routineDuration: 0,
       routineAction: routineProfile.look, routineStartYaw: i * .71, routineTurn: 0,
       building, route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
@@ -448,6 +504,10 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
 
     for (let personIndex = 0; personIndex < walkers.length; personIndex++) {
       const person = walkers[personIndex], rig = person.rig;
+      if (rig.root && person.appearanceRoot !== rig.root) {
+        applyHumanAppearance(rig.root, person.appearance);
+        person.appearanceRoot = rig.root;
+      }
       person.greetCooldown = Math.max(0, person.greetCooldown - dt);
       const routineProfile = person.routineProfile || ROUTINE_PROFILES[0];
       person.socialCooldown = Math.max(0, person.socialCooldown - dt * routineProfile.socialRate);
@@ -609,6 +669,25 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       if (distance < threshold) {
         if (following) {
           person.wait = .12;
+        } else if (target.action === "crossingWait") {
+          const crossingEnd = person.route[person.waypoint + 1];
+          const traffic = pedestrianCrossingStatus(target, crossingEnd, cars);
+          if (!traffic.safe) {
+            person.wait = Math.max(person.wait, .28);
+            person.moveSpeed = THREE.MathUtils.damp(person.moveSpeed || 0, 0, 8, dt);
+            if (traffic.car) {
+              const desiredYaw = Math.atan2(traffic.car.x - person.x, traffic.car.z - person.z);
+              person.yaw += angleDiff(desiredYaw - person.yaw, 0) * (1 - Math.exp(-4.2 * dt));
+            }
+          } else {
+            person.crossingWaitStarted = 0;
+            person.waypoint++;
+            person.wait = Math.max(person.wait, .12);
+          }
+        } else if (target.action === "crossingFinish") {
+          person.crossingWaitStarted = 0;
+          person.waypoint++;
+          person.actionWait = .12;
         } else if (target.action === "elevatorUp" || target.action === "elevatorDown") {
           const elevatorId = (person.visitTarget || person.building).elevatorId;
           const lift = elevatorCars[elevatorId];

@@ -471,6 +471,33 @@ export function generateWorld(seed = 7) {
         }
         lamps.push({ x: cx - BLOCK / 2 + 3, z: cz - BLOCK / 2 + 3 }, { x: cx + BLOCK / 2 - 3, z: cz + BLOCK / 2 - 3 });
     }
+    // Painted zebra crossings align with the sidewalk-to-sidewalk routes used by pedestrians.
+    const addZebraCrossing = (axis, cx, cz) => {
+        for (let stripe = 0; stripe < 6; stripe++) {
+            const offset = -2.95 + stripe * 1.18;
+            if (axis === "x") {
+                add(cx + offset - .25, .026, cz - 1.72, cx + offset + .25, .052, cz + 1.72, "#f2f0e7", "glow", false, true);
+            } else {
+                add(cx - 1.72, .026, cz + offset - .25, cx + 1.72, .052, cz + offset + .25, "#f2f0e7", "glow", false, true);
+            }
+        }
+    };
+    for (let gx = 1; gx < GRID; gx++) {
+        const boundaryX = -CITY_HALF + gx * BLOCK;
+        for (let gz = 0; gz < GRID; gz++) {
+            const rowNorth = -CITY_HALF + gz * BLOCK;
+            addZebraCrossing("x", boundaryX, rowNorth + 4.2);
+            addZebraCrossing("x", boundaryX, rowNorth + BLOCK - 4.2);
+        }
+    }
+    for (let gz = 1; gz < GRID; gz++) {
+        const boundaryZ = -CITY_HALF + gz * BLOCK;
+        for (let gx = 0; gx < GRID; gx++) {
+            const columnWest = -CITY_HALF + gx * BLOCK;
+            addZebraCrossing("z", columnWest + 4.2, boundaryZ);
+            addZebraCrossing("z", columnWest + BLOCK - 4.2, boundaryZ);
+        }
+    }
     const carCols = ["#c0392b", "#2e86c1", "#f4d03f", "#ecf0f1", "#27ae60", "#34495e"];
     for (let i = 0; i < GRID * 6; i++) {
         const road = Math.floor(r() * (GRID - 1)) + 1, along = -CITY_HALF + 10 + r() * (GRID * BLOCK - 20), horiz = r() > .5, rx = -CITY_HALF + road * BLOCK + (r() > .5 ? 2.2 : -2.2), color = carCols[i % carCols.length], [x, z] = horiz ? [along, rx] : [rx, along], [hx, hz] = horiz ? [2.1, .9] : [.9, 2.1], face = horiz ? (r() > .5 ? Math.PI / 2 : -Math.PI / 2) : (r() > .5 ? 0 : Math.PI);

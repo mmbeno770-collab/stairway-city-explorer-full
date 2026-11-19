@@ -93,6 +93,47 @@ function SimpleHuman({ rig }) {
         _jsx("group", { ref: r("bar"), visible: false })
     ] });
 }
+const APPEARANCE_ROLE_BY_MATERIAL = new Map([
+    [M.skin, "skin"], [M.skinLight, "skinHighlight"], [M.skinShadow, "skinShadow"],
+    [M.shirt, "shirt"], [M.shirtLight, "shirtHighlight"], [M.shirtSeam, "shirtHighlight"],
+    [M.pants, "pants"], [M.pantsLight, "pantsHighlight"],
+    [M.hair, "hair"], [M.hairLight, "hairHighlight"],
+    [M.shoe, "shoe"], [M.sole, "shoeDark"],
+    [M.kippah, "headwearColor"], [M.kippahTrim, "headwearTrim"]
+]);
+const OPTIONAL_BACKPACK_MATERIALS = new Set([M.backpack, M.backpackLight, M.strap, M.strapClip, M.zipper]);
+
+export function applyHumanAppearance(root, appearance) {
+    if (!root || !appearance) return;
+    const variants = new Map();
+    root.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        const updateMaterial = (material) => {
+            if (appearance.headwear === false && (material === M.kippah || material === M.kippahTrim)) {
+                node.visible = false;
+                return material;
+            }
+            if (appearance.backpack === false && OPTIONAL_BACKPACK_MATERIALS.has(material)) {
+                node.visible = false;
+                return material;
+            }
+            const role = APPEARANCE_ROLE_BY_MATERIAL.get(material);
+            const color = role ? appearance[role] : null;
+            if (!color) return material;
+            if (!variants.has(material)) {
+                const variant = material.clone();
+                variant.color.set(color);
+                variants.set(material, variant);
+            }
+            return variants.get(material);
+        };
+        node.material = Array.isArray(node.material)
+            ? node.material.map(updateMaterial)
+            : updateMaterial(node.material);
+    });
+    if (appearance.scale) root.scale.multiplyScalar(appearance.scale);
+}
+
 export function Human({ rig, lowDetail = false }) {
     if (lowDetail) return _jsx(SimpleHuman, { rig });
     const r = (key) => (o) => { if (o) rig[key] = o; }, S = { castShadow: true, receiveShadow: true };

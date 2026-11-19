@@ -240,6 +240,50 @@ function pedestrianClearance(point, person, walkers) {
   return nearest;
 }
 
+function pedestrianObstacleClearance(point, collider, yLo, yHi, radius = .31) {
+  let nearest = 2.5;
+  for (const box of collider.near(point.x, point.z, 1.65)) {
+    if (box.y1 <= yLo || box.y0 >= yHi) continue;
+    const dx = point.x < box.x0 ? box.x0 - point.x : point.x > box.x1 ? point.x - box.x1 : 0;
+    const dz = point.z < box.z0 ? box.z0 - point.z : point.z > box.z1 ? point.z - box.z1 : 0;
+    nearest = Math.min(nearest, Math.max(0, Math.hypot(dx, dz) - radius));
+  }
+  return nearest;
+}
+
+function probePedestrianDirection(person, direction, lookAhead, resolveMove) {
+  const samples = 4, segmentLength = lookAhead / samples;
+  let endpoint = { x: person.x, z: person.z }, blocked = 0;
+  for (let i = 1; i <= samples; i++) {
+    const expectedDistance = segmentLength * i;
+    const candidate = resolveMove({
+      x: person.x + direction.x * expectedDistance,
+      z: person.z + direction.z * expectedDistance
+    });
+    const movedX = candidate.x - person.x, movedZ = candidate.z - person.z;
+    const forward = movedX * direction.x + movedZ * direction.z;
+    blocked = Math.max(blocked, expectedDistance - clamp(forward, 0, expectedDistance));
+    endpoint = candidate;
+  }
+  const dx = endpoint.x - person.x, dz = endpoint.z - person.z;
+  return {
+    endpoint,
+    advance: dx * direction.x + dz * direction.z,
+    lateral: Math.abs(dx * -direction.z + dz * direction.x),
+    blocked
+  };
+}
+
+function pedestrianPathObstacleClearance(person, direction, lookAhead, collider, yLo, yHi) {
+  let nearest = 2.5;
+  for (let i = 1; i <= 4; i++) {
+    const distance = lookAhead * i / 4;
+    const point = { x: person.x + direction.x * distance, z: person.z + direction.z * distance };
+    nearest = Math.min(nearest, pedestrianObstacleClearance(point, collider, yLo, yHi));
+  }
+  return nearest;
+}
+
 function makeCitizens(world, cars, helis, airVehicles, collider) {
   const walkers = [];
   const buildings = world.buildings || [];
@@ -258,7 +302,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       waypoint: (i * 3 + (i % 2 === 0 ? 1 : route.length - 1)) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
       yaw: i * .71, speed: 1.05 + (i % 9) * .2, moveSpeed: 0, phase: i * 1.2,
-      wait: (i % 4) * .55, actionWait: 0, stuck: 0, hidden: false,
+      wait: (i % 4) * .55, actionWait: 0, stuck: 0, stuckSideChanged: false, hidden: false,
       visiting: false, visitCountdown: 5 + (i % 11) * 4.8,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
@@ -579,28 +623,55 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         return candidate;
       };
       let next = resolveMove({ x: person.x + steering.x * stepLength, z: person.z + steering.z * stepLength });
-      let bestAdvance = distance - Math.hypot(target.x - next.x, target.z - next.z);
+      const immediateAdvance = distance - Math.hypot(target.x - next.x, target.z - next.z);
       const initialClearance = pedestrianClearance(next, person, walkers);
-      let bestScore = bestAdvance + Math.min(initialClearance, 1.4) * .025;
-      // Try gentle passing arcs when the direct route is crowded or blocked.
-      if (bestAdvance < stepLength * .72 || initialClearance < .82) {
-        const angles = person.avoidSide > 0
-          ? [-.42, .42, -.82, .82, -1.18, 1.18]
-          : [.42, -.42, .82, -.82, 1.18, -1.18];
+      const lookAhead = Math.min(1.12, Math.max(.72, brakingDistance * .34));
+      const directProbe = probePedestrianDirection(person, steering, lookAhead, resolveMove);
+      const directWallClearance = pedestrianPathObstacleClearance(person, steering, lookAhead, collider, person.y + .58, yHi);
+      const needsReroute = immediateAdvance < stepLength * .72
+        || initialClearance < .82
+        || directProbe.blocked > .2
+        || directWallClearance < .38;
+      if (needsReroute) {
+        let bestDirection = steering;
+        let bestScore = -Infinity;
+        const side = person.avoidSide || 1;
+        const angles = [0, side * .38, -side * .38, side * .76, -side * .76, side * 1.08, -side * 1.08];
         for (const angle of angles) {
-          const sx = steering.x * Math.cos(angle) - steering.z * Math.sin(angle);
-          const sz = steering.z * Math.cos(angle) + steering.x * Math.sin(angle);
-          const candidate = resolveMove({ x: person.x + sx * stepLength, z: person.z + sz * stepLength });
-          const advance = distance - Math.hypot(target.x - candidate.x, target.z - candidate.z);
-          const clearance = pedestrianClearance(candidate, person, walkers);
-          const alignment = Math.max(0, sx * nx + sz * nz);
-          const score = advance + alignment * stepLength * .08 + Math.min(clearance, 1.4) * .025;
-          if (score > bestScore + .012) { bestScore = score; bestAdvance = advance; next = candidate; }
+          const direction = {
+            x: steering.x * Math.cos(angle) - steering.z * Math.sin(angle),
+            z: steering.z * Math.cos(angle) + steering.x * Math.sin(angle)
+          };
+          const probe = angle === 0
+            ? directProbe
+            : probePedestrianDirection(person, direction, lookAhead, resolveMove);
+          const wallClearance = pedestrianPathObstacleClearance(person, direction, lookAhead, collider, person.y + .58, yHi);
+          const crowdClearance = pedestrianClearance(probe.endpoint, person, walkers);
+          const sidePreference = angle * side > 0 ? .025 : 0;
+          const score = probe.advance - probe.lateral * .34 - probe.blocked * .62
+            + Math.min(wallClearance, 1.25) * .19
+            + Math.min(crowdClearance, 1.4) * .075
+            - Math.abs(angle) * .035 + sidePreference;
+          if (score > bestScore) { bestScore = score; bestDirection = direction; }
         }
+        next = resolveMove({
+          x: person.x + bestDirection.x * stepLength,
+          z: person.z + bestDirection.z * stepLength
+        });
       }
       const movedX = next.x - person.x, movedZ = next.z - person.z;
       const moved = Math.hypot(movedX, movedZ);
-      if (moved < .012) person.stuck += dt; else person.stuck = 0;
+      if (moved < .012) {
+        person.stuck += dt;
+        if (person.stuck > .82 && !person.stuckSideChanged) {
+          person.avoidSide *= -1;
+          person.stuckSideChanged = true;
+          person.moveSpeed = Math.min(person.moveSpeed, .45);
+        }
+      } else {
+        person.stuck = 0;
+        person.stuckSideChanged = false;
+      }
       person.x = next.x; person.z = next.z;
       const inStairwell = (world.buildings || []).some((building) => {
         const stair = building.basementStairwell;
@@ -620,7 +691,14 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleUntil = now + 2.8;
           person.visitCountdown = 4;
         } else {
-          person.waypoint = (person.waypoint + 1) % person.route.length;
+          const sidewalkLoop = !person.visiting && person.route === person.sidewalkRoute;
+          if (sidewalkLoop) {
+            person.routeDirection *= -1;
+            person.waypoint = (person.waypoint + person.routeDirection + person.route.length) % person.route.length;
+          } else {
+            person.waypoint = (person.waypoint + 1) % person.route.length;
+          }
+          person.stuckSideChanged = false;
         }
       }
       if (rig.root) {

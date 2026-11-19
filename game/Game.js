@@ -500,10 +500,37 @@ function Boxes({ world, kind }) {
     ? h("meshStandardMaterial", { roughness: .84, metalness: .025, roughnessMap: surfaceTexture, bumpMap: surfaceTexture, bumpScale: .016 })
     : kind === "glass"
       ? h("meshPhysicalMaterial", { transparent: true, opacity: .32, roughness: .05, metalness: .3, envMapIntensity: 1.5, depthWrite: false })
-      : h("meshBasicMaterial", { toneMapped: false });
+      : kind === "roadMarking"
+        ? h("meshStandardMaterial", { roughness: .94, metalness: 0, side: THREE.DoubleSide })
+        : kind === "tactile"
+          ? h("meshStandardMaterial", { roughness: .9, metalness: 0, side: THREE.DoubleSide })
+          : h("meshBasicMaterial", { toneMapped: false });
   return h("instancedMesh", { ref, args: [undefined, undefined, list.length], castShadow: kind === "solid", receiveShadow: kind === "solid" }, h("boxGeometry"), material);
 }
 
+
+function PedestrianCrossingModels({ world }) {
+  const postMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: "#465158", metalness: .58, roughness: .44 }), []);
+  const signMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: "#176b9a", metalness: .12, roughness: .5 }), []);
+  const figureMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: "#f5f2e8", roughness: .84 }), []);
+  useEffect(() => () => {
+    postMaterial.dispose(); signMaterial.dispose(); figureMaterial.dispose();
+  }, [postMaterial, signMaterial, figureMaterial]);
+  const crossings = (world.crosswalks || []).filter((crossing) => crossing.signal);
+  return h(React.Fragment, null, crossings.map((crossing) => {
+    const x = crossing.axis === "x" ? crossing.x - 4.08 : crossing.x + 2.15;
+    const z = crossing.axis === "x" ? crossing.z + 2.15 : crossing.z - 4.08;
+    const yaw = crossing.axis === "x" ? Math.PI / 2 : 0;
+    return h("group", { key: "crossing-sign-" + crossing.id, position: [x, 0, z], rotation: [0, yaw, 0] },
+      h("mesh", { position: [0, 1.08, 0], castShadow: true }, h("cylinderGeometry", { args: [.045, .065, 2.16, 10] }), h("primitive", { object: postMaterial, attach: "material" })),
+      h("mesh", { position: [0, 2.02, 0], castShadow: true }, h("boxGeometry", { args: [.48, .66, .16] }), h("primitive", { object: signMaterial, attach: "material" })),
+      h("mesh", { position: [0, 2.22, .094] }, h("sphereGeometry", { args: [.061, 12, 10] }), h("primitive", { object: figureMaterial, attach: "material" })),
+      h("mesh", { position: [0, 2.04, .094] }, h("cylinderGeometry", { args: [.033, .039, .16, 8] }), h("primitive", { object: figureMaterial, attach: "material" })),
+      ...[-1, 1].map((side) => h("mesh", { key: "arm-" + side, position: [side * .075, 2.06, .094], rotation: [0, 0, side * -.34] }, h("cylinderGeometry", { args: [.014, .014, .15, 7] }), h("primitive", { object: figureMaterial, attach: "material" }))),
+      ...[-1, 1].map((side) => h("mesh", { key: "leg-" + side, position: [side * .035, 1.88, .094], rotation: [0, 0, side * .24] }, h("cylinderGeometry", { args: [.016, .016, .17, 7] }), h("primitive", { object: figureMaterial, attach: "material" }))
+    );
+  }));
+}
 
 function UnderwaterAtmosphere({enabled,fogColor,fogNear,fogFar}){
  const {scene}=useThree();
@@ -1601,6 +1628,8 @@ export default function Game() {
         h(MarineWorld, { marine, boats, divingRef, quality }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
+        h(Boxes, { world, kind: "roadMarking" }), h(Boxes, { world, kind: "tactile" }),
+        h(PedestrianCrossingModels, { world }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),

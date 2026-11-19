@@ -261,12 +261,20 @@ function pedestrianCrossingStatus(from, to, cars) {
   let blockingCar = null, closestTime = Infinity;
   for (const car of cars) {
     const speed = Math.abs(car.speed || 0);
-    if (speed < .65) continue;
+    const clearance = Math.max(3.0, (car.length || 4.15) * .5 + .95);
+    if (speed < .65) {
+      const along = clamp((car.x - from.x) * ux + (car.z - from.z) * uz, 0, length);
+      const nearestX = from.x + ux * along, nearestZ = from.z + uz * along;
+      if (Math.hypot(car.x - nearestX, car.z - nearestZ) < clearance) {
+        blockingCar = car;
+        closestTime = 0;
+      }
+      continue;
+    }
     const vx = Math.sin(car.yaw) * car.speed, vz = Math.cos(car.yaw) * car.speed;
-    const clearance = Math.max(2.9, (car.length || 4.15) * .5 + .85);
     let minDistance = Infinity, minTime = 0;
-    // Predict the car's path for six seconds; a moving vehicle near any part of the crossing keeps the pedestrian waiting.
-    for (let sample = 0; sample <= 20; sample++) {
+    // Predict near-future vehicle movement across the full pedestrian path.
+    for (let sample = 0; sample <= 15; sample++) {
       const time = sample * .3;
       const px = car.x + vx * time, pz = car.z + vz * time;
       const along = clamp((px - from.x) * ux + (pz - from.z) * uz, 0, length);
@@ -280,6 +288,22 @@ function pedestrianCrossingStatus(from, to, cars) {
     }
   }
   return { safe: !blockingCar, car: blockingCar };
+}
+
+function pedestrianInCarPath(car, walkers) {
+  const speed = Math.abs(car.speed || 0);
+  if (speed < .2) return false;
+  const direction = Math.sign(car.speed || 1);
+  const forwardX = Math.sin(car.yaw) * direction;
+  const forwardZ = Math.cos(car.yaw) * direction;
+  for (const person of walkers) {
+    if (!person.crossingActive || Math.abs(person.y - (car.y || 0)) > 1.2) continue;
+    const dx = person.x - car.x, dz = person.z - car.z;
+    const along = dx * forwardX + dz * forwardZ;
+    const lateral = Math.abs(dx * forwardZ - dz * forwardX);
+    if (along > -1.6 && along < 7.2 && lateral < (car.width || 1.9) * .5 + .95) return true;
+  }
+  return false;
 }
 
 function resolveHelicopterBodies(point, yLo, yHi, radius, helis) {
@@ -402,6 +426,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       doorIndex: findBuildingDoor(world, building),
       routeDirection: i % 2 === 0 ? 1 : -1,
       avoidSide: i % 2 === 0 ? 1 : -1,
+      crossingActive: false,
       waypoint: (i * 3 + (i % 2 === 0 ? 1 : route.length - 1)) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
       yaw: i * .71, speed: (1.05 + (i % 9) * .2) * routineProfile.pace, moveSpeed: 0, phase: i * 1.2,
@@ -681,11 +706,13 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
             }
           } else {
             person.crossingWaitStarted = 0;
+            person.crossingActive = true;
             person.waypoint++;
             person.wait = Math.max(person.wait, .12);
           }
         } else if (target.action === "crossingFinish") {
           person.crossingWaitStarted = 0;
+          person.crossingActive = false;
           person.waypoint++;
           person.actionWait = .12;
         } else if (target.action === "elevatorUp" || target.action === "elevatorDown") {
@@ -837,6 +864,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleUntil = now + 2.8;
           person.visitCountdown = 4;
         } else {
+          person.crossingActive = false;
           const sidewalkLoop = !person.visiting && person.route === person.sidewalkRoute;
           if (sidewalkLoop) {
             person.routeDirection *= -1;
@@ -888,9 +916,14 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           driver.blocked = 0;
         }
       } else {
-        stepCar(car, { throttle: .62, steer: 0, brake: false }, dt, carEnv);
-        driver.distanceLeft -= Math.abs(car.speed) * dt;
-        if (Math.abs(car.speed) < 1.0) driver.blocked += dt; else driver.blocked = 0;
+        const yieldingToPedestrian = pedestrianInCarPath(car, walkers);
+        stepCar(car, { throttle: yieldingToPedestrian ? 0 : .62, steer: 0, brake: yieldingToPedestrian }, dt, carEnv);
+        if (yieldingToPedestrian) {
+          driver.blocked = 0;
+        } else {
+          driver.distanceLeft -= Math.abs(car.speed) * dt;
+          if (Math.abs(car.speed) < 1.0) driver.blocked += dt; else driver.blocked = 0;
+        }
         if (driver.distanceLeft <= 0 || driver.blocked > 2.6 || Math.abs(car.x) > 113 || Math.abs(car.z) > 113) {
           driver.turnStartYaw = car.yaw;
           driver.turnTimer = 1.45;

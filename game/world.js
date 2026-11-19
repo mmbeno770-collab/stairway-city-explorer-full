@@ -17,7 +17,7 @@ const THEMES = [
 const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
-    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [];
+    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [];
     const elevators = [];
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
     const addRooftopHelicopter = (x, y, z, scale, padSize) => {
@@ -473,14 +473,24 @@ export function generateWorld(seed = 7) {
     }
     // Painted zebra crossings align with the sidewalk-to-sidewalk routes used by pedestrians.
     const addZebraCrossing = (axis, cx, cz) => {
+        const id = crosswalks.length;
         for (let stripe = 0; stripe < 6; stripe++) {
             const offset = -2.95 + stripe * 1.18;
             if (axis === "x") {
-                add(cx + offset - .25, .026, cz - 1.72, cx + offset + .25, .052, cz + 1.72, "#f2f0e7", "glow", false, true);
+                add(cx + offset - .25, .026, cz - 1.72, cx + offset + .25, .052, cz + 1.72, "#f2f0e7", "roadMarking", false, true);
             } else {
-                add(cx - 1.72, .026, cz + offset - .25, cx + 1.72, .052, cz + offset + .25, "#f2f0e7", "glow", false, true);
+                add(cx - 1.72, .026, cz + offset - .25, cx + 1.72, .052, cz + offset + .25, "#f2f0e7", "roadMarking", false, true);
             }
         }
+        // Tactile warning tiles mark both curb edges with a warm, matte ceramic finish.
+        for (const side of [-1, 1]) {
+            if (axis === "x") {
+                add(cx + side * 3.58 - .24, .026, cz - 1.42, cx + side * 3.58 + .24, .06, cz + 1.42, "#d4b15b", "tactile", false, true);
+            } else {
+                add(cx - 1.42, .026, cz + side * 3.58 - .24, cx + 1.42, .06, cz + side * 3.58 + .24, "#d4b15b", "tactile", false, true);
+            }
+        }
+        crosswalks.push({ id, axis, x: cx, z: cz, signal: id % 5 === 0 });
     };
     for (let gx = 1; gx < GRID; gx++) {
         const boundaryX = -CITY_HALF + gx * BLOCK;
@@ -514,7 +524,7 @@ export function generateWorld(seed = 7) {
     if (autonomousHelicopter) autonomousHelicopter.npcControlled = true;
     // Open perimeter lets visitors reach the beach and boarding points.
     const b0 = buildings[0];
-    return { boxes, buildings, trees, lamps, homes, landmarks, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

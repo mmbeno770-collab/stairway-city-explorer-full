@@ -218,6 +218,22 @@ export function poseHuman(R, P) {
         R.spine.rotation.set(-0.17 + Math.sin(P.phase * 0.5) * 0.018, Math.sin(P.phase * 0.5) * 0.025, 0);
         R.chest.scale.set(1.004, 1.002, 0.69);
         R.head.rotation.set(-0.16 + Math.sin(P.phase) * 0.025, 0, Math.sin(P.phase * 0.5) * 0.03);
+    } else if (P.mode === "observe") {
+        const style = P.style || "look";
+        const gaze = style === "inspect" ? 0.17 : style === "scan" ? 0.11 : 0.07;
+        const breath = Math.sin(P.t * 1.35);
+        for (let i = 0; i < 2; i++) {
+            sh[i].rotation.set(Math.sin(P.t * .7 + i * Math.PI) * .025, 0, side[i] * (.045 + breath * .008));
+            el[i].rotation.set(-.035 + Math.sin(P.t * .85 + i) * .018, 0, side[i] * .018);
+            th[i].rotation.set(0, 0, side[i] * .008);
+            kn[i].rotation.x = 0;
+            an[i].position.set(0, -.42, 0);
+        }
+        R.hips.position.y = .95 + breath * .006;
+        R.spine.rotation.set(style === "inspect" ? -.018 : 0, Math.sin(P.t * .55) * .018, Math.sin(P.t * .8) * .008);
+        R.head.rotation.set(style === "inspect" ? -.035 : -.008, Math.sin(P.t * .62) * gaze, Math.sin(P.t * .9) * .014);
+        R.root.rotation.x = 0;
+        R.root.rotation.z = 0;
     } else if (P.mode === "walk" && !P.air) {
         const speed = Math.max(0, P.speed || 0);
         const amp = THREE.MathUtils.clamp(speed / 3.5, 0, 1);

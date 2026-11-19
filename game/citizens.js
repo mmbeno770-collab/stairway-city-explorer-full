@@ -34,6 +34,50 @@ function makeWalkRoute(building) {
 const WALKER_NAMES = ["אורי","דוד","יונתן","משה","אליהו","יעקב","נחום","שמואל","בנימין","אלעד","אריאל","נעם","אבישי","עמיחי","מתניה","איתן","יהודה","הלל","רפאל","אברהם","יצחק","שלמה","מנחם","מאיר","דניאל","אלעזר","עוזיאל","גדעון","נפתלי","אפרים","חיים","יוסף","ברוך","זאב","נתנאל","אלחנן","אבנר","אורי־אל","בועז","גבריאל","גרשון","דביר","הראל","זכריה","חנניה","טוביה","יואל","כפיר","ליאור","מיכאל","נחמן","סיני","עובדיה","פנחס","צבי","קובי","רועי","שמעיה","תומר","יאיר"];
 const PERSONALITIES = ["סקרן, בודק כל סמטה ומחפש מקומות חדשים","רגוע, אוהב לטייל לאט ולהתבונן בנוף","חברותי, יוזם שיחות ומכיר תושבים חדשים","חובב טכנולוגיה, מתעניין במעליות ובמערכות העיר","חובב אדריכלות, בוחן חזיתות ומרפסות","צלם עירוני, מחפש נקודות צילום מעניינות","מתכנן מסלולים, מעדיף דרכים מסודרות","משקיף, אוהב לעלות לגגות ולראות את העיר","קורא נלהב, מבקר בספריות ובחדרי לימוד","חובב ספורט, עוצר ליד מתקני הכושר","אוהב טבע, בודק עצים וגינות","חובב תחבורה, מתעניין באוטובוסים וברכבים","אוהב אמנות, מחפש גלריות וקירות מיוחדים","חובב מוזיקה, מחפש אולפנים ומקומות שקטים","חוקר סקרן, בודק כניסות וחדרים","מסביר פנים, תמיד מברך אנשים ברחוב","עצמאי, בוחר מסלול חדש בכל סיבוב","זהיר, עוצר לפני מעברים ומכשולים","אנרגטי, הולך בקצב מהיר יחסית","מהורהר, אוהב לעצור ולצפות בתנועה","מתעניין בהיסטוריה של המבנים","אוהב גינות, מחפש פינות ירוקות","חובב משחקים, בודק אולמות משחקים","חוקר עסקים, נכנס לחנויות ולבתי קפה","אוהב תצפיות, בוחר רחובות פתוחים","מסודר, חוזר לבקר במקומות מוכרים","סבלני, מחכה לפעמים לחברים בדרך","חובב מפות, בודק את הרחובות סביבו","חברותי במיוחד, משוחח עם שכנים","אוהב שקט, בוחר מסלולים פחות עמוסים","סקרן לגבי בנייה, מסתכל על הקומות העליונות","חובב עיצוב, מתעניין בחלונות ובמרפסות","נהנה מהפארק וממתקני המשחק","מחפש מקומות חדשים לשבת בהם","אוהב להכיר שכונות שונות","מתעניין במזג האוויר ובשינויי האור","אוהב לצפות בציפורים מעל העיר","משוטט, מחליף מסלול לעיתים קרובות","מנומס, מפנה מקום להולכי רגל אחרים","מתעניין במבנים גבוהים ובמעליות","חובב בתי קפה, מחפש מקום לעצירה","אוהב מרחבים פתוחים וכיכרות","מסתכל על פרטים קטנים בבניינים","אוהב לבקר חברים בבניינים סמוכים","נמרץ, יוצא לסיורים תכופים","מתעניין ברכבל ובתחנות שלו","אוהב ללמוד על העיר דרך שיחות","חובב צמחייה, מתבונן בעצים ובערוגות","משתף אחרים בתגליות קטנות","מתכנן ביקורים מראש ונצמד לתוכנית","מחפש מעברים נוחים בין הרחובות","מתעניין באורות החלונות בשעות הערב","אוהב לגלות חדרים עם שימושים שונים","מתבונן בתנועה בצמתים","נהנה מטיולים ארוכים בין שכונות","אוהב לעצור ליד מזרקות","סקרן לגבי גגות וציוד שעליהם","מעדיף סיבובים קצרים ופגישות רבות","אוהב למצוא את הדרך הקצרה ביותר","משלב הליכה, ביקורים ושיחות בכל סיור"];
 
+const ROUTINE_PROFILES = [
+  { id: "curious", pace: .96, pauseChance: .22, pauseMin: 2.1, pauseMax: 3.7, cooldownMin: 9, cooldownMax: 16, socialRate: .9, visitMin: 20, visitMax: 34, look: "scan" },
+  { id: "calm", pace: .78, pauseChance: .34, pauseMin: 3.0, pauseMax: 5.0, cooldownMin: 8, cooldownMax: 14, socialRate: .72, visitMin: 27, visitMax: 42, look: "look" },
+  { id: "social", pace: .94, pauseChance: .12, pauseMin: 1.8, pauseMax: 2.8, cooldownMin: 13, cooldownMax: 21, socialRate: 1.55, visitMin: 22, visitMax: 36, look: "look" },
+  { id: "busy", pace: 1.18, pauseChance: .07, pauseMin: 1.2, pauseMax: 2.0, cooldownMin: 17, cooldownMax: 25, socialRate: .62, visitMin: 13, visitMax: 23, look: "inspect" },
+  { id: "observer", pace: .88, pauseChance: .28, pauseMin: 2.7, pauseMax: 4.6, cooldownMin: 10, cooldownMax: 17, socialRate: .82, visitMin: 24, visitMax: 39, look: "inspect" },
+  { id: "wanderer", pace: 1.04, pauseChance: .16, pauseMin: 1.7, pauseMax: 3.0, cooldownMin: 11, cooldownMax: 19, socialRate: 1.05, visitMin: 18, visitMax: 31, look: "scan" }
+];
+
+function randomRange(person, min, max) {
+  return min + nextRandom(person) * (max - min);
+}
+
+function nextPersonalVisitDelay(person) {
+  const profile = person.routineProfile || ROUTINE_PROFILES[0];
+  return randomRange(person, profile.visitMin, profile.visitMax);
+}
+
+function startPersonalRoutine(person, now) {
+  const profile = person.routineProfile || ROUTINE_PROFILES[0];
+  if (person.routineCooldown > 0 || person.visiting || person.followPlayer || person.ridingElevator) return false;
+  person.routineCooldown = randomRange(person, profile.cooldownMin, profile.cooldownMax);
+  if (nextRandom(person) > profile.pauseChance) return false;
+  const duration = randomRange(person, profile.pauseMin, profile.pauseMax);
+  person.routineAction = profile.look;
+  person.routineTimer = duration;
+  person.routineDuration = duration;
+  person.routineStartYaw = person.yaw;
+  const building = person.building;
+  const targetYaw = building
+    ? Math.atan2((building.x0 + building.x1) * .5 - person.x, (building.z0 + building.z1) * .5 - person.z)
+    : person.yaw + (nextRandom(person) - .5) * 1.4;
+  person.routineTurn = profile.look === "inspect"
+    ? angleDiff(targetYaw, person.yaw)
+    : (nextRandom(person) < .5 ? -1 : 1) * randomRange(person, .45, .95);
+  person.wait = 0;
+  person.moveSpeed = 0;
+  if (profile.id === "social" && nextRandom(person) < .18) {
+    person.bubbleText = ["אולי אפגוש כאן מישהו מוכר.", "נעים לטייל בעיר היום.", "מעניין מי עוד מסתובב כאן."][Math.floor(nextRandom(person) * 3)];
+    person.bubbleUntil = now + duration;
+  }
+  return true;
+}
+
 function makeStairTour(building) {
   const stair = building.basementStairwell;
   if (!stair) return [];
@@ -292,8 +336,11 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
     const building = buildings[(i * 5 + 3) % buildings.length];
     const route = makeWalkRoute(building);
     const point = route[(i * 3) % route.length];
+    const routineProfile = ROUTINE_PROFILES[i % ROUTINE_PROFILES.length];
     walkers.push({
       id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
+      routineProfile, routineCooldown: 4 + (i % 7) * 2.4, routineTimer: 0, routineDuration: 0,
+      routineAction: routineProfile.look, routineStartYaw: i * .71, routineTurn: 0,
       building, route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
       visitTarget: null, followPlayer: false, ridingElevator: false, elevatorId: -1, elevatorTrip: null, elevatorDestination: 0,
       doorIndex: findBuildingDoor(world, building),
@@ -301,9 +348,9 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       avoidSide: i % 2 === 0 ? 1 : -1,
       waypoint: (i * 3 + (i % 2 === 0 ? 1 : route.length - 1)) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
-      yaw: i * .71, speed: 1.05 + (i % 9) * .2, moveSpeed: 0, phase: i * 1.2,
+      yaw: i * .71, speed: (1.05 + (i % 9) * .2) * routineProfile.pace, moveSpeed: 0, phase: i * 1.2,
       wait: (i % 4) * .55, actionWait: 0, stuck: 0, stuckSideChanged: false, hidden: false,
-      visiting: false, visitCountdown: 5 + (i % 11) * 4.8,
+      visiting: false, visitCountdown: routineProfile.visitMin + (i % 5) * 1.8,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
       tOffset: i * .83
@@ -402,7 +449,9 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
     for (let personIndex = 0; personIndex < walkers.length; personIndex++) {
       const person = walkers[personIndex], rig = person.rig;
       person.greetCooldown = Math.max(0, person.greetCooldown - dt);
-      person.socialCooldown = Math.max(0, person.socialCooldown - dt);
+      const routineProfile = person.routineProfile || ROUTINE_PROFILES[0];
+      person.socialCooldown = Math.max(0, person.socialCooldown - dt * routineProfile.socialRate);
+      person.routineCooldown = Math.max(0, (person.routineCooldown || 0) - dt);
       if (person.bubbleUntil <= now) person.bubbleText = "";
       if (person.ridingElevator && person.elevatorTrip) {
         const lift = elevatorCars[person.elevatorId];
@@ -467,6 +516,23 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         person.followPlayer = false;
         person.bubbleText = "התרחקת מאוד, אז אחזור לסיור שלי.";
         person.bubbleUntil = now + 3.2;
+      }
+      if (person.routineTimer > 0) {
+        person.routineTimer = Math.max(0, person.routineTimer - dt);
+        const progress = 1 - person.routineTimer / Math.max(person.routineDuration, .001);
+        const lookBlend = person.routineAction === "inspect"
+          ? Math.sin(progress * Math.PI / 2)
+          : Math.sin(progress * Math.PI * 2);
+        const desiredYaw = person.routineStartYaw + person.routineTurn * lookBlend;
+        person.yaw += angleDiff(desiredYaw, person.yaw) * (1 - Math.exp(-4.5 * dt));
+        if (rig.root) {
+          rig.root.position.set(person.x, person.y, person.z);
+          rig.root.rotation.y = person.yaw;
+          rig.root.visible = true;
+        }
+        person.phase += dt * .35;
+        poseHuman(rig, { mode: "observe", style: person.routineAction, phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+        continue;
       }
       if (player && person.greetCooldown <= 0 && !person.visiting && !person.followPlayer) {
         if (playerDistance > 1.4 && playerDistance < 5.8 && Math.abs(player.y - person.y) < 2.2) {
@@ -592,7 +658,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
               person.visitTarget = null;
               person.route = person.sidewalkRoute;
               person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
-              person.visitCountdown = 16 + Math.floor(nextRandom(person) * 22);
+              person.visitCountdown = nextPersonalVisitDelay(person);
             } else person.waypoint = 0;
           }
           if (!person.visiting) {
@@ -602,6 +668,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
               person.bubbleText = ["איזה יום יפה!", "נראה מה יש מעבר לפינה.", "אני אוהב את העיר הזאת."][person.rngState % 3];
               person.bubbleUntil = now + 2.6;
             }
+            startPersonalRoutine(person, now);
           }
         }
         continue;

@@ -527,7 +527,7 @@ function PedestrianCrossingModels({ world }) {
       h("mesh", { position: [0, 2.22, .094] }, h("sphereGeometry", { args: [.061, 12, 10] }), h("primitive", { object: figureMaterial, attach: "material" })),
       h("mesh", { position: [0, 2.04, .094] }, h("cylinderGeometry", { args: [.033, .039, .16, 8] }), h("primitive", { object: figureMaterial, attach: "material" })),
       ...[-1, 1].map((side) => h("mesh", { key: "arm-" + side, position: [side * .075, 2.06, .094], rotation: [0, 0, side * -.34] }, h("cylinderGeometry", { args: [.014, .014, .15, 7] }), h("primitive", { object: figureMaterial, attach: "material" }))),
-      ...[-1, 1].map((side) => h("mesh", { key: "leg-" + side, position: [side * .035, 1.88, .094], rotation: [0, 0, side * .24] }, h("cylinderGeometry", { args: [.016, .016, .17, 7] }), h("primitive", { object: figureMaterial, attach: "material" }))
+      ...[-1, 1].map((side) => h("mesh", { key: "leg-" + side, position: [side * .035, 1.88, .094], rotation: [0, 0, side * .24] }, h("cylinderGeometry", { args: [.016, .016, .17, 7] }), h("primitive", { object: figureMaterial, attach: "material" })))
     );
   }));
 }

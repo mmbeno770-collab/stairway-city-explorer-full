@@ -208,6 +208,38 @@ function resolvePeople(point, yLo, yHi, radius, walkers, ignore) {
   }
 }
 
+function steerPedestrianAroundCrowd(person, walkers, directionX, directionZ) {
+  let steerX = directionX, steerZ = directionZ;
+  for (const other of walkers) {
+    if (other === person || other.hidden || Math.abs(other.y - person.y) > .8) continue;
+    const dx = other.x - person.x, dz = other.z - person.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance < .001 || distance > 2.35) continue;
+    const ahead = dx * directionX + dz * directionZ;
+    if (ahead < -.45 || ahead > 2.25) continue;
+    const urgency = clamp((2.35 - distance) / 1.75, 0, 1);
+    const forwardWeight = clamp((ahead + .45) / 1.7, 0, 1);
+    const lateral = dx * -directionZ + dz * directionX;
+    const sideBias = Math.abs(lateral) < .5 ? (person.avoidSide || 1) * .16 : 0;
+    const strength = urgency * (.24 + forwardWeight * .56);
+    steerX -= (dx / distance) * strength + directionZ * sideBias * urgency;
+    steerZ -= (dz / distance) * strength - directionX * sideBias * urgency;
+  }
+  const length = Math.hypot(steerX, steerZ);
+  return length > .001
+    ? { x: steerX / length, z: steerZ / length }
+    : { x: directionX, z: directionZ };
+}
+
+function pedestrianClearance(point, person, walkers) {
+  let nearest = 3;
+  for (const other of walkers) {
+    if (other === person || other.hidden || Math.abs(other.y - person.y) > .8) continue;
+    nearest = Math.min(nearest, Math.hypot(point.x - other.x, point.z - other.z));
+  }
+  return nearest;
+}
+
 function makeCitizens(world, cars, helis, airVehicles, collider) {
   const walkers = [];
   const buildings = world.buildings || [];
@@ -220,7 +252,10 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
       building, route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
       visitTarget: null, followPlayer: false, ridingElevator: false, elevatorId: -1, elevatorTrip: null, elevatorDestination: 0,
-      doorIndex: findBuildingDoor(world, building), waypoint: (i * 3 + 1) % route.length,
+      doorIndex: findBuildingDoor(world, building),
+      routeDirection: i % 2 === 0 ? 1 : -1,
+      avoidSide: i % 2 === 0 ? 1 : -1,
+      waypoint: (i * 3 + (i % 2 === 0 ? 1 : route.length - 1)) % route.length,
       x: point.x, y: collider.groundAt(point.x, point.z, 0, .8), z: point.z,
       yaw: i * .71, speed: 1.05 + (i % 9) * .2, moveSpeed: 0, phase: i * 1.2,
       wait: (i % 4) * .55, actionWait: 0, stuck: 0, hidden: false,
@@ -497,8 +532,11 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.waypoint++;
           person.actionWait = .72;
         } else {
-          person.waypoint++;
-          if (person.waypoint >= person.route.length) {
+          const walkingLoop = !person.visiting && person.route === person.sidewalkRoute;
+          person.waypoint += walkingLoop ? person.routeDirection : 1;
+          if (walkingLoop) {
+            person.waypoint = (person.waypoint + person.route.length) % person.route.length;
+          } else if (person.waypoint >= person.route.length) {
             if (person.visiting) {
               person.visiting = false;
               if (person.visitTarget) {
@@ -530,6 +568,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       const targetSpeed = Math.min(maxSpeed, Math.sqrt(2 * 3.2 * brakingDistance));
       person.moveSpeed = THREE.MathUtils.damp(person.moveSpeed || 0, targetSpeed, 6.5, dt);
       const stepLength = Math.min(person.moveSpeed * dt, brakingDistance), yLo = person.y + .12, yHi = person.y + 1.72;
+      const steering = steerPedestrianAroundCrowd(person, walkers, nx, nz);
       const resolveMove = (candidate) => {
         collider.resolve(candidate, person.y + .58, yHi, .31);
         resolvePeople(candidate, yLo, yHi, .31, walkers, person);
@@ -539,17 +578,23 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         collider.resolve(candidate, person.y + .58, yHi, .31);
         return candidate;
       };
-      let next = resolveMove({ x: person.x + nx * stepLength, z: person.z + nz * stepLength });
+      let next = resolveMove({ x: person.x + steering.x * stepLength, z: person.z + steering.z * stepLength });
       let bestAdvance = distance - Math.hypot(target.x - next.x, target.z - next.z);
-      let bestScore = bestAdvance;
-      // Sample several smooth steering angles; prefer progress without pushing through people or walls.
-      if (bestAdvance < stepLength * .42) {
-        for (const angle of [-1.05, -.68, -.34, .34, .68, 1.05]) {
-          const sx = nx * Math.cos(angle) - nz * Math.sin(angle);
-          const sz = nz * Math.cos(angle) + nx * Math.sin(angle);
+      const initialClearance = pedestrianClearance(next, person, walkers);
+      let bestScore = bestAdvance + Math.min(initialClearance, 1.4) * .025;
+      // Try gentle passing arcs when the direct route is crowded or blocked.
+      if (bestAdvance < stepLength * .72 || initialClearance < .82) {
+        const angles = person.avoidSide > 0
+          ? [-.42, .42, -.82, .82, -1.18, 1.18]
+          : [.42, -.42, .82, -.82, 1.18, -1.18];
+        for (const angle of angles) {
+          const sx = steering.x * Math.cos(angle) - steering.z * Math.sin(angle);
+          const sz = steering.z * Math.cos(angle) + steering.x * Math.sin(angle);
           const candidate = resolveMove({ x: person.x + sx * stepLength, z: person.z + sz * stepLength });
           const advance = distance - Math.hypot(target.x - candidate.x, target.z - candidate.z);
-          const score = advance + Math.max(0, sx * nx + sz * nz) * stepLength * .08;
+          const clearance = pedestrianClearance(candidate, person, walkers);
+          const alignment = Math.max(0, sx * nx + sz * nz);
+          const score = advance + alignment * stepLength * .08 + Math.min(clearance, 1.4) * .025;
           if (score > bestScore + .012) { bestScore = score; bestAdvance = advance; next = candidate; }
         }
       }

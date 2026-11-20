@@ -145,7 +145,8 @@ export function generateWorld(seed = 7) {
         }
     };
     for (let gx = 0; gx < GRID; gx++) for (let gz = 0; gz < GRID; gz++) {
-        const cx = -CITY_HALF + gx * BLOCK + BLOCK / 2, cz = -CITY_HALF + gz * BLOCK + BLOCK / 2;
+        let cx = -CITY_HALF + gx * BLOCK + BLOCK / 2;
+        let cz = -CITY_HALF + gz * BLOCK + BLOCK / 2;
         const lotX0 = -CITY_HALF + gx * BLOCK + 4, lotX1 = lotX0 + BLOCK - 8;
         const lotZ0 = -CITY_HALF + gz * BLOCK + 4, lotZ1 = lotZ0 + BLOCK - 8;
         const curbHeight = .56, walkWidth = 2.05, isCenterLot = gx === Math.floor(GRID / 2) && gz === Math.floor(GRID / 2);
@@ -324,7 +325,16 @@ export function generateWorld(seed = 7) {
             add(cx - 10.5, .08, cz - 10.8, cx + 10.5, .13, cz - 10.35, "#c8c3b4", "solid", false);
             continue;
         }
-        const W = 14 + Math.floor(r() * 4) * 1.5, D = 14 + Math.floor(r() * 3) * 1.5, nFloors = 2 + Math.floor(r() * 5), x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2, facade = FACADES[Math.floor(r() * FACADES.length)], glass = r() > .5 ? "#83aab9" : "#9bbdb6";
+        // A taller, tighter downtown transitions into smaller mixed-use neighbourhoods.
+        const centrality = Math.abs(gx - Math.floor(GRID / 2)) + Math.abs(gz - Math.floor(GRID / 2));
+        const cityCore = centrality <= 4;
+        cx += (r() - .5) * (cityCore ? 2.0 : 4.6);
+        cz += (r() - .5) * (cityCore ? 2.0 : 4.6);
+        const W = (cityCore ? 15.5 : 12.5) + Math.floor(r() * 6) * 1.15;
+        const D = (cityCore ? 14.5 : 12.5) + Math.floor(r() * 6) * 1.05;
+        const nFloors = cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
+        const x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2;
+        const facade = FACADES[Math.floor(r() * FACADES.length)], glass = r() > .5 ? "#83aab9" : "#9bbdb6";
         const floors = [{ theme: "lobby", label: "לובי" }], pool = [...THEMES].sort(() => r() - .5);
         for (let f = 1; f < nFloors; f++) floors.push(pool[(f - 1) % pool.length]);
         const id = buildings.length;
@@ -457,19 +467,75 @@ export function generateWorld(seed = 7) {
             add(sx1 - .02, y + FLOOR_H + .9, sz0, sx1 + .14, y + FLOOR_H + 1.05, sz1, "#d9b26a", "solid", false);
             furnish(add, inter, r, floors[f].theme, sx1 + .6, x1 - 3.5, z0 + t + .4, z1 - t - .4, y + (f === 0 ? .15 : 0), f === 0);
         }
-        // One or two trees per building plot, placed at changing corners with random offsets.
-        if (r() > .16) {
-            const sx = r() > .5 ? 1 : -1, sz = r() > .5 ? 1 : -1;
-            const count = r() > .72 ? 2 : 1;
-            trees.push({ x: cx + sx * (W / 2 + 1.7 + r() * .9), z: cz + sz * (D / 2 + 1.5 + r() * 1.1), s: .78 + r() * .34 });
-            if (count === 2) trees.push({ x: cx - sx * (W / 2 + 1.8 + r() * .8), z: cz + sz * (D / 2 + 1.4 + r() * .9), s: .76 + r() * .34 });
+        // Street-level shops give the blocks a lived-in, mixed-use frontage.
+        const shopPalette = ["#b46b49", "#c89b52", "#668b88", "#8d6b56", "#5c7892", "#9a7650"];
+        const storefrontCount = cityCore ? (W > 18 ? 2 : 1) : ((gx * 5 + gz * 3) % 4 === 0 ? 0 : (W > 17.5 ? 2 : 1));
+        const shopSides = storefrontCount === 2 ? [-1, 1] : storefrontCount === 1 ? [((gx + gz) % 2 === 0 ? -1 : 1)] : [];
+        shopSides.forEach((side, shop) => {
+            const shopX = cx + side * W * .30, shopWidth = Math.min(3.5, W * .22);
+            const accent = shopPalette[(gx * 3 + gz * 5 + shop) % shopPalette.length];
+            add(shopX - shopWidth / 2, .82, z0 - .31, shopX + shopWidth / 2, 2.38, z0 - .2, "#83aab9", "glass", false);
+            add(shopX - shopWidth / 2 - .12, 2.62, z0 - .43, shopX + shopWidth / 2 + .12, 3.22, z0 - .22, accent, "solid", false);
+            add(shopX - shopWidth / 2 - .2, 2.36, z0 - 1.02, shopX + shopWidth / 2 + .2, 2.54, z0 - .24, shade(accent, -.12), "solid", false);
+            for (let stripe = 0; stripe < 5; stripe++) {
+                const stripeX = shopX - shopWidth / 2 + stripe * shopWidth / 5;
+                add(stripeX, 2.535, z0 - .99, stripeX + shopWidth / 10, 2.565, z0 - .26, stripe % 2 ? "#eee4d2" : accent, "solid", false);
+            }
+            for (const support of [-1, 1]) {
+                const postX = shopX + support * (shopWidth / 2 + .04);
+                add(postX - .045, .48, z0 - .79, postX + .045, 2.42, z0 - .7, "#4e5c60", "solid", false);
+            }
+            add(shopX - shopWidth / 2 + .18, 2.49, z0 - 1.045, shopX + shopWidth / 2 - .18, 2.55, z0 - 1.01, "#f3d58a", "glow", false);
+        });
+
+        // Matching stone planters and low greenery frame the main entrances.
+        for (const side of [-1, 1]) {
+            const planterX = cx + side * (W / 2 - .85), planterZ = z0 - 1.55;
+            add(planterX - .58, .06, planterZ - .55, planterX + .58, .48, planterZ + .55, "#858d87", "solid", false);
+            add(planterX - .48, .48, planterZ - .45, planterX + .48, .78, planterZ + .45, "#55784f", "solid", false);
+            add(planterX - .34, .78, planterZ - .31, planterX + .34, 1.04, planterZ + .31, "#6f935a", "solid", false);
         }
+
+        // Benches and bins appear in the side forecourts rather than blocking the doors.
+        if (W < 19 && (gx * 3 + gz * 7) % 3 === 0) {
+            const benchSide = (gx + gz) % 2 === 0 ? -1 : 1;
+            const benchX = cx + benchSide * (W / 2 + 1.05), benchZ = cz + (gz % 2 === 0 ? -3.1 : 3.1);
+            add(benchX - .24, .48, benchZ - 1.05, benchX + .24, .64, benchZ + 1.05, "#79583d", "solid", false);
+            add(benchX - .24, .64, benchZ - 1.05, benchX + .24, 1.08, benchZ - .88, "#79583d", "solid", false);
+            const binX = cx - benchSide * (W / 2 + 1.1), binZ = cz - (gz % 2 === 0 ? -3.1 : 3.1);
+            add(binX - .28, .08, binZ - .28, binX + .28, .82, binZ + .28, "#53666a", "solid", false);
+            add(binX - .3, .82, binZ - .3, binX + .3, .91, binZ + .3, "#a8b0aa", "solid", false);
+        }
+
+        // Street trees line selected block edges, with varied spacing and canopy sizes.
+        const treeSide = r() > .5 ? 1 : -1;
+        trees.push({
+            x: cx + treeSide * (W / 2 + 1.8),
+            z: cz + (r() - .5) * Math.min(10, D * .7),
+            s: .58 + r() * .24
+        });
+        if ((gx + gz) % 2 === 0) trees.push({
+            x: cx - treeSide * (W / 2 + 1.8),
+            z: cz + (r() - .5) * Math.min(10, D * .7),
+            s: .55 + r() * .25
+        });
         if (r() > .38) {
             const px = cx + (r() > .5 ? 1 : -1) * (10.8 + r() * 1.4), pz = cz + (r() - .5) * 17;
             add(px - .72, 0, pz - .72, px + .72, .48, pz + .72, "#927a5c", "solid", false);
             add(px - .61, .48, pz - .61, px + .61, 1.24, pz + .61, "#4f7c4d", "solid", false);
         }
         lamps.push({ x: cx - BLOCK / 2 + 3, z: cz - BLOCK / 2 + 3 }, { x: cx + BLOCK / 2 - 3, z: cz + BLOCK / 2 - 3 });
+    }
+    // A landscaped median turns the central north-south street into a recognisable boulevard.
+    const boulevardX = -CITY_HALF + Math.floor(GRID / 2) * BLOCK;
+    for (let segment = 0; segment < GRID; segment++) {
+        const middleZ = -CITY_HALF + segment * BLOCK + BLOCK / 2;
+        add(boulevardX - .68, .02, middleZ - 5.25, boulevardX + .68, .2, middleZ + 5.25, "#788764", "solid", false);
+        add(boulevardX - .74, .02, middleZ - 5.25, boulevardX - .62, .25, middleZ + 5.25, "#b8b3a0", "solid", false);
+        add(boulevardX + .62, .02, middleZ - 5.25, boulevardX + .74, .25, middleZ + 5.25, "#b8b3a0", "solid", false);
+        for (const shrubZ of [-3.55, 0, 3.55]) {
+            add(boulevardX - .42, .2, middleZ + shrubZ - .55, boulevardX + .42, .72, middleZ + shrubZ + .55, shrubZ === 0 ? "#52784d" : "#668653", "solid", false);
+        }
     }
     // Painted zebra crossings align with the sidewalk-to-sidewalk routes used by pedestrians.
     const addZebraCrossing = (axis, cx, cz) => {
@@ -512,8 +578,15 @@ export function generateWorld(seed = 7) {
     for (let i = 0; i < GRID * 6; i++) {
         const road = Math.floor(r() * (GRID - 1)) + 1, along = -CITY_HALF + 10 + r() * (GRID * BLOCK - 20), horiz = r() > .5, rx = -CITY_HALF + road * BLOCK + (r() > .5 ? 2.2 : -2.2), color = carCols[i % carCols.length], [x, z] = horiz ? [along, rx] : [rx, along], [hx, hz] = horiz ? [2.1, .9] : [.9, 2.1], face = horiz ? (r() > .5 ? Math.PI / 2 : -Math.PI / 2) : (r() > .5 ? 0 : Math.PI);
         const driveable = i % 4 === 0;
-        if (driveable) inter.push({ type: "car", x, y: .12, z, face, vehicleId: i, color, npcControlled: [4, 12, 20, 28, 36, 44, 52, 60].includes(i) });
-        else {
+        const detailedParked = !driveable && i % 5 === 1;
+        if (driveable || detailedParked) {
+            inter.push({
+                type: "car", x, y: .12, z, face, vehicleId: i, color,
+                kind: detailedParked ? (i % 10 === 1 ? "jeep" : "sedan") : "sedan",
+                parking: detailedParked,
+                npcControlled: driveable && [4, 12, 20, 28, 36, 44, 52, 60].includes(i)
+            });
+        } else {
             add(x - hx, .3, z - hz, x + hx, 1, z + hz, color);
             add(x - hx * .6, 1, z - hz * .6, x + hx * .6, 1.55, z + hz * .6, "#2c3e50", "glass", true);
             add(x - hx * .8, 0, z - hz * .95, x + hx * .8, .35, z + hz * .95, "#1b1b1b", "solid", false);

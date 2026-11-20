@@ -583,14 +583,34 @@ function Ground({ wet, buildings }) {
     ctx.fillStyle = "#303b43"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
-      ctx.fillStyle = (i + k) % 2 ? "#b8b1a1" : "#c0b9aa"; ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
-      ctx.strokeStyle = "#a49d8e"; ctx.lineWidth = 1;
-      for (let t = 0; t < BLOCK - 8; t += 1.5) {
-        ctx.beginPath(); ctx.moveTo(to(x + t), to(z)); ctx.lineTo(to(x + t), to(z + BLOCK - 8)); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(to(x), to(z + t)); ctx.lineTo(to(x + BLOCK - 8), to(z + t)); ctx.stroke();
+      const parkLot = (i === 1 && k === 1) || (i === GRID - 2 && k === GRID - 2);
+      const recreationLot = (i === 8 && k === 2) || (i === 7 && k === 8);
+      const residentialLot = (i === 0 || i === GRID - 1 || k === 0 || k === GRID - 1) && (i + k) % 2 === 0;
+      const civicLot = i === 2 && k === 7;
+      const coreLot = Math.abs(i - Math.floor(GRID / 2)) + Math.abs(k - Math.floor(GRID / 2)) <= 3;
+      const lotColor = parkLot ? "#788d65" : recreationLot ? "#87966e" : residentialLot ? "#9ca38b" : civicLot ? "#aaa99c" : coreLot ? "#abaea9" : ((i + k) % 2 ? "#b8b5a9" : "#c0bbae");
+      ctx.fillStyle = lotColor;
+      ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
+      ctx.strokeStyle = parkLot || recreationLot ? "#91a37a" : "#a49f91";
+      ctx.lineWidth = .8;
+      if (parkLot || recreationLot) {
+        ctx.fillStyle = "#bdb89f";
+        ctx.fillRect(to(x + 13.5), to(z + 4), 1.8 * p, (BLOCK - 16) * p);
+        ctx.fillRect(to(x + 4), to(z + 13.5), (BLOCK - 16) * p, 1.8 * p);
+      } else {
+        const tileSize = 2.05 + ((i * 3 + k * 5) % 3) * .45;
+        for (let t = 0; t < BLOCK - 8; t += tileSize) {
+          ctx.beginPath(); ctx.moveTo(to(x + t), to(z)); ctx.lineTo(to(x + t), to(z + BLOCK - 8)); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(to(x), to(z + t)); ctx.lineTo(to(x + BLOCK - 8), to(z + t)); ctx.stroke();
+        }
       }
-      ctx.strokeStyle = "#d0bd91"; ctx.lineWidth = Math.max(1, 1.5 * p);
+      ctx.strokeStyle = "#d0bd91"; ctx.lineWidth = Math.max(1, 1.35 * p);
       ctx.strokeRect(to(x + .45), to(z + .45), (BLOCK - 8 - .9) * p, (BLOCK - 8 - .9) * p);
+      if (residentialLot) {
+        ctx.fillStyle = "#82966d";
+        ctx.fillRect(to(x + 1.1), to(z + 2.4), 5.2 * p, 3.4 * p);
+        ctx.fillRect(to(x + BLOCK - 14), to(z + BLOCK - 13), 5.5 * p, 3.6 * p);
+      }
     }
     ctx.fillStyle = "#f2e9c9";
     for (let i = 0; i <= GRID; i++) {
@@ -618,6 +638,13 @@ function Ground({ wet, buildings }) {
       ctx.strokeStyle = "#ffe27a";
       ctx.lineWidth = Math.max(2.6, p * .48);
       ctx.setLineDash([p * 2.65, p * 1.45]);
+    }
+    // The central boulevard's planted median is painted into the ground texture too.
+    const boulevardX = -CITY_HALF + Math.floor(GRID / 2) * BLOCK;
+    ctx.fillStyle = "#71855f";
+    for (let segment = 0; segment < GRID; segment++) {
+      const middleZ = -CITY_HALF + segment * BLOCK + BLOCK / 2;
+      ctx.fillRect(to(boulevardX - .68), to(middleZ - 5.25), 1.36 * p, 10.5 * p);
     }
     ctx.fillStyle = "#f3f0e7";
     for (let gx = 0; gx <= GRID; gx++) for (let gz = 0; gz <= GRID; gz++) {

@@ -512,7 +512,7 @@ export function generateWorld(seed = 7) {
     for (let i = 0; i < GRID * 6; i++) {
         const road = Math.floor(r() * (GRID - 1)) + 1, along = -CITY_HALF + 10 + r() * (GRID * BLOCK - 20), horiz = r() > .5, rx = -CITY_HALF + road * BLOCK + (r() > .5 ? 2.2 : -2.2), color = carCols[i % carCols.length], [x, z] = horiz ? [along, rx] : [rx, along], [hx, hz] = horiz ? [2.1, .9] : [.9, 2.1], face = horiz ? (r() > .5 ? Math.PI / 2 : -Math.PI / 2) : (r() > .5 ? 0 : Math.PI);
         const driveable = i % 4 === 0;
-        if (driveable) inter.push({ type: "car", x, y: .12, z, face, vehicleId: i, color, npcControlled: [4, 20, 36].includes(i) });
+        if (driveable) inter.push({ type: "car", x, y: .12, z, face, vehicleId: i, color, npcControlled: [4, 12, 20, 28, 36, 44, 52, 60].includes(i) });
         else {
             add(x - hx, .3, z - hz, x + hx, 1, z + hz, color);
             add(x - hx * .6, 1, z - hz * .6, x + hx * .6, 1.55, z + hz * .6, "#2c3e50", "glass", true);

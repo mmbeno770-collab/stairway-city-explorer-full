@@ -306,6 +306,71 @@ function pedestrianInCarPath(car, walkers) {
   return false;
 }
 
+function getTrafficLane(car) {
+  const laneAxis = Math.abs(Math.sin(car.yaw)) >= Math.abs(Math.cos(car.yaw)) ? "x" : "z";
+  const crossCoordinate = laneAxis === "x" ? car.z : car.x;
+  const laneCenter = -CITY_HALF + Math.round((crossCoordinate + CITY_HALF) / BLOCK) * BLOCK;
+  const laneDirection = laneAxis === "x"
+    ? Math.sign(Math.sin(car.yaw)) || 1
+    : Math.sign(Math.cos(car.yaw)) || 1;
+  return {
+    laneAxis, laneCenter, laneDirection,
+    laneOffset: crossCoordinate - laneCenter
+  };
+}
+
+function autonomousCarSteering(car, driver) {
+  const targetYaw = driver.laneAxis === "x"
+    ? (driver.laneDirection > 0 ? Math.PI / 2 : -Math.PI / 2)
+    : (driver.laneDirection > 0 ? 0 : Math.PI);
+  const crossCoordinate = driver.laneAxis === "x" ? car.z : car.x;
+  const laneError = driver.laneCenter + driver.laneOffset - crossCoordinate;
+  const rightCrossSign = driver.laneAxis === "x" ? -driver.laneDirection : driver.laneDirection;
+  const headingCorrection = angleDiff(targetYaw, car.yaw) * 1.05;
+  const laneCorrection = laneError * rightCrossSign * .18;
+  return clamp(headingCorrection + laneCorrection, -.48, .48);
+}
+
+function autonomousCarTraffic(car, cars) {
+  let closestGap = Infinity, leadCar = null;
+  const forwardX = Math.sin(car.yaw), forwardZ = Math.cos(car.yaw);
+  const halfLength = (car.length || 4.15) * .5;
+  for (const other of cars) {
+    if (other === car || Math.abs((other.y || 0) - (car.y || 0)) > 1.2) continue;
+    const dx = other.x - car.x, dz = other.z - car.z;
+    const along = dx * forwardX + dz * forwardZ;
+    const lateral = Math.abs(dx * forwardZ - dz * forwardX);
+    const laneTolerance = (car.width || 1.9) * .5 + (other.width || 1.9) * .5 + .72;
+    if (along <= .4 || along > 24 || lateral > laneTolerance) continue;
+    const gap = along - halfLength - (other.length || 4.15) * .5;
+    if (gap < closestGap) { closestGap = gap; leadCar = other; }
+  }
+  if (!leadCar) return { throttle: .62, brake: false, gap: Infinity };
+  const desiredGap = 5.6 + Math.min(Math.abs(car.speed || 0), 9) * .72;
+  const hardGap = Math.max(3.15, desiredGap * .48);
+  if (closestGap <= hardGap || (Math.abs(leadCar.speed || 0) < .35 && closestGap < desiredGap)) {
+    return { throttle: 0, brake: true, gap: closestGap };
+  }
+  if (closestGap < desiredGap) {
+    const room = (closestGap - hardGap) / Math.max(.1, desiredGap - hardGap);
+    return { throttle: clamp(room * .62, .08, .62), brake: false, gap: closestGap };
+  }
+  return { throttle: .62, brake: false, gap: closestGap };
+}
+
+function startAutonomousUTurn(car, driver) {
+  const rightCrossSign = driver.laneAxis === "x" ? -driver.laneDirection : driver.laneDirection;
+  driver.turnSide = Math.sign((-driver.laneOffset) / rightCrossSign) || 1;
+  driver.turnRadius = clamp(Math.abs(driver.laneOffset), 1.8, 2.35);
+  driver.turnStartX = car.x;
+  driver.turnStartZ = car.z;
+  driver.turnStartYaw = car.yaw;
+  driver.turnElapsed = 0;
+  driver.turnDuration = 2.8;
+  driver.turnTimer = driver.turnDuration;
+  car.speed = 0;
+}
+
 function resolveHelicopterBodies(point, yLo, yHi, radius, helis) {
   for (const heli of helis) {
     const size = heli.scale || 1;
@@ -442,10 +507,12 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   cars.forEach((car, carIndex) => {
     if (!car.npcControlled) return;
     const start = localOffset(car.x, car.z, 3.25, -.15, car.yaw);
+    const lane = getTrafficLane(car);
     drivers.push({
       id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach",
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),
-      turnTimer: 0, turnStartYaw: car.yaw, distanceLeft: 34 + drivers.length * 9,
+      ...lane, turnTimer: 0, turnElapsed: 0, turnDuration: 2.8,
+      distanceLeft: 34 + drivers.length * 9,
       blocked: 0, routePause: 0, phase: 0, tOffset: 5 + drivers.length
     });
   });
@@ -906,28 +973,47 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         continue;
       }
       if (driver.turnTimer > 0) {
-        const progress = clamp(1 - driver.turnTimer / 1.45, 0, 1);
-        car.speed *= Math.exp(-5 * dt);
-        car.yaw = driver.turnStartYaw + Math.PI * progress;
-        driver.turnTimer -= dt;
-        if (driver.turnTimer <= 0) {
-          car.yaw = driver.turnStartYaw + Math.PI;
+        driver.turnElapsed += dt;
+        const progress = clamp(driver.turnElapsed / driver.turnDuration, 0, 1);
+        const eased = progress * progress * (3 - 2 * progress);
+        const turnAngle = driver.turnSide * Math.PI * eased;
+        const yaw = driver.turnStartYaw + turnAngle;
+        const signedRadius = driver.turnSide * driver.turnRadius;
+        const next = {
+          x: driver.turnStartX + signedRadius * (Math.cos(driver.turnStartYaw) - Math.cos(yaw)),
+          z: driver.turnStartZ + signedRadius * (Math.sin(yaw) - Math.sin(driver.turnStartYaw))
+        };
+        carEnv.resolve(next, car.y + .2, car.y + 1.75, (car.width || 1.9) * .5, car);
+        const turnDistance = Math.hypot(next.x - car.x, next.z - car.z);
+        car.x = next.x; car.z = next.z; car.yaw = yaw;
+        car.y = Math.max(0, carEnv.ground(car.x, car.z, car.y));
+        car.speed = turnDistance / Math.max(dt, .001);
+        driver.turnTimer = Math.max(0, driver.turnDuration - driver.turnElapsed);
+        if (progress >= 1) {
+          driver.laneOffset *= -1;
+          driver.laneDirection *= -1;
+          car.yaw = driver.laneAxis === "x"
+            ? (driver.laneDirection > 0 ? Math.PI / 2 : -Math.PI / 2)
+            : (driver.laneDirection > 0 ? 0 : Math.PI);
           driver.distanceLeft = 38;
           driver.blocked = 0;
+          driver.turnTimer = 0;
         }
       } else {
         const yieldingToPedestrian = pedestrianInCarPath(car, walkers);
-        stepCar(car, { throttle: yieldingToPedestrian ? 0 : .62, steer: 0, brake: yieldingToPedestrian }, dt, carEnv);
-        if (yieldingToPedestrian) {
+        const traffic = autonomousCarTraffic(car, cars);
+        const throttle = yieldingToPedestrian ? 0 : traffic.throttle;
+        const brake = yieldingToPedestrian || traffic.brake;
+        const steer = autonomousCarSteering(car, driver);
+        stepCar(car, { throttle, steer, brake }, dt, carEnv);
+        if (yieldingToPedestrian || traffic.brake) {
           driver.blocked = 0;
         } else {
           driver.distanceLeft -= Math.abs(car.speed) * dt;
           if (Math.abs(car.speed) < 1.0) driver.blocked += dt; else driver.blocked = 0;
         }
         if (driver.distanceLeft <= 0 || driver.blocked > 2.6 || Math.abs(car.x) > 113 || Math.abs(car.z) > 113) {
-          driver.turnStartYaw = car.yaw;
-          driver.turnTimer = 1.45;
-          car.speed = 0;
+          startAutonomousUTurn(car, driver);
         }
       }
       const seat = localOffset(car.x, car.z, -.3, .18, car.yaw);

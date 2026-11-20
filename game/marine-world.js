@@ -4,6 +4,11 @@ import * as THREE from "three";
 import { CITY_HALF } from "./world.js";
 
 export const MAINLAND_SHORE = CITY_HALF + 20;
+export function mainlandCoastRadius(angle) {
+ const c = Math.abs(Math.cos(angle)), s = Math.abs(Math.sin(angle));
+ const roundedSquare = MAINLAND_SHORE / Math.pow(Math.pow(c, 14) + Math.pow(s, 14), 1 / 14);
+ return roundedSquare + Math.sin(angle * 3 + .55) * 1.0 + Math.sin(angle * 7 - 1.2) * .45;
+}
 const WATER_LEVEL = -.18;
 export function getWaterHeight(x, z, time = 0) {
  return WATER_LEVEL
@@ -56,7 +61,7 @@ export function createMarineWorld(){
  ];
  return{islands,boats,dolphins,sleds,jetSkis};
 }
-export function isMainlandLand(x,z){return Math.abs(x)<=MAINLAND_SHORE&&Math.abs(z)<=MAINLAND_SHORE;}
+export function isMainlandLand(x,z){return Math.hypot(x,z)<=mainlandCoastRadius(Math.atan2(z,x));}
 export function getIslandAt(x,z,islands){
  for(const island of islands){const nx=(x-island.x)/(island.rx*.82),nz=(z-island.z)/(island.rz*.82),a=Math.atan2(nz,nx),edge=1+Math.sin(a*5+island.rx)*.035+Math.cos(a*3+island.rz)*.025;if(nx*nx+nz*nz<=edge*edge)return island;}
  return null;
@@ -102,7 +107,10 @@ varying float vWave;
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 void main(){
- if(max(abs(vWorldPosition.x),abs(vWorldPosition.z)) < ${MAINLAND_SHORE.toFixed(1)}) discard;
+ float coastAngle = atan(vWorldPosition.z, vWorldPosition.x);
+  float coastShape = pow(pow(abs(cos(coastAngle)), 14.0) + pow(abs(sin(coastAngle)), 14.0), 1.0 / 14.0);
+  float coastRadius = ${MAINLAND_SHORE.toFixed(1)} / coastShape + sin(coastAngle * 3.0 + .55) * 1.0 + sin(coastAngle * 7.0 - 1.2) * .45;
+  if(length(vWorldPosition.xz) < coastRadius) discard;
  vec3 normal=normalize(vWorldNormal);
  vec3 viewDirection=normalize(cameraPosition-vWorldPosition);
  vec3 sunDirection=normalize(uSunDirection);

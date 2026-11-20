@@ -18,7 +18,7 @@ import { ElevatorModel } from "./elevator-system.js";
 import { advanceElevatorTrip, floorHeight, makeElevatorTrip } from "./elevator-sim.js";
 import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./environment.js";
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
-import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, MarineWorld } from "./marine-world.js";
+import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, mainlandCoastRadius, MarineWorld } from "./marine-world.js";
 
 const h = React.createElement;
 
@@ -579,7 +579,7 @@ function UnderwaterAtmosphere({enabled,fogColor,fogNear,fogFar}){
  return null;
 }
 
-function Ground({ wet, buildings }) {
+function Ground({ wet, buildings, busRoutes = [] }) {
   const data = useMemo(() => {
     const size = 1536;
     const surfaceCanvas = document.createElement("canvas");
@@ -609,11 +609,23 @@ function Ground({ wet, buildings }) {
     surfaceTexture.anisotropy = 4;
     surfaceTexture.needsUpdate = true;
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
-    const ctx = canvas.getContext("2d"), total = GRID * BLOCK + 40, p = size / total, to = (v) => (v + total / 2) * p;
-    // A pale sandy border around the city forms its beach.
-    ctx.fillStyle = "#dfc991"; ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = "#c8b37e"; ctx.fillRect(to(-CITY_HALF - 20), to(-CITY_HALF - 20), (GRID * BLOCK + 40) * p, (GRID * BLOCK + 40) * p);
-    ctx.fillStyle = "#303b43"; ctx.fillRect(to(-CITY_HALF - 4), to(-CITY_HALF - 4), (GRID * BLOCK + 8) * p, (GRID * BLOCK + 8) * p);
+    const ctx = canvas.getContext("2d"), total = GRID * BLOCK + 120, p = size / total, to = (v) => (v + total / 2) * p;
+    const traceCoast = (offset = 0) => {
+      ctx.beginPath();
+      for (let step = 0; step <= 192; step++) {
+        const angle = step / 192 * Math.PI * 2;
+        const radius = mainlandCoastRadius(angle) + offset;
+        const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+        if (step === 0) ctx.moveTo(to(x), to(z)); else ctx.lineTo(to(x), to(z));
+      }
+      ctx.closePath();
+    };
+    // The beach now follows a rounded, gently uneven shoreline instead of a square border.
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = "#b9a77d"; traceCoast(8); ctx.fill();
+    ctx.fillStyle = "#ead6a3"; traceCoast(0); ctx.fill();
+    ctx.fillStyle = "#303b43"; traceCoast(-9); ctx.fill();
+    ctx.save(); traceCoast(-9); ctx.clip();
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
       const parkLot = (i === 1 && k === 1) || (i === GRID - 2 && k === GRID - 2);
@@ -679,6 +691,23 @@ function Ground({ wet, buildings }) {
       const middleZ = -CITY_HALF + segment * BLOCK + BLOCK / 2;
       ctx.fillRect(to(boulevardX - .68), to(middleZ - 5.25), 1.36 * p, 10.5 * p);
     }
+    if (busRoutes.length) {
+      ctx.save();
+      ctx.strokeStyle = "#3c91ad";
+      ctx.lineWidth = Math.max(2.2, p * .62);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.setLineDash([p * 4.8, p * 3.1]);
+      for (const route of busRoutes) {
+        const routePoints = route.path || [];
+        if (routePoints.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(to(routePoints[0].x), to(routePoints[0].z));
+        for (let index = 1; index < routePoints.length; index++) ctx.lineTo(to(routePoints[index].x), to(routePoints[index].z));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     ctx.fillStyle = "#f3f0e7";
     for (let gx = 0; gx <= GRID; gx++) for (let gz = 0; gz <= GRID; gz++) {
       const rx = -CITY_HALF + gx * BLOCK, rz = -CITY_HALF + gz * BLOCK;
@@ -689,6 +718,7 @@ function Ground({ wet, buildings }) {
         ctx.fillRect(to(x), to(rz - 3.35), Math.max(2, .22 * p), 6.7 * p);
       }
     }
+    ctx.restore();
     ctx.restore();
     const image = ctx.getImageData(0, 0, size, size);
     for (let i = 0; i < image.data.length; i += 4) {
@@ -704,7 +734,7 @@ function Ground({ wet, buildings }) {
     }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = true;
     return { texture, surfaceTexture, total };
-  }, []);
+  }, [buildings, busRoutes]);
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
@@ -1600,7 +1630,7 @@ export default function Game() {
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
   const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => Object.assign(makeHeli(item.x, item.y, item.z, item.face, item.scale || 1, item.padSize || 6), { npcControlled: !!item.npcControlled })), [world]);
-  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled })), [world]);
+  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled, busRouteId: item.busRouteId, passengerCount: item.passengerCount || 0, doorOpen: false })), [world]);
   const airVehicles = useMemo(() => (world.parkingVehicles || []).map(makeAirVehicle), [world]);
   const activeVehicleRef = useRef({ mode: "walk", target: -1 });
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
@@ -1684,7 +1714,7 @@ export default function Game() {
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
-        h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings }),
+        h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes }),
         h(MarineWorld, { marine, boats, divingRef, quality }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),

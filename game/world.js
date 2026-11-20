@@ -17,7 +17,7 @@ const THEMES = [
 const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
-    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [];
+    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [], busStops = [];
     const elevators = [];
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
     const addRooftopHelicopter = (x, y, z, scale, padSize) => {
@@ -592,6 +592,67 @@ export function generateWorld(seed = 7) {
             add(boulevardX - .42, .2, middleZ + shrubZ - .55, boulevardX + .42, .72, middleZ + shrubZ + .55, shrubZ === 0 ? "#52784d" : "#668653", "solid", false);
         }
     }
+    // A four-stop orbital bus route follows the main road network around downtown.
+    const busStopLayout = [
+        { id: 0, x: 0, z: -84.8, roadX: 0, roadZ: -92.2, axis: "x", name: "תחנת השדרה הצפונית" },
+        { id: 1, x: 84.8, z: 0, roadX: 92.2, roadZ: 0, axis: "z", name: "תחנת המזרח" },
+        { id: 2, x: 0, z: 84.8, roadX: 0, roadZ: 92.2, axis: "x", name: "תחנת השדרה הדרומית" },
+        { id: 3, x: -84.8, z: 0, roadX: -92.2, roadZ: 0, axis: "z", name: "תחנת המערב" }
+    ];
+    for (const stop of busStopLayout) {
+        busStops.push(stop);
+        const halfX = stop.axis === "x" ? 2.35 : 1.05;
+        const halfZ = stop.axis === "x" ? 1.05 : 2.35;
+        add(stop.x - halfX - .28, .025, stop.z - halfZ - .28, stop.x + halfX + .28, .16, stop.z + halfZ + .28, "#b8b1a0", "solid", false);
+        add(stop.x - halfX, 2.45, stop.z - halfZ, stop.x + halfX, 2.62, stop.z + halfZ, "#3c5159", "solid", false);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+            add(stop.x + sx * (halfX - .12) - .055, .16, stop.z + sz * (halfZ - .12) - .055, stop.x + sx * (halfX - .12) + .055, 2.48, stop.z + sz * (halfZ - .12) + .055, "#bba06c", "solid", false);
+        }
+        add(stop.x - halfX + .24, .48, stop.z - halfZ + .18, stop.x + halfX - .24, .64, stop.z + halfZ - .18, "#76563d", "solid", false);
+        add(stop.x - halfX + .24, .64, stop.z - halfZ + .18, stop.x + halfX - .24, 1.05, stop.z - halfZ + .34, "#76563d", "solid", false);
+        const signX = stop.x + halfX + .52, signZ = stop.axis === "x" ? stop.z : stop.z - halfZ - .25;
+        add(signX - .08, .16, signZ - .08, signX + .08, 2.65, signZ + .08, "#46565b", "solid", false);
+        add(signX - .42, 2.25, signZ - .1, signX + .42, 2.92, signZ + .1, "#2d7188", "solid", false);
+        add(signX - .31, 2.42, signZ - .115, signX + .31, 2.73, signZ - .09, "#f3d78d", "glow", false);
+    }
+
+    const busPath = [{ x: -70, z: -92.2 }];
+    const busLineTo = (x, z, stopId = null) => {
+        const from = busPath[busPath.length - 1], distance = Math.hypot(x - from.x, z - from.z);
+        const steps = Math.max(1, Math.ceil(distance / 6));
+        for (let step = 1; step <= steps; step++) {
+            const t = step / steps, point = { x: from.x + (x - from.x) * t, z: from.z + (z - from.z) * t };
+            if (step === steps && stopId !== null) point.stopId = stopId;
+            busPath.push(point);
+        }
+    };
+    const busArcTo = (cx, cz, radius, fromAngle, toAngle) => {
+        const steps = 9;
+        for (let step = 1; step <= steps; step++) {
+            const angle = fromAngle + (toAngle - fromAngle) * step / steps;
+            busPath.push({ x: cx + Math.cos(angle) * radius, z: cz + Math.sin(angle) * radius });
+        }
+    };
+    busLineTo(0, -92.2, 0);
+    busLineTo(80, -92.2);
+    busArcTo(80, -80, 12.2, -Math.PI / 2, 0);
+    busLineTo(92.2, 0, 1);
+    busLineTo(92.2, 80);
+    busArcTo(80, 80, 12.2, 0, Math.PI / 2);
+    busLineTo(0, 92.2, 2);
+    busLineTo(-80, 92.2);
+    busArcTo(-80, 80, 12.2, Math.PI / 2, Math.PI);
+    busLineTo(-92.2, 0, 3);
+    busLineTo(-92.2, -80);
+    busArcTo(-80, -80, 12.2, Math.PI, Math.PI * 1.5);
+    busLineTo(-70, -92.2);
+    const busRoutes = [{ id: 0, name: "קו הטבעת העירוני", path: busPath, stopIds: busStopLayout.map((stop) => stop.id) }];
+    inter.push({
+        type: "car", x: -70, y: .12, z: -92.2, face: Math.PI / 2,
+        color: "#277c98", kind: "bus", vehicleId: "city-loop-bus",
+        npcControlled: true, busRouteId: 0, passengerCount: 3
+    });
+
     // Painted zebra crossings align with the sidewalk-to-sidewalk routes used by pedestrians.
     const addZebraCrossing = (axis, cx, cz) => {
         const id = crosswalks.length;
@@ -653,7 +714,7 @@ export function generateWorld(seed = 7) {
     // Open perimeter lets visitors reach the beach and boarding points.
     const b0 = buildings[0];
     const trafficSignals = crosswalks.filter((crossing) => crossing.signal);
-    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, busStops, busRoutes, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

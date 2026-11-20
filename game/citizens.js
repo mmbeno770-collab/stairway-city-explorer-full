@@ -386,6 +386,64 @@ function autonomousTrafficSignal(car, driver, world, now) {
   return { stop: shouldStop && nearestDistance > -1.5, distance: nearestDistance, phase: laneGreen ? "green" : laneYellow ? "yellow" : "red" };
 }
 
+function updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv) {
+  const path = driver.busRoute;
+  if (!path?.length) return;
+  if (driver.busStopTimer > 0) {
+    driver.busStopTimer = Math.max(0, driver.busStopTimer - dt);
+    car.speed = 0;
+    car.brake = true;
+    car.doorOpen = true;
+    if (driver.busStopTimer <= 0) {
+      car.doorOpen = false;
+      driver.busRouteIndex = (driver.busRouteIndex + 1) % path.length;
+    }
+    return;
+  }
+
+  let target = path[driver.busRouteIndex];
+  if (!target) {
+    driver.busRouteIndex = 0;
+    target = path[0];
+  }
+  const distance = Math.hypot(target.x - car.x, target.z - car.z);
+  if (target.stopId !== undefined && distance < 2.35 && Math.abs(car.speed || 0) < 1.25) {
+    const exiting = Math.min(driver.passengerCount, target.stopId % 2 + 1);
+    const boarding = [2, 3, 1, 2][target.stopId] || 1;
+    driver.passengerCount = Math.min(5, driver.passengerCount - exiting + boarding);
+    car.passengerCount = driver.passengerCount;
+    car.speed = 0;
+    car.brake = true;
+    car.doorOpen = true;
+    driver.busStopTimer = 4.6;
+    return;
+  }
+  if (target.stopId === undefined && distance < 2.9) {
+    driver.busRouteIndex = (driver.busRouteIndex + 1) % path.length;
+    target = path[driver.busRouteIndex];
+  }
+
+  const nextDx = target.x - car.x, nextDz = target.z - car.z;
+  const laneAxis = Math.abs(nextDx) >= Math.abs(nextDz) ? "x" : "z";
+  driver.laneAxis = laneAxis;
+  driver.laneDirection = Math.sign(laneAxis === "x" ? nextDx : nextDz) || driver.laneDirection || 1;
+  const crossCoordinate = laneAxis === "x" ? car.z : car.x;
+  driver.laneCenter = -CITY_HALF + Math.round((crossCoordinate + CITY_HALF) / BLOCK) * BLOCK;
+  driver.laneOffset = crossCoordinate - driver.laneCenter;
+
+  const desiredYaw = Math.atan2(nextDx, nextDz);
+  const steer = clamp(angleDiff(desiredYaw, car.yaw) * 1.18, -.72, .72);
+  const stopTarget = target.stopId !== undefined;
+  const desiredSpeed = stopTarget ? Math.min(12.2, Math.sqrt(Math.max(.1, distance) * 10.5)) : 12.2;
+  const yieldingToPedestrian = pedestrianInCarPath(car, walkers);
+  const traffic = autonomousCarTraffic(car, cars);
+  const signal = autonomousTrafficSignal(car, driver, world, now);
+  const slowing = (car.speed || 0) > desiredSpeed + .8;
+  const braking = yieldingToPedestrian || traffic.brake || signal.stop || slowing;
+  const throttle = braking ? 0 : (car.speed || 0) < desiredSpeed - .65 ? .46 : 0;
+  stepCar(car, { throttle, steer, brake: braking }, dt, carEnv);
+}
+
 function startAutonomousUTurn(car, driver) {
   const rightCrossSign = driver.laneAxis === "x" ? -driver.laneDirection : driver.laneDirection;
   driver.turnSide = Math.sign((-driver.laneOffset) / rightCrossSign) || 1;
@@ -539,7 +597,9 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
     drivers.push({
       id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach",
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),
-      ...lane, turnTimer: 0, turnElapsed: 0, turnDuration: 2.8,
+      ...lane, busRoute: Number.isInteger(car.busRouteId) ? (world.busRoutes || []).find((route) => route.id === car.busRouteId)?.path || null : null,
+      busRouteIndex: 1, busStopTimer: 0, passengerCount: car.passengerCount || 0,
+      turnTimer: 0, turnElapsed: 0, turnDuration: 2.8,
       distanceLeft: 34 + drivers.length * 9,
       blocked: 0, routePause: 0, phase: 0, tOffset: 5 + drivers.length
     });
@@ -998,6 +1058,16 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         if (rig.root) { rig.root.position.set(driver.x, driver.y, driver.z); rig.root.rotation.y = face; }
         poseHuman(rig, { mode: "walk", phase: progress * 7, speed: 1.4, air: false, t: now + driver.tOffset, dt });
         if (progress >= 1) { driver.state = "drive"; driver.distanceLeft = 34 + driver.carIndex * 2.2; }
+        continue;
+      }
+      if (driver.busRoute) {
+        updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv);
+        const busSeat = localOffset(car.x, car.z, -.3, .18, car.yaw);
+        if (rig.root) {
+          rig.root.position.set(busSeat.x, car.y + .54, busSeat.z);
+          rig.root.rotation.y = car.yaw;
+        }
+        poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: now + driver.tOffset, dt });
         continue;
       }
       if (driver.turnTimer > 0) {

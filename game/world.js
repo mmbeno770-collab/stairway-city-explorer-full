@@ -208,14 +208,16 @@ export function generateWorld(seed = 7) {
         }
         if (gx === GRID - 2 && gz === GRID - 2) {
             // A calm garden district in the new outer neighbourhood.
-            add(cx - 12.2, 0, cz - 12.2, cx + 12.2, .12, cz + 12.2, "#758b5d", "solid", false);
-            add(cx - 10.4, .12, cz - 10.4, cx + 10.4, .2, cz + 10.4, "#b8b09b", "solid", false);
-            add(cx - 1.25, .2, cz - 10.2, cx + 1.25, .24, cz + 10.2, "#d8d0bd", "solid", false);
-            add(cx - 10.2, .2, cz - 1.25, cx + 10.2, .24, cz + 1.25, "#d8d0bd", "solid", false);
-            for (const [dx, dz] of [[-6.4,-6.4],[6.4,-6.4],[-6.4,6.4],[6.4,6.4]]) {
-                add(cx + dx - 2.1, .2, cz + dz - 2.1, cx + dx + 2.1, .38, cz + dz + 2.1, "#607c4e", "solid", false);
-                add(cx + dx - 1.65, .38, cz + dz - 1.65, cx + dx + 1.65, .52, cz + dz + 1.65, "#8fa86a", "solid", false);
-                trees.push({ x: cx + dx, z: cz + dz, s: 1.0 + r() * .25 });
+            // The garden is left open to the ground canvas so its paths can meander naturally.
+            // Trees are grouped in loose groves instead of four identical square planters.
+            const gardenGrove = [
+                [-9.0, -7.2, .92], [-6.2, -9.1, .72], [-2.0, -8.7, .84],
+                [7.4, -8.1, .98], [9.1, -4.3, .78],
+                [-9.2, 4.2, .86], [-7.0, 8.4, .96],
+                [5.7, 8.8, .82], [9.0, 6.3, .90]
+            ];
+            for (const [dx, dz, size] of gardenGrove) {
+                trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .16, turn: r() * .6 });
             }
             add(cx - 2.45, .2, cz - 2.45, cx + 2.45, .48, cz + 2.45, "#8c948e", "solid", false);
             add(cx - 2.15, .48, cz - 2.15, cx + 2.15, .58, cz + 2.15, "#c9c4b8", "solid", false);
@@ -231,11 +233,8 @@ export function generateWorld(seed = 7) {
         }
         if (gx === 1 && gz === 1) {
             // A dedicated recreation square with rubber safety surfacing and accessible clear paths.
-            add(cx - 12, 0, cz - 12, cx + 12, .08, cz + 12, "#678455", "solid", false);
-            add(cx - 10, .08, cz - 9, cx + 10, .16, cz + 9, "#b2a58e", "solid", false);
-            add(cx - 9, .16, cz - 8, cx - 1, .19, cz + 7, "#c88765", "solid", false);
-            add(cx + 1, .16, cz - 8, cx + 9, .19, cz + 7, "#7896a1", "solid", false);
-            add(cx - 5, .16, cz - 10, cx + 5, .19, cz - 4, "#d7bd75", "solid", false);
+            // Keep the play area on the shared terrain layer; the ground map paints
+            // soft, curved safety zones and connecting footpaths underneath the equipment.
 
             // Swing set: graphite frame, gold joints, two hanging seats.
             for (const dx of [-2.8, 2.8]) {
@@ -287,7 +286,10 @@ export function generateWorld(seed = 7) {
                 add(cx + bx - 1.1, .72, cz - 10.5, cx + bx + 1.1, 1.25, cz - 10.3, "#76523d", "solid", false);
             }
             // Leave the northern park edge open for two smooth, climbable landscape mounds.
-            for (const [dx, dz] of [[-9,9],[9,9]]) trees.push({ x: cx + dx, z: cz + dz, s: .8 + r() * .25 });
+            for (const [dx, dz, size] of [
+                [-9.5, 8.7, .82], [-7.4, -8.5, .74], [-1.0, -10.0, .68],
+                [8.8, -8.2, .76], [10.0, 1.3, .84], [6.8, 9.2, .78]
+            ]) trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .16, turn: r() * .5 });
             lamps.push({ x: cx - 10.5, z: cz - 10.5 }, { x: cx + 10.5, z: cz + 10.5 });
 
             // Bus stops on opposite sides of the recreation square.
@@ -314,10 +316,7 @@ export function generateWorld(seed = 7) {
         // Small public places break up the repeating blocks and give pedestrians somewhere to gather.
         if ((gx === 4 && gz === 3) || (gx === 7 && gz === 6)) {
             const marketSquare = gx === 4;
-            add(cx - 12.1, 0, cz - 12.1, cx + 12.1, .08, cz + 12.1, marketSquare ? "#80936f" : "#748b67", "solid", false);
-            add(cx - 9.6, .08, cz - 9.6, cx + 9.6, .14, cz + 9.6, marketSquare ? "#b9b3a4" : "#c1bba9", "solid", false);
-            add(cx - 1.05, .14, cz - 9.5, cx + 1.05, .18, cz + 9.5, "#d9d0bc", "solid", false);
-            add(cx - 9.5, .14, cz - 1.05, cx + 9.5, .18, cz + 1.05, "#d9d0bc", "solid", false);
+            // The shared ground surface below gives this place an organic stone-and-green layout.
             if (marketSquare) {
                 // Market stalls, striped awnings, café tables and benches.
                 for (let stall = 0; stall < 3; stall++) {
@@ -362,7 +361,12 @@ export function generateWorld(seed = 7) {
                     add(cx + bx - 1.05, .65, cz + 4.23, cx + bx + 1.05, 1.12, cz + 4.4, "#76563c", "solid", false);
                 }
             }
-            for (const [dx, dz] of [[-9,-9],[9,-9],[-9,9],[9,9]]) trees.push({ x: cx + dx, z: cz + dz, s: .78 + r() * .18 });
+            const plazaTrees = marketSquare
+                ? [[-9.6, -8.2, .82], [9.4, -8.6, .78], [-10.0, 5.8, .88], [9.2, 8.4, .82], [-4.8, 9.8, .7]]
+                : [[-9.2, -8.7, .84], [9.6, -8.2, .8], [-10.0, 4.8, .88], [9.3, 8.2, .82], [0, 10.0, .72]];
+            for (const [dx, dz, size] of plazaTrees) {
+                trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .14, turn: r() * .55 });
+            }
             lamps.push({ x: cx - 10, z: cz }, { x: cx + 10, z: cz }, { x: cx, z: cz - 10 }, { x: cx, z: cz + 10 });
             continue;
         }

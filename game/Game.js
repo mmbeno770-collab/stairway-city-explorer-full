@@ -631,26 +631,71 @@ function Ground({ wet, buildings, busRoutes = [] }) {
       const parkLot = (i === 1 && k === 1) || (i === GRID - 2 && k === GRID - 2);
       const recreationLot = (i === 8 && k === 2) || (i === 7 && k === 8);
       const residentialLot = (i === 0 || i === GRID - 1 || k === 0 || k === GRID - 1) && (i + k) % 2 === 0;
-      const civicLot = i === 2 && k === 7;
+      const civicLot = (i === 4 && k === 3) || (i === 7 && k === 6);
       const coreLot = Math.abs(i - Math.floor(GRID / 2)) + Math.abs(k - Math.floor(GRID / 2)) <= 3;
       const lotColor = parkLot ? "#788d65" : recreationLot ? "#87966e" : residentialLot ? "#9ca38b" : civicLot ? "#aaa99c" : coreLot ? "#abaea9" : ((i + k) % 2 ? "#b8b5a9" : "#c0bbae");
       ctx.fillStyle = lotColor;
       ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
       ctx.strokeStyle = parkLot || recreationLot ? "#91a37a" : "#a49f91";
       ctx.lineWidth = .8;
-      if (parkLot || recreationLot) {
-        ctx.fillStyle = "#bdb89f";
-        ctx.fillRect(to(x + 13.5), to(z + 4), 1.8 * p, (BLOCK - 16) * p);
-        ctx.fillRect(to(x + 4), to(z + 13.5), (BLOCK - 16) * p, 1.8 * p);
+      if (parkLot || recreationLot || civicLot) {
+        ctx.save();
+        const left = x + 1.1, top = z + 1.1, right = x + BLOCK - 9.1, bottom = z + BLOCK - 9.1;
+        ctx.beginPath();
+        ctx.moveTo(to(left + 2.4), to(top + 5.4));
+        ctx.bezierCurveTo(to(left + 8.2), to(top + .2), to(right - 3.4), to(top + 1.1), to(right - .5), to(top + 7.1));
+        ctx.bezierCurveTo(to(right + 1.3), to(top + 14.4), to(right - 1.2), to(bottom - 4.2), to(right - 7.4), to(bottom - .6));
+        ctx.bezierCurveTo(to(right - 14.8), to(bottom + 1.4), to(left + 8.0), to(bottom - .1), to(left + 2.4), to(bottom - 6.1));
+        ctx.bezierCurveTo(to(left - .7), to(bottom - 12.6), to(left - 1.1), to(top + 12.0), to(left + 2.4), to(top + 5.4));
+        ctx.closePath();
+        ctx.fillStyle = parkLot ? "#718760" : recreationLot ? "#7b8e67" : "#98a184";
+        ctx.fill();
+        ctx.strokeStyle = parkLot || recreationLot ? "#90a37a" : "#b0a88f";
+        ctx.lineWidth = Math.max(.8, p * .22);
+        ctx.stroke();
+
+        const beds = parkLot
+          ? [[7.2, 7.8, 4.8, 2.5], [23.5, 8.2, 5.1, 2.4], [8.8, 26.0, 5.8, 2.7], [25.2, 25.0, 4.3, 2.2]]
+          : recreationLot
+            ? [[6.5, 8.2, 4.8, 2.6], [25.3, 8.8, 4.2, 2.4], [7.5, 26.2, 5.0, 2.5], [25.2, 25.0, 4.6, 2.4]]
+            : [[6.2, 7.0, 4.8, 2.2], [25.0, 8.5, 4.5, 2.3], [7.4, 26.0, 4.4, 2.4], [25.0, 25.2, 4.9, 2.1]];
+        for (const [dx, dz, rx, rz] of beds) {
+          ctx.beginPath();
+          ctx.ellipse(to(x + dx), to(z + dz), rx * p, rz * p, .12, 0, Math.PI * 2);
+          ctx.fillStyle = parkLot ? "#82966a" : recreationLot ? "#879c70" : "#a5a987";
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = "#d7cbb0";
+        ctx.lineWidth = Math.max(2.4, p * 1.25);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        if (parkLot) {
+          ctx.moveTo(to(x + 5), to(z + 25));
+          ctx.bezierCurveTo(to(x + 10), to(z + 14), to(x + 17), to(z + 26), to(x + 23), to(z + 17));
+          ctx.bezierCurveTo(to(x + 27), to(z + 12), to(x + 23), to(z + 8), to(x + 30), to(z + 6));
+          ctx.bezierCurveTo(to(x + 26), to(z + 13), to(x + 32), to(z + 21), to(x + 25), to(z + 29));
+        } else if (recreationLot) {
+          ctx.moveTo(to(x + 5), to(z + 8));
+          ctx.bezierCurveTo(to(x + 13), to(z + 15), to(x + 7), to(z + 23), to(x + 17), to(z + 28));
+          ctx.bezierCurveTo(to(x + 24), to(z + 31), to(x + 27), to(z + 21), to(x + 23), to(z + 17));
+        } else {
+          ctx.moveTo(to(x + 4), to(z + 18));
+          ctx.bezierCurveTo(to(x + 10), to(z + 5), to(x + 25), to(z + 5), to(x + 29), to(z + 15));
+          ctx.bezierCurveTo(to(x + 33), to(z + 25), to(x + 20), to(z + 31), to(x + 12), to(z + 25));
+        }
+        ctx.stroke();
+        ctx.restore();
       } else {
         const tileSize = 2.05 + ((i * 3 + k * 5) % 3) * .45;
         for (let t = 0; t < BLOCK - 8; t += tileSize) {
           ctx.beginPath(); ctx.moveTo(to(x + t), to(z)); ctx.lineTo(to(x + t), to(z + BLOCK - 8)); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(to(x), to(z + t)); ctx.lineTo(to(x + BLOCK - 8), to(z + t)); ctx.stroke();
         }
+        ctx.strokeStyle = "#d0bd91"; ctx.lineWidth = Math.max(1, 1.35 * p);
+        ctx.strokeRect(to(x + .45), to(z + .45), (BLOCK - 8 - .9) * p, (BLOCK - 8 - .9) * p);
       }
-      ctx.strokeStyle = "#d0bd91"; ctx.lineWidth = Math.max(1, 1.35 * p);
-      ctx.strokeRect(to(x + .45), to(z + .45), (BLOCK - 8 - .9) * p, (BLOCK - 8 - .9) * p);
       if (residentialLot) {
         ctx.fillStyle = "#82966d";
         ctx.fillRect(to(x + 1.1), to(z + 2.4), 5.2 * p, 3.4 * p);

@@ -434,7 +434,7 @@ function updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv) {
   const desiredYaw = Math.atan2(nextDx, nextDz);
   const steer = clamp(angleDiff(desiredYaw, car.yaw) * 1.18, -.72, .72);
   const stopTarget = target.stopId !== undefined;
-  const desiredSpeed = stopTarget ? Math.min(12.2, Math.sqrt(Math.max(.1, distance) * 10.5)) : 12.2;
+  const desiredSpeed = stopTarget ? Math.min(12.2, Math.max(.2, distance * .48)) : 12.2;
   const yieldingToPedestrian = pedestrianInCarPath(car, walkers);
   const traffic = autonomousCarTraffic(car, cars);
   const signal = autonomousTrafficSignal(car, driver, world, now);

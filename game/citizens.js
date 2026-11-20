@@ -358,6 +358,34 @@ function autonomousCarTraffic(car, cars) {
   return { throttle: .62, brake: false, gap: closestGap };
 }
 
+function autonomousTrafficSignal(car, driver, world, now) {
+  const crossings = world.trafficSignals || (world.crosswalks || []).filter((crossing) => crossing.signal);
+  const expectedCrossingAxis = driver.laneAxis === "z" ? "x" : "z";
+  const carAlong = driver.laneAxis === "x" ? car.x : car.z;
+  let nearestDistance = Infinity;
+  for (const crossing of crossings) {
+    if (crossing.axis !== expectedCrossingAxis) continue;
+    const lateral = driver.laneAxis === "x" ? Math.abs(car.z - crossing.z) : Math.abs(car.x - crossing.x);
+    if (lateral > 4.9) continue;
+    const line = driver.laneAxis === "x" ? crossing.x : crossing.z;
+    const distance = (line - carAlong) * driver.laneDirection;
+    if (distance > -1.5 && distance < 23 && distance < nearestDistance) nearestDistance = distance;
+  }
+  if (!Number.isFinite(nearestDistance)) return { stop: false, distance: Infinity, phase: "green" };
+
+  const cycle = now % 36;
+  const laneGreen = driver.laneAxis === "z"
+    ? cycle < 14
+    : cycle >= 17 && cycle < 31;
+  const laneYellow = driver.laneAxis === "z"
+    ? cycle >= 14 && cycle < 17
+    : cycle >= 31 && cycle < 34;
+  const speed = Math.abs(car.speed || 0);
+  const comfortableStopDistance = 6.3 + Math.min(2.2, speed * .22);
+  const shouldStop = !laneGreen && (laneYellow ? nearestDistance > comfortableStopDistance : true);
+  return { stop: shouldStop && nearestDistance > -1.5, distance: nearestDistance, phase: laneGreen ? "green" : laneYellow ? "yellow" : "red" };
+}
+
 function startAutonomousUTurn(car, driver) {
   const rightCrossSign = driver.laneAxis === "x" ? -driver.laneDirection : driver.laneDirection;
   driver.turnSide = Math.sign((-driver.laneOffset) / rightCrossSign) || 1;
@@ -1002,11 +1030,12 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       } else {
         const yieldingToPedestrian = pedestrianInCarPath(car, walkers);
         const traffic = autonomousCarTraffic(car, cars);
-        const throttle = yieldingToPedestrian ? 0 : traffic.throttle;
-        const brake = yieldingToPedestrian || traffic.brake;
+        const signal = autonomousTrafficSignal(car, driver, world, now);
+        const throttle = yieldingToPedestrian || signal.stop ? 0 : traffic.throttle;
+        const brake = yieldingToPedestrian || traffic.brake || signal.stop;
         const steer = autonomousCarSteering(car, driver);
         stepCar(car, { throttle, steer, brake }, dt, carEnv);
-        if (yieldingToPedestrian || traffic.brake) {
+        if (yieldingToPedestrian || traffic.brake || signal.stop) {
           driver.blocked = 0;
         } else {
           driver.distanceLeft -= Math.abs(car.speed) * dt;

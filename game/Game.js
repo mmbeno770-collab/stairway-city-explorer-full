@@ -532,6 +532,39 @@ function PedestrianCrossingModels({ world }) {
   }));
 }
 
+function TrafficSignal({ crossing }) {
+  const lights = useMemo(() => [
+    new THREE.MeshStandardMaterial({ color: "#9b302d", emissive: "#f04438", emissiveIntensity: .08, roughness: .3 }),
+    new THREE.MeshStandardMaterial({ color: "#9b762f", emissive: "#ffc247", emissiveIntensity: .08, roughness: .3 }),
+    new THREE.MeshStandardMaterial({ color: "#327448", emissive: "#45d477", emissiveIntensity: .08, roughness: .3 })
+  ], []);
+  useEffect(() => () => lights.forEach((material) => material.dispose()), [lights]);
+  useFrame(({ clock }) => {
+    const phase = clock.elapsedTime % 36;
+    const active = crossing.axis === "x"
+      ? (phase < 14 ? 2 : phase < 17 ? 1 : 0)
+      : (phase < 17 ? 0 : phase < 31 ? 2 : phase < 34 ? 1 : 0);
+    lights.forEach((material, index) => {
+      material.emissiveIntensity = index === active ? 2.25 : .06;
+      material.color.set(index === active ? ["#f04438", "#ffc247", "#45d477"][index] : ["#54201e", "#57421c", "#1c492b"][index]);
+    });
+  });
+  const x = crossing.axis === "x" ? crossing.x + 4.22 : crossing.x + 2.18;
+  const z = crossing.axis === "x" ? crossing.z + 2.18 : crossing.z + 4.22;
+  const yaw = crossing.axis === "x" ? 0 : Math.PI / 2;
+  return h("group", { position: [x, 0, z], rotation: [0, yaw, 0] },
+    h("mesh", { position: [0, 1.7, 0], castShadow: true }, h("cylinderGeometry", { args: [.065, .09, 3.4, 10] }), h("meshStandardMaterial", { color: "#45545a", metalness: .62, roughness: .38 })),
+    h("mesh", { position: [0, 3.4, 0], castShadow: true }, h("boxGeometry", { args: [.55, 1.12, .38] }), h("meshStandardMaterial", { color: "#252d31", metalness: .32, roughness: .48 })),
+    ...lights.map((material, index) => h("mesh", { key: "signal-lamp-" + index, position: [0, 3.78 - index * .36, .205], material }, h("sphereGeometry", { args: [.135, 14, 12] }))),
+    h("mesh", { position: [0, 2.88, 0], castShadow: true }, h("boxGeometry", { args: [.82, .1, .62] }), h("meshStandardMaterial", { color: "#3b474b", metalness: .55, roughness: .42 }))
+  );
+}
+
+function TrafficSignals({ world }) {
+  const signals = world.trafficSignals || (world.crosswalks || []).filter((crossing) => crossing.signal);
+  return h(React.Fragment, null, signals.map((crossing) => h(TrafficSignal, { key: "traffic-signal-" + crossing.id, crossing })));
+}
+
 function UnderwaterAtmosphere({enabled,fogColor,fogNear,fogFar}){
  const {scene}=useThree();
  const blue=useMemo(()=>new THREE.Color("#0b6482"),[]);
@@ -1657,6 +1690,7 @@ export default function Game() {
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Boxes, { world, kind: "roadMarking" }), h(Boxes, { world, kind: "tactile" }),
         h(PedestrianCrossingModels, { world }),
+        h(TrafficSignals, { world }),
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),

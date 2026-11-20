@@ -311,6 +311,61 @@ export function generateWorld(seed = 7) {
         if (gx === 2 && gz === 7) { addLandmarkLot("mall", cx, cz); continue; }
         if (gx === 8 && gz === 2) { addLandmarkLot("sports", cx, cz); continue; }
         if (gx === 7 && gz === 8) { addLandmarkLot("amusement", cx, cz); continue; }
+        // Small public places break up the repeating blocks and give pedestrians somewhere to gather.
+        if ((gx === 4 && gz === 3) || (gx === 7 && gz === 6)) {
+            const marketSquare = gx === 4;
+            add(cx - 12.1, 0, cz - 12.1, cx + 12.1, .08, cz + 12.1, marketSquare ? "#80936f" : "#748b67", "solid", false);
+            add(cx - 9.6, .08, cz - 9.6, cx + 9.6, .14, cz + 9.6, marketSquare ? "#b9b3a4" : "#c1bba9", "solid", false);
+            add(cx - 1.05, .14, cz - 9.5, cx + 1.05, .18, cz + 9.5, "#d9d0bc", "solid", false);
+            add(cx - 9.5, .14, cz - 1.05, cx + 9.5, .18, cz + 1.05, "#d9d0bc", "solid", false);
+            if (marketSquare) {
+                // Market stalls, striped awnings, café tables and benches.
+                for (let stall = 0; stall < 3; stall++) {
+                    const sx = cx - 6.4 + stall * 6.4, sz = cz - 5.9;
+                    const stallColor = ["#a75b42", "#668b86", "#c0964f"][stall];
+                    add(sx - 2.05, .18, sz - .7, sx + 2.05, 1.15, sz + .7, "#806044", "solid", false);
+                    add(sx - 2.2, 2.28, sz - .95, sx + 2.2, 2.42, sz + .95, stallColor, "solid", false);
+                    for (let stripe = 0; stripe < 6; stripe++) {
+                        const ax = sx - 2.1 + stripe * .7;
+                        add(ax, 2.42, sz - .93, ax + .35, 2.47, sz + .93, stripe % 2 ? "#eee5d5" : stallColor, "solid", false);
+                    }
+                    for (const side of [-1, 1]) add(sx + side * 1.9, .18, sz - .83, sx + side * 1.98, 2.3, sz - .75, "#526267", "solid", false);
+                }
+                for (const tx of [-5.6, 0, 5.6]) {
+                    add(cx + tx - .68, .18, cz + 5.4, cx + tx + .68, .94, cz + 6.75, "#79583e", "solid", false);
+                    add(cx + tx - .68, .82, cz + 5.25, cx + tx + .68, .96, cz + 6.9, "#bca77d", "solid", false);
+                    for (const side of [-1, 1]) {
+                        add(cx + tx + side * 1.0 - .17, .18, cz + 5.55, cx + tx + side * 1.0 + .17, .7, cz + 5.9, "#596b72", "solid", false);
+                    }
+                }
+                for (const side of [-1, 1]) {
+                    add(cx + side * 8.7 - 1.1, .18, cz + 7.9, cx + side * 8.7 + 1.1, .34, cz + 8.25, "#76583e", "solid", false);
+                    add(cx + side * 8.7 - 1.1, .34, cz + 7.9, cx + side * 8.7 + 1.1, 1.0, cz + 8.08, "#76583e", "solid", false);
+                }
+            } else {
+                // A quieter courtyard with a shallow fountain, planting beds and shaded seating.
+                add(cx - 3.0, .18, cz - 3.0, cx + 3.0, .44, cz + 3.0, "#8c9690", "solid", false);
+                add(cx - 2.55, .44, cz - 2.55, cx + 2.55, .58, cz + 2.55, "#d2cabc", "solid", false);
+                add(cx - 2.08, .58, cz - 2.08, cx + 2.08, .66, cz + 2.08, "#4e9ca8", "glow", false);
+                add(cx - .3, .66, cz - .3, cx + .3, 1.35, cz + .3, "#bfa16a", "solid", false);
+                add(cx - .68, 1.3, cz - .68, cx + .68, 1.42, cz + .68, "#7db6bd", "glow", false);
+                for (const side of [-1, 1]) {
+                    add(cx + side * 7.3 - 1.4, .18, cz - 7.9, cx + side * 7.3 + 1.4, .62, cz - 5.8, "#8e9a88", "solid", false);
+                    add(cx + side * 7.3 - 1.16, .62, cz - 7.65, cx + side * 7.3 + 1.16, 1.1, cz - 6.02, "#567c52", "solid", false);
+                    add(cx + side * 7.3 - 1.4, .18, cz + 5.8, cx + side * 7.3 + 1.4, .62, cz + 7.9, "#8e9a88", "solid", false);
+                    add(cx + side * 7.3 - 1.16, .62, cz + 6.02, cx + side * 7.3 + 1.16, 1.1, cz + 7.65, "#567c52", "solid", false);
+                }
+                for (const bx of [-6.4, 6.4]) {
+                    add(cx + bx - 1.05, .48, cz - 4.4, cx + bx + 1.05, .65, cz - 4.1, "#76563c", "solid", false);
+                    add(cx + bx - 1.05, .65, cz - 4.4, cx + bx + 1.05, 1.12, cz - 4.23, "#76563c", "solid", false);
+                    add(cx + bx - 1.05, .48, cz + 4.1, cx + bx + 1.05, .65, cz + 4.4, "#76563c", "solid", false);
+                    add(cx + bx - 1.05, .65, cz + 4.23, cx + bx + 1.05, 1.12, cz + 4.4, "#76563c", "solid", false);
+                }
+            }
+            for (const [dx, dz] of [[-9,-9],[9,-9],[-9,9],[9,9]]) trees.push({ x: cx + dx, z: cz + dz, s: .78 + r() * .18 });
+            lamps.push({ x: cx - 10, z: cz }, { x: cx + 10, z: cz }, { x: cx, z: cz - 10 }, { x: cx, z: cz + 10 });
+            continue;
+        }
         const outerHomes =
             (gx === 0 && [2, 4, 6, 8].includes(gz)) ||
             (gx === GRID - 1 && [2, 4, 6, 8].includes(gz)) ||
@@ -597,7 +652,8 @@ export function generateWorld(seed = 7) {
     if (autonomousHelicopter) autonomousHelicopter.npcControlled = true;
     // Open perimeter lets visitors reach the beach and boarding points.
     const b0 = buildings[0];
-    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    const trafficSignals = crosswalks.filter((crossing) => crossing.signal);
+    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

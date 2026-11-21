@@ -671,13 +671,14 @@ export function generateWorld(seed = 7) {
                 : district === "creative"
                     ? ["#b46b49", "#668b88", "#8c7894", "#c0964f", "#5c7892"]
                     : ["#b46b49", "#c89b52", "#668b88", "#8d6b56", "#5c7892", "#9a7650"];
-        const storefrontCount = district === "heritage"
-            ? (W > 16 ? 2 : 1)
-            : district === "garden"
-                ? ((gx + gz) % 3 === 0 ? 0 : 1)
-                : district === "creative"
-                    ? (W > 16.5 ? 2 : 1)
-                    : cityCore ? (W > 18 ? 2 : 1) : ((gx * 5 + gz * 3) % 4 === 0 ? 0 : (W > 17.5 ? 2 : 1));
+        const storefrontCount = district === "innovation" ? 0
+            : district === "heritage"
+                ? (W > 16 ? 2 : 1)
+                : district === "garden"
+                    ? ((gx + gz) % 3 === 0 ? 0 : 1)
+                    : district === "creative"
+                        ? (W > 16.5 ? 2 : 1)
+                        : cityCore ? (W > 18 ? 2 : 1) : ((gx * 5 + gz * 3) % 4 === 0 ? 0 : (W > 17.5 ? 2 : 1));
         const shopSides = storefrontCount === 2 ? [-1, 1] : storefrontCount === 1 ? [((gx + gz) % 2 === 0 ? -1 : 1)] : [];
         shopSides.forEach((side, shop) => {
             const shopX = cx + side * W * .30, shopWidth = Math.min(3.5, W * .22);
@@ -694,7 +695,59 @@ export function generateWorld(seed = 7) {
                 add(postX - .045, .48, z0 - .79, postX + .045, 2.42, z0 - .7, "#4e5c60", "solid", false);
             }
             add(shopX - shopWidth / 2 + .18, 2.49, z0 - 1.045, shopX + shopWidth / 2 - .18, 2.55, z0 - 1.01, "#f3d58a", "glow", false);
+            add(shopX - shopWidth / 2 - .08, 2.65, z0 - .475, shopX + shopWidth / 2 + .08, 2.72, z0 - .43, "#ffe4a0", "glow", false);
+            const markX = shopX - shopWidth * .28;
+            add(markX - .24, 2.82, z0 - .49, markX + .24, 3.07, z0 - .43, shade(accent, .18), "glow", false);
+            for (let glyph = 0; glyph < 3; glyph++) {
+                const gx0 = shopX - .05 + glyph * .36;
+                add(gx0, 2.82, z0 - .49, gx0 + .22, 2.88 + (glyph % 2) * .07, z0 - .43, "#f7e8c9", "glow", false);
+            }
+            const bladeX = shopX + shopWidth / 2 + .28;
+            add(bladeX, 2.45, z0 - .78, bladeX + .1, 3.18, z0 - .66, "#465a61", "solid", false);
+            add(bladeX - .28, 2.78, z0 - .98, bladeX + .34, 3.3, z0 - .58, accent, "solid", false);
+            add(bladeX - .18, 2.88, z0 - 1.0, bladeX + .24, 2.96, z0 - .56, "#ffe2a0", "glow", false);
+            if (district === "heritage" || district === "creative" || (gx + gz + shop) % 3 === 0) {
+                // A compact outdoor cafe set sits beside the shop, leaving the doorway clear.
+                const tableZ = z0 - 2.0;
+                add(shopX - .58, .69, tableZ - .58, shopX + .58, .82, tableZ + .58, "#8b6546", "solid", false);
+                add(shopX - .07, .12, tableZ - .07, shopX + .07, .7, tableZ + .07, "#4b5558", "solid", false);
+                for (const chairSide of [-1, 1]) {
+                    const chairX = shopX + chairSide * 1.08;
+                    add(chairX - .3, .16, tableZ - .3, chairX + .3, .34, tableZ + .3, "#50656b", "solid", false);
+                    add(chairX - .3, .34, tableZ + .18, chairX + .3, .92, tableZ + .3, "#50656b", "solid", false);
+                    inter.push({ type: "sofa", x: chairX, y: .16, z: tableZ, face: chairSide < 0 ? Math.PI / 2 : -Math.PI / 2 });
+                }
+                add(shopX - .04, .82, tableZ - .04, shopX + .04, 1.08, tableZ + .04, "#c59d5e", "solid", false);
+                add(shopX - .12, 1.06, tableZ - .12, shopX + .12, 1.12, tableZ + .12, "#e4c785", "glow", false);
+            }
         });
+
+        if (district !== "innovation" && district !== "garden") {
+            const balconyColor = district === "heritage" ? "#806b59" : "#596b72";
+            for (let floor = 1; floor < nFloors; floor += district === "heritage" ? 1 : 2) {
+                const balconyY = floor * FLOOR_H + .18;
+                for (const side of [-1, 1]) {
+                    const balconyX = cx + side * W * .28;
+                    const balconyWidth = Math.min(3.35, W * .24);
+                    const bx0 = balconyX - balconyWidth / 2, bx1 = balconyX + balconyWidth / 2;
+                    add(bx0, balconyY - .12, z0 - 1.28, bx1, balconyY, z0 + .08, district === "heritage" ? "#b89c7b" : "#83969b", "solid", false);
+                    for (const postSide of [-1, 1]) {
+                        const postX = balconyX + postSide * (balconyWidth / 2 - .08);
+                        add(postX - .055, balconyY, z0 - 1.27, postX + .055, balconyY + 1.08, z0 - 1.15, balconyColor, "solid", false);
+                    }
+                    add(bx0, balconyY + .98, z0 - 1.28, bx1, balconyY + 1.08, z0 - 1.15, district === "heritage" ? "#b18c65" : "#b8c5c5", "solid", false);
+                    add(bx0, balconyY + .05, z0 - 1.23, bx1, balconyY + .12, z0 - 1.17, balconyColor, "solid", false);
+                    for (let rail = 1; rail < 7; rail++) {
+                        const railX = bx0 + rail * balconyWidth / 7;
+                        add(railX - .025, balconyY + .12, z0 - 1.25, railX + .025, balconyY + .98, z0 - 1.18, balconyColor, "solid", false);
+                    }
+                    if (district === "heritage" || (floor + side) % 3 === 0) {
+                        add(balconyX - .48, balconyY + .05, z0 - .98, balconyX + .48, balconyY + .35, z0 - .68, "#6d8063", "solid", false);
+                        add(balconyX - .4, balconyY + .35, z0 - .91, balconyX + .4, balconyY + .66, z0 - .74, "#729466", "solid", false);
+                    }
+                }
+            }
+        }
 
         if (district === "innovation") {
             // A wide floating canopy frames the main entrance without obstructing the door.
@@ -715,6 +768,14 @@ export function generateWorld(seed = 7) {
             }
             add(cx - 4.5, .07, z0 - 2.05, cx + 4.5, .15, z0 - 1.45, "#3a6372", "solid", false);
             add(cx - 4.2, .15, z0 - 2.08, cx + 4.2, .2, z0 - 1.52, "#a2c8c5", "glow", false);
+            // Freestanding campus directory with luminous route indicators.
+            add(cx - 1.45, .12, z0 - 3.0, cx + 1.45, 2.55, z0 - 2.82, "#263d49", "solid", false);
+            add(cx - 1.22, .42, z0 - 2.78, cx + 1.22, 2.28, z0 - 2.74, "#4b9cac", "glow", false);
+            for (let row = 0; row < 5; row++) {
+                const yy = .68 + row * .29;
+                add(cx - .86, yy, z0 - 2.72, cx + .74, yy + .06, z0 - 2.68, row % 2 ? "#d7e7e2" : "#a2d4d4", "glow", false);
+                add(cx + .82, yy - .015, z0 - 2.72, cx + 1.0, yy + .08, z0 - 2.68, "#f3d58b", "glow", false);
+            }
             lamps.push({ x: cx - 5.2, z: z0 - 2.6 }, { x: cx + 5.2, z: z0 - 2.6 });
 
             if (innovationType === "factory") {
@@ -727,6 +788,11 @@ export function generateWorld(seed = 7) {
                 add(cx - 6.1, .12, dockZ + .25, cx + 6.1, .34, dockZ + 1.55, "#61747a", "solid", false);
                 add(cx - 6.1, .34, dockZ + 1.4, cx + 6.1, .48, dockZ + 1.62, "#a2aeb0", "solid", false);
             }
+        }
+
+        if (district === "heritage" || district === "creative") {
+            add(cx - 1.1, 1.0, z0 - .48, cx + 1.1, 1.65, z0 - .34, "#3b4c52", "solid", false);
+            add(cx - .82, 1.16, z0 - .35, cx + .82, 1.5, z0 - .31, "#d4bb8d", "glow", false);
         }
 
         // Matching stone planters and low greenery frame the main entrances.
@@ -746,6 +812,21 @@ export function generateWorld(seed = 7) {
             const binX = cx - benchSide * (W / 2 + 1.1), binZ = cz - (gz % 2 === 0 ? -3.1 : 3.1);
             add(binX - .28, .08, binZ - .28, binX + .28, .82, binZ + .28, "#53666a", "solid", false);
             add(binX - .3, .82, binZ - .3, binX + .3, .91, binZ + .3, "#a8b0aa", "solid", false);
+        }
+
+        if (district !== "innovation" && (gx * 5 + gz * 2) % 4 === 1) {
+            const rackX = cx + (gx % 2 === 0 ? 1 : -1) * (W / 2 + 1.6);
+            const rackZ = cz + (gz % 2 === 0 ? -3.4 : 3.4);
+            for (let rack = 0; rack < 3; rack++) {
+                const x = rackX + rack * .82;
+                add(x - .055, .08, rackZ - .28, x + .055, .82, rackZ - .16, "#667a80", "solid", false);
+                add(x - .055, .08, rackZ + .16, x + .055, .82, rackZ + .28, "#667a80", "solid", false);
+                add(x - .055, .72, rackZ - .22, x + .055, .82, rackZ + .22, "#9aadb0", "solid", false);
+            }
+            const binX = rackX - (gx % 2 === 0 ? 1.15 : -1.15), binZ = rackZ + 1.2;
+            add(binX - .24, .08, binZ - .24, binX + .24, .72, binZ + .24, "#526a70", "solid", false);
+            add(binX - .26, .72, binZ - .26, binX + .26, .82, binZ + .26, "#a5b5b5", "solid", false);
+            add(binX - .16, .82, binZ - .27, binX + .16, .9, binZ - .23, "#70b8a3", "glow", false);
         }
 
         // Street trees line selected block edges, with varied spacing and canopy sizes.

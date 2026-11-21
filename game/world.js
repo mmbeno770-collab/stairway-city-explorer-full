@@ -12,7 +12,7 @@ export const CABLE_STATIONS = [
 ];
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const THEMES = [
-    { theme: "cafe", label: "בית קפה", floor: "#76523d" }, { theme: "library", label: "ספרייה", floor: "#584638" }, { theme: "gym", label: "חדר כושר", floor: "#343d49" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#d7d0c2" }, { theme: "office", label: "משרדים", floor: "#8d9b9d" }, { theme: "apartment", label: "דירת מגורים", floor: "#b99a72" }, { theme: "arcade", label: "אולם משחקים", floor: "#25283b" }, { theme: "garden", label: "גן פנימי", floor: "#637a4d" }, { theme: "music", label: "אולפן מוזיקה", floor: "#56383a" }, { theme: "kids", label: "חדר ילדים", floor: "#c3d0ce" },
+    { theme: "cafe", label: "בית קפה", floor: "#76523d" }, { theme: "library", label: "ספרייה", floor: "#584638" }, { theme: "gym", label: "חדר כושר", floor: "#343d49" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#d7d0c2" }, { theme: "office", label: "משרדים", floor: "#8d9b9d" }, { theme: "apartment", label: "דירת מגורים", floor: "#b99a72" }, { theme: "arcade", label: "אולם משחקים", floor: "#25283b" }, { theme: "garden", label: "גן פנימי", floor: "#637a4d" }, { theme: "music", label: "אולפן מוזיקה", floor: "#56383a" }, { theme: "kids", label: "חדר ילדים", floor: "#c3d0ce" }, { theme: "researchLab", label: "מעבדת מחקר", floor: "#c6d6d5" }, { theme: "dataCenter", label: "מרכז נתונים", floor: "#344955" }, { theme: "smartFactory", label: "ייצור מתקדם", floor: "#66747a" },
 ];
 const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
@@ -425,51 +425,92 @@ export function generateWorld(seed = 7) {
             continue;
         }
         // Neighbourhood identity is spatially consistent rather than randomly mixed block by block.
-        const district = gx >= 2 && gx <= 4 && gz >= 5 && gz <= 8
-            ? "heritage"
-            : gx >= 7 && gx <= 9 && gz >= 3 && gz <= 5
-                ? "garden"
-                : gx >= 2 && gx <= 4 && gz >= 2 && gz <= 4
-                    ? "creative"
-                    : "mixed";
+        const district = gx >= 5 && gx <= 8 && gz >= 7 && gz <= 9
+            ? "innovation"
+            : gx >= 2 && gx <= 4 && gz >= 5 && gz <= 8
+                ? "heritage"
+                : gx >= 7 && gx <= 9 && gz >= 3 && gz <= 5
+                    ? "garden"
+                    : gx >= 2 && gx <= 4 && gz >= 2 && gz <= 4
+                        ? "creative"
+                        : "mixed";
+        const innovationTypes = ["office", "research", "dataCenter", "factory"];
+        const innovationType = district === "innovation"
+            ? innovationTypes[(gx * 7 + gz * 3) % innovationTypes.length]
+            : null;
         const centrality = Math.abs(gx - Math.floor(GRID / 2)) + Math.abs(gz - Math.floor(GRID / 2));
         const cityCore = centrality <= 4;
         cx += (r() - .5) * (cityCore ? 2.0 : 4.6);
         cz += (r() - .5) * (cityCore ? 2.0 : 4.6);
-        const W = (district === "heritage" ? 12.4 : district === "garden" ? 12.8 : district === "creative" ? 13.6 : cityCore ? 15.5 : 12.5) + Math.floor(r() * 6) * (district === "heritage" ? .82 : 1.05);
-        const D = (district === "heritage" ? 12.1 : district === "garden" ? 13.1 : district === "creative" ? 13.4 : cityCore ? 14.5 : 12.5) + Math.floor(r() * 6) * .92;
-        const nFloors = district === "heritage" ? 2 + Math.floor(r() * 3)
-            : district === "garden" ? 2 + Math.floor(r() * 3)
-                : district === "creative" ? 3 + Math.floor(r() * 3)
-                    : cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
+        const W = district === "innovation"
+            ? 18.2 + Math.floor(r() * 5) * .78
+            : (district === "heritage" ? 12.4 : district === "garden" ? 12.8 : district === "creative" ? 13.6 : cityCore ? 15.5 : 12.5) + Math.floor(r() * 6) * (district === "heritage" ? .82 : 1.05);
+        const D = district === "innovation"
+            ? 17.3 + Math.floor(r() * 5) * .82
+            : (district === "heritage" ? 12.1 : district === "garden" ? 13.1 : district === "creative" ? 13.4 : cityCore ? 14.5 : 12.5) + Math.floor(r() * 6) * .92;
+        const nFloors = district === "innovation"
+            ? (innovationType === "office" ? 7 + Math.floor(r() * 3)
+                : innovationType === "research" ? 5 + Math.floor(r() * 3)
+                    : innovationType === "dataCenter" ? 4 + Math.floor(r() * 3)
+                        : 3 + Math.floor(r() * 3))
+            : district === "heritage" ? 2 + Math.floor(r() * 3)
+                : district === "garden" ? 2 + Math.floor(r() * 3)
+                    : district === "creative" ? 3 + Math.floor(r() * 3)
+                        : cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
         const x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2;
         const facadePalettes = {
             heritage: ["#c9ad90", "#b77b62", "#d6c1a2", "#a9826d", "#c8b18d"],
             garden: ["#c4c9b0", "#a8b8a7", "#d0c8ad", "#9eafa4", "#c6b99d"],
-            creative: ["#9aafb0", "#bd8c70", "#d0c5ae", "#879da3", "#b5a1a0"]
+            creative: ["#9aafb0", "#bd8c70", "#d0c5ae", "#879da3", "#b5a1a0"],
+            innovation: ["#31444f", "#4b6069", "#61747c", "#293d49", "#708087"]
         };
         const glassPalettes = {
             heritage: ["#92a7a4", "#a5aaa0"],
             garden: ["#a2c0b2", "#b5c9bc"],
-            creative: ["#79a8b2", "#9bbdb6"]
+            creative: ["#79a8b2", "#9bbdb6"],
+            innovation: ["#5b9eaa", "#77b6c1", "#80aebc", "#4b8798"]
         };
         const facadePalette = facadePalettes[district] || FACADES;
         const glassPalette = glassPalettes[district] || ["#83aab9", "#9bbdb6"];
         const facade = facadePalette[Math.floor(r() * facadePalette.length)];
         const glass = glassPalette[Math.floor(r() * glassPalette.length)];
-        const floors = [{ theme: "lobby", label: "לובי" }], pool = [...THEMES].sort(() => r() - .5);
-        for (let f = 1; f < nFloors; f++) floors.push(pool[(f - 1) % pool.length]);
+        const floors = [{
+            theme: district === "innovation" ? "innovationLobby" : "lobby",
+            label: district === "innovation" ? "לובי חדשנות" : "לובי"
+        }];
+        const pool = [...THEMES].sort(() => r() - .5);
+        const innovationFloorThemes = {
+            office: ["office", "office", "gallery", "library"],
+            research: ["researchLab", "researchLab", "office", "library"],
+            dataCenter: ["dataCenter", "dataCenter", "office", "researchLab"],
+            factory: ["smartFactory", "smartFactory", "researchLab", "office"]
+        };
+        for (let f = 1; f < nFloors; f++) {
+            if (district === "innovation") {
+                const themes = innovationFloorThemes[innovationType] || innovationFloorThemes.office;
+                const theme = themes[(f - 1) % themes.length];
+                floors.push(THEMES.find((item) => item.theme === theme) || THEMES[0]);
+            } else floors.push(pool[(f - 1) % pool.length]);
+        }
         const id = buildings.length;
         const sx0 = x0 + WALL_T, sx1 = sx0 + 4, sz1 = z1 - WALL_T, sz0 = sz1 - 6, t = WALL_T;
         const basementStairwell = { x0: sx0, x1: sx1, z0: sz0, z1: sz1 };
         const basementEntry = { x: sx0 + 1.05, y: .15, z: sz0 + .28 };
         // Place the lower exit right at the end of the final tread, clear of the next step.
         const basementExit = { x: sx0 + 3.05, y: -4, z: sz0 + .08 };
-        const buildingName = NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : "");
+        const innovationNames = {
+            office: "מגדל אופק",
+            research: "מרכז מחקר נובה",
+            dataCenter: "מרכז נתונים קוונטי",
+            factory: "מפעל ייצור חכם"
+        };
+        const buildingName = district === "innovation"
+            ? innovationNames[innovationType] + " " + (1 + (gx + gz) % 4)
+            : NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : "");
         const elevatorId = elevators.length, elevatorX = x1 - 1.65, elevatorZ = z0 + 4.15;
         const elevatorLayout = { id: elevatorId, buildingId: id, buildingName, x: elevatorX, z: elevatorZ, doorX: elevatorX - 1.35, approachX: elevatorX - 2.2, floors: nFloors + 1, basement: true };
         elevators.push(elevatorLayout);
-        buildings.push({ id, gridX: gx, gridZ: gz, district, name: buildingName, x0, z0, x1, z1, floors, basementStairwell, basementFloor: -1, elevatorId });
+        buildings.push({ id, gridX: gx, gridZ: gz, district, innovationType, name: buildingName, x0, z0, x1, z1, floors, basementStairwell, basementFloor: -1, elevatorId });
         const alleyLot = (district === "heritage" && gx === 3 && [6, 7].includes(gz))
             || (district === "garden" && gx === 8 && [3, 4].includes(gz))
             || (district === "creative" && gx === 3 && gz === 3);
@@ -591,6 +632,21 @@ export function generateWorld(seed = 7) {
                 add(sx1, y, sz0, sx1 + .1, y + 1.1, sz1, "#555");
                 const roofKind = roofDecor(add, inter, r, sx1 + 1, x1 - 1, z0 + 1, z1 - 1, y);
                 if (roofKind !== 0) addRooftopHelicopter((x0 + x1) / 2, y + .06, (z0 + z1) / 2, .68, 6.2);
+                if (district === "innovation") {
+                    const roofUnits = innovationType === "dataCenter" || innovationType === "factory" ? 4 : 2;
+                    for (let unit = 0; unit < roofUnits; unit++) {
+                        const ux = x0 + 2.2 + unit * ((W - 4.8) / Math.max(1, roofUnits - 1));
+                        const uz = z1 - 3.1;
+                        add(ux - .72, y + .08, uz - .62, ux + .72, y + 1.35, uz + .62, "#40545e", "solid", false);
+                        add(ux - .5, y + 1.35, uz - .42, ux + .5, y + 1.44, uz + .42, "#7eb8c1", "glow", false);
+                        add(ux - .52, y + .5, uz - .7, ux + .52, y + .62, uz - .64, "#263a45", "solid", false);
+                    }
+                    for (let panel = 0; panel < 3; panel++) {
+                        const px = x0 + 2.4 + panel * 2.45;
+                        add(px, y + .08, z0 + 1.4, px + 1.9, y + .2, z0 + 3.1, "#294d60", "solid", false);
+                        add(px + .1, y + .2, z0 + 1.5, px + 1.8, y + .23, z0 + 3.0, "#6eb4c1", "glow", false);
+                    }
+                }
                 break;
             }
             wall("x", x0, x1, z0 + t / 2, y, facade, f === 0, glass);
@@ -640,6 +696,39 @@ export function generateWorld(seed = 7) {
             add(shopX - shopWidth / 2 + .18, 2.49, z0 - 1.045, shopX + shopWidth / 2 - .18, 2.55, z0 - 1.01, "#f3d58a", "glow", false);
         });
 
+        if (district === "innovation") {
+            // A wide floating canopy frames the main entrance without obstructing the door.
+            for (const side of [-1, 1]) {
+                const pillarX = cx + side * 3.25;
+                add(pillarX - .18, .12, z0 - 1.22, pillarX + .18, 3.55, z0 - .94, "#66818c", "solid", false);
+                add(pillarX - .24, .12, z0 - 1.28, pillarX + .24, .24, z0 - .88, "#c4d2d2", "glow", false);
+            }
+            add(cx - 3.72, 3.45, z0 - 1.36, cx + 3.72, 3.72, z0 - .62, "#263d49", "solid", false);
+            add(cx - 3.48, 3.38, z0 - 1.42, cx + 3.48, 3.46, z0 - .58, "#68b7c5", "glow", false);
+            add(cx - 2.35, 3.92, z0 - .6, cx + 2.35, 4.02, z0 - .5, "#294552", "solid", false);
+            add(cx - 2.08, 3.94, z0 - .48, cx + 2.08, 4.0, z0 - .42, "#91d4d8", "glow", false);
+            // Tall metallic fins and soft cyan strips make the glazed facade read as a technology campus.
+            for (let fin = 0; fin < 5; fin++) {
+                const fx = x0 + 1.1 + fin * ((W - 2.2) / 4);
+                add(fx, .55, z0 - .18, fx + .12, Math.min(nFloors * FLOOR_H - .5, 13), z0 - .08, "#80949b", "solid", false);
+                if (fin % 2 === 0) add(fx + .14, .75, z0 - .17, fx + .2, Math.min(nFloors * FLOOR_H - .7, 12.8), z0 - .09, "#5bc5ce", "glow", false);
+            }
+            add(cx - 4.5, .07, z0 - 2.05, cx + 4.5, .15, z0 - 1.45, "#3a6372", "solid", false);
+            add(cx - 4.2, .15, z0 - 2.08, cx + 4.2, .2, z0 - 1.52, "#a2c8c5", "glow", false);
+            lamps.push({ x: cx - 5.2, z: z0 - 2.6 }, { x: cx + 5.2, z: z0 - 2.6 });
+
+            if (innovationType === "factory") {
+                const dockZ = z1 + 1.2;
+                for (const offset of [-4.2, 0, 4.2]) {
+                    add(cx + offset - 1.45, .12, dockZ - .1, cx + offset + 1.45, 2.95, dockZ + .14, "#263b45", "solid", false);
+                    add(cx + offset - 1.28, .26, dockZ - .16, cx + offset + 1.28, 2.78, dockZ - .1, "#6a838a", "solid", false);
+                    add(cx + offset - 1.38, 2.86, dockZ - .23, cx + offset + 1.38, 3.02, dockZ + .18, "#79b8c2", "glow", false);
+                }
+                add(cx - 6.1, .12, dockZ + .25, cx + 6.1, .34, dockZ + 1.55, "#61747a", "solid", false);
+                add(cx - 6.1, .34, dockZ + 1.4, cx + 6.1, .48, dockZ + 1.62, "#a2aeb0", "solid", false);
+            }
+        }
+
         // Matching stone planters and low greenery frame the main entrances.
         for (const side of [-1, 1]) {
             const planterX = cx + side * (W / 2 - .85), planterZ = z0 - 1.55;
@@ -682,6 +771,9 @@ export function generateWorld(seed = 7) {
             }
         } else if (district === "heritage") {
             lamps.push({ x: cx - 9.2, z: cz - 7.8 }, { x: cx + 9.2, z: cz + 7.8 });
+        } else if (district === "innovation") {
+            for (const dx of [-10.2, -5.1, 5.1, 10.2]) lamps.push({ x: cx + dx, z: cz + 10.8 });
+            for (const dx of [-8.4, 8.4]) trees.push({ x: cx + dx, z: cz + 11.5, s: .48 + r() * .08 });
         }
         lamps.push({ x: cx - BLOCK / 2 + 3, z: cz - BLOCK / 2 + 3 }, { x: cx + BLOCK / 2 - 3, z: cz + BLOCK / 2 - 3 });
     }
@@ -846,6 +938,79 @@ function furnish(add, inter, r, theme, x0, x1, z0, z1, y, ground) {
     const rug = (ax, az, bx, bz, col) => add(ax, y, az, bx, y + .02, bz, col, "solid", false);
     const clearFront = (x, z) => ground && Math.abs(x - cx) < 2 && z < z0 + 5;
     switch (theme) {
+        case "innovationLobby":
+            rug(cx - 4.1, z0 + 1.0, cx + 4.1, z0 + 7.0, "#263d49");
+            add(cx - 3.2, y, z1 - 2.2, cx + 3.2, y + .95, z1 - 1.15, "#314852", "solid", false);
+            add(cx - 3.0, y + .95, z1 - 2.12, cx + 3.0, y + 1.08, z1 - 1.22, "#b8c8c6", "solid", false);
+            add(cx - 2.82, y + .42, z1 - 1.12, cx + 2.82, y + .52, z1 - 1.04, "#64c7d1", "glow", false);
+            add(cx - 4.2, y + 1.7, z1 - .34, cx + 4.2, y + 3.35, z1 - .2, "#1e3441", "solid", false);
+            add(cx - 3.82, y + 1.92, z1 - .18, cx + 3.82, y + 3.12, z1 - .14, "#3d8fa3", "glow", false);
+            add(cx - 3.42, y + 2.1, z1 - .12, cx + 3.42, y + 2.94, z1 - .08, "#223f50", "solid", false);
+            for (let panel = 0; panel < 5; panel++) {
+                const px = cx - 3.05 + panel * 1.22;
+                add(px, y + 2.28, z1 - .06, px + .82, y + 2.72, z1 - .025, panel % 2 ? "#6dc5ce" : "#93d7d9", "glow", false);
+            }
+            for (const side of [-1, 1]) {
+                const columnX = cx + side * (W / 2 - .7);
+                add(columnX - .16, y, z0 + .4, columnX + .16, y + 3.25, z0 + .72, "#82969b", "solid", false);
+                add(columnX - .2, y + 3.1, z0 + .35, columnX + .2, y + 3.2, z0 + .78, "#8ce0de", "glow", false);
+                plant(cx + side * (W / 2 - 1.2), z0 + 2.2);
+            }
+            add(cx - 2.7, y + 2.65, z0 + 7.6, cx + 2.7, y + 3.15, z0 + 7.86, "#3d6f58", "solid", false);
+            for (let leaf = 0; leaf < 7; leaf++) {
+                const lx = cx - 2.35 + leaf * .78;
+                add(lx, y + 2.78, z0 + 7.84, lx + .45, y + 3.02, z0 + 7.98, leaf % 2 ? "#77aa75" : "#4e8b68", "solid", false);
+            }
+            add(cx - 3.1, y, z0 + 8.1, cx - .7, y + .48, z0 + 9.1, "#3a5867", "solid", false);
+            add(cx - 3.1, y + .48, z0 + 8.9, cx - .7, y + 1.08, z0 + 9.12, "#4d7180", "solid", false);
+            add(cx + .7, y, z0 + 8.1, cx + 3.1, y + .48, z0 + 9.1, "#3a5867", "solid", false);
+            add(cx + .7, y + .48, z0 + 8.9, cx + 3.1, y + 1.08, z0 + 9.12, "#4d7180", "solid", false);
+            for (const ox of [-1.9, 1.9]) inter.push({ type: "sofa", x: cx + ox, y, z: z0 + 8.55, face: Math.PI });
+            add(cx - .48, y + .38, z0 + 7.0, cx + .48, y + .48, z0 + 7.7, "#c9d3d0", "solid", false);
+            add(cx - .42, y + .48, z0 + 7.0, cx + .42, y + .54, z0 + 7.7, "#65bbc6", "glow", false);
+            for (let light = 0; light < 4; light++) {
+                const lx = cx - 3.3 + light * 2.2;
+                add(lx, y + 3.62, z0 + 3.0, lx + 1.25, y + 3.7, z0 + 3.16, "#8ad9dd", "glow", false);
+            }
+            break;
+        case "researchLab":
+            for (let bench = 0; bench < 3; bench++) {
+                const bx = x0 + 1.35 + bench * Math.max(2.2, (W - 3.8) / 3);
+                add(bx - .72, y + .86, z0 + 2.0, bx + .72, y + .98, z1 - 2.1, "#b9c7c5", "solid", false);
+                add(bx - .62, y + .98, z0 + 2.1, bx + .62, y + 1.25, z1 - 2.2, "#79c4ca", "glow", false);
+                for (let device = 0; device < 3; device++) {
+                    const dz = z0 + 3.0 + device * 3.0;
+                    add(bx - .38, y + 1.25, dz - .36, bx + .38, y + 2.05, dz + .36, "#536a75", "solid", false);
+                    add(bx - .28, y + 1.58, dz - .38, bx + .28, y + 1.9, dz - .35, "#8bd7df", "glow", false);
+                }
+            }
+            for (const side of [-1, 1]) plant(cx + side * (W / 2 - .8), z0 + 1.0);
+            break;
+        case "dataCenter":
+            for (let row = 0; row < 3; row++) {
+                const rackZ = z0 + 2.2 + row * Math.max(3, (D - 5) / 3);
+                for (let rack = 0; rack < 4; rack++) {
+                    const rackX = x0 + 1.0 + rack * Math.max(2.2, (W - 3.0) / 4);
+                    add(rackX - .72, y, rackZ - .62, rackX + .72, y + 2.65, rackZ + .62, "#263943", "solid", false);
+                    for (let level = 0; level < 5; level++) {
+                        const ledY = y + .32 + level * .43;
+                        add(rackX - .58, ledY, rackZ - .65, rackX + .58, ledY + .08, rackZ - .62, level % 2 ? "#5cbfc9" : "#86d9de", "glow", false);
+                    }
+                }
+            }
+            break;
+        case "smartFactory":
+            for (let line = 0; line < 2; line++) {
+                const lineZ = z0 + 3.0 + line * Math.max(4.2, D - 6.5);
+                add(x0 + 1.0, y + .62, lineZ - .58, x1 - 1.0, y + .82, lineZ + .58, "#596c73", "solid", false);
+                add(x0 + 1.0, y + .82, lineZ - .48, x1 - 1.0, y + .94, lineZ + .48, "#83bac0", "glow", false);
+                for (let station = 0; station < 4; station++) {
+                    const sx = x0 + 2 + station * Math.max(2.2, (W - 4) / 4);
+                    add(sx - .48, y + .98, lineZ - .62, sx + .48, y + 2.5, lineZ + .62, "#50636d", "solid", false);
+                    add(sx - .34, y + 2.15, lineZ - .65, sx + .34, y + 2.4, lineZ - .62, "#8ed5d8", "glow", false);
+                }
+            }
+            break;
         case "lobby":
             add(x1 - 4, y, z1 - 2.2, x1 - .5, y + 1.1, z1 - 1.4, "#554334");
             add(x1 - 4, y + 1.1, z1 - 2.25, x1 - .5, y + 1.18, z1 - 1.35, "#ded1b8");

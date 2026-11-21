@@ -635,8 +635,9 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
       const heritageLot = i >= 2 && i <= 4 && k >= 5 && k <= 8;
       const gardenQuarterLot = i >= 7 && i <= 9 && k >= 3 && k <= 5;
       const creativeLot = i >= 2 && i <= 4 && k >= 2 && k <= 4;
+      const innovationLot = i >= 5 && i <= 8 && k >= 7 && k <= 9;
       const coreLot = Math.abs(i - Math.floor(GRID / 2)) + Math.abs(k - Math.floor(GRID / 2)) <= 3;
-      const lotColor = parkLot ? "#788d65" : recreationLot ? "#87966e" : residentialLot ? "#9ca38b" : gardenQuarterLot ? "#a7ae96" : heritageLot ? "#b4a18e" : creativeLot ? "#aaa9a0" : civicLot ? "#aaa99c" : coreLot ? "#abaea9" : ((i + k) % 2 ? "#b8b5a9" : "#c0bbae");
+      const lotColor = parkLot ? "#788d65" : recreationLot ? "#87966e" : residentialLot ? "#9ca38b" : innovationLot ? "#8d9da0" : gardenQuarterLot ? "#a7ae96" : heritageLot ? "#b4a18e" : creativeLot ? "#aaa9a0" : civicLot ? "#aaa99c" : coreLot ? "#abaea9" : ((i + k) % 2 ? "#b8b5a9" : "#c0bbae");
       ctx.fillStyle = lotColor;
       ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
       ctx.strokeStyle = parkLot || recreationLot ? "#91a37a" : "#a49f91";
@@ -696,6 +697,21 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
         }
         ctx.stroke();
         ctx.restore();
+      } else if (innovationLot) {
+        ctx.fillStyle = "#9aa9ab";
+        ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
+        ctx.strokeStyle = "#697e83";
+        ctx.lineWidth = Math.max(.7, p * .22);
+        for (let stripe = 0; stripe < 6; stripe++) {
+          const xx = x + 2.0 + stripe * 4.3;
+          ctx.beginPath(); ctx.moveTo(to(xx), to(z + 1.1)); ctx.lineTo(to(xx), to(z + BLOCK - 9.1)); ctx.stroke();
+        }
+        ctx.strokeStyle = "#64aeb8";
+        ctx.lineWidth = Math.max(1.2, p * .4);
+        ctx.beginPath(); ctx.moveTo(to(x + 3), to(z + 4)); ctx.lineTo(to(x + 10), to(z + 4)); ctx.lineTo(to(x + 10), to(z + 10)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(to(x + BLOCK - 14), to(z + BLOCK - 13)); ctx.lineTo(to(x + BLOCK - 7), to(z + BLOCK - 13)); ctx.lineTo(to(x + BLOCK - 7), to(z + BLOCK - 7)); ctx.stroke();
+        ctx.strokeStyle = "#d0d9d4"; ctx.lineWidth = Math.max(1, 1.2 * p);
+        ctx.strokeRect(to(x + .45), to(z + .45), (BLOCK - 8 - .9) * p, (BLOCK - 8 - .9) * p);
       } else if (heritageLot) {
         ctx.strokeStyle = "#9d8974";
         ctx.lineWidth = Math.max(.8, .42 * p);

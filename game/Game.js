@@ -579,7 +579,7 @@ function UnderwaterAtmosphere({enabled,fogColor,fogNear,fogFar}){
  return null;
 }
 
-function Ground({ wet, buildings, busRoutes = [] }) {
+function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
   const data = useMemo(() => {
     const size = 1536;
     const surfaceCanvas = document.createElement("canvas");
@@ -729,6 +729,43 @@ function Ground({ wet, buildings, busRoutes = [] }) {
       ctx.lineWidth = Math.max(2.6, p * .48);
       ctx.setLineDash([p * 2.65, p * 1.45]);
     }
+    // Replace the straight lane paint on the selected blocks with gently curved markings.
+    // The wide asphalt stroke clears the old straight stripes without changing the road footprint.
+    for (const road of curvedRoads) {
+      const points = road.path || [];
+      if (points.length < 2) continue;
+      const strokeOffsetPath = (offset) => {
+        ctx.beginPath();
+        points.forEach((point, index) => {
+          const x = to(point.x), z = to(point.z + offset);
+          if (index === 0) ctx.moveTo(x, z); else ctx.lineTo(x, z);
+        });
+      };
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#303b43";
+      ctx.lineWidth = Math.max(8.2, p * 7.65);
+      strokeOffsetPath(0);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#fbfbf5";
+      ctx.lineWidth = Math.max(2.1, p * .34);
+      ctx.setLineDash([]);
+      for (const edge of [-3.72, 3.72]) {
+        strokeOffsetPath(edge);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "#ffe27a";
+      ctx.lineWidth = Math.max(2.6, p * .48);
+      ctx.setLineDash([p * 2.65, p * 1.45]);
+      for (const offset of [-.13, .13]) {
+        strokeOffsetPath(offset);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     // The central boulevard's planted median is painted into the ground texture too.
     const boulevardX = -CITY_HALF + Math.floor(GRID / 2) * BLOCK;
     ctx.fillStyle = "#71855f";
@@ -779,7 +816,7 @@ function Ground({ wet, buildings, busRoutes = [] }) {
     }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = true;
     return { texture, surfaceTexture, total };
-  }, [buildings, busRoutes]);
+  }, [buildings, busRoutes, curvedRoads]);
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
@@ -1759,7 +1796,7 @@ export default function Game() {
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
-        h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes }),
+        h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads }),
         h(MarineWorld, { marine, boats, divingRef, quality }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),

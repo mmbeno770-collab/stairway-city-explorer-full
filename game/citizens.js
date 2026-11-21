@@ -306,20 +306,47 @@ function pedestrianInCarPath(car, walkers) {
   return false;
 }
 
-function getTrafficLane(car) {
+function getTrafficLane(car, world) {
   const laneAxis = Math.abs(Math.sin(car.yaw)) >= Math.abs(Math.cos(car.yaw)) ? "x" : "z";
   const crossCoordinate = laneAxis === "x" ? car.z : car.x;
   const laneCenter = -CITY_HALF + Math.round((crossCoordinate + CITY_HALF) / BLOCK) * BLOCK;
   const laneDirection = laneAxis === "x"
     ? Math.sign(Math.sin(car.yaw)) || 1
     : Math.sign(Math.cos(car.yaw)) || 1;
+  const curvedRoad = laneAxis === "x"
+    ? (world.curvedRoads || []).find((road) => Math.abs(road.base - laneCenter) < .1) || null
+    : null;
   return {
-    laneAxis, laneCenter, laneDirection,
+    laneAxis, laneCenter, laneDirection, curvedRoad,
     laneOffset: crossCoordinate - laneCenter
   };
 }
 
 function autonomousCarSteering(car, driver) {
+  if (driver.curvedRoad?.path?.length && driver.laneAxis === "x") {
+    const path = driver.curvedRoad.path;
+    let nearestIndex = 0, nearestDistance = Infinity;
+    for (let index = 0; index < path.length; index++) {
+      const point = path[index];
+      const dx = car.x - point.x, dz = car.z - (point.z + driver.laneOffset);
+      const distance = dx * dx + dz * dz;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    }
+    const nearest = path[nearestIndex];
+    if (nearest && car.x >= driver.curvedRoad.start - 5 && car.x <= driver.curvedRoad.end + 5) {
+      const lookAhead = clamp(6.2 + Math.abs(car.speed || 0) * .52, 7, 14);
+      const stepSize = (driver.curvedRoad.end - driver.curvedRoad.start) / (path.length - 1);
+      const lookSteps = Math.max(2, Math.round(lookAhead / stepSize));
+      const targetIndex = clamp(nearestIndex + driver.laneDirection * lookSteps, 0, path.length - 1);
+      const target = path[targetIndex];
+      const targetYaw = Math.atan2(target.x - car.x, target.z + driver.laneOffset - car.z);
+      return clamp(angleDiff(targetYaw, car.yaw) * 1.18, -.48, .48);
+    }
+  }
+
   const targetYaw = driver.laneAxis === "x"
     ? (driver.laneDirection > 0 ? Math.PI / 2 : -Math.PI / 2)
     : (driver.laneDirection > 0 ? 0 : Math.PI);
@@ -593,7 +620,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   cars.forEach((car, carIndex) => {
     if (!car.npcControlled) return;
     const start = localOffset(car.x, car.z, 3.25, -.15, car.yaw);
-    const lane = getTrafficLane(car);
+    const lane = getTrafficLane(car, world);
     drivers.push({
       id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach",
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),

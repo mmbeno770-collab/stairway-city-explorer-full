@@ -596,6 +596,22 @@ export function generateWorld(seed = 7) {
             add(boulevardX - .42, .2, middleZ + shrubZ - .55, boulevardX + .42, .72, middleZ + shrubZ + .55, shrubZ === 0 ? "#52784d" : "#668653", "solid", false);
         }
     }
+    // Two local streets gently meander between the existing intersections.
+    // Their small offsets keep the full two-way carriageway inside the original road width.
+    const curvedRoads = [
+        { id: 0, axis: "x", base: 18, start: -72, end: 72, amplitude: 1.08, phase: 0 },
+        { id: 1, axis: "x", base: -54, start: -108, end: 108, amplitude: .92, phase: Math.PI * .5 }
+    ].map((road) => ({
+        ...road,
+        path: Array.from({ length: 49 }, (_, index) => {
+            const t = index / 48;
+            const x = road.start + (road.end - road.start) * t;
+            const envelope = Math.sin(Math.PI * t);
+            const offset = road.amplitude * Math.sin(Math.PI * 2 * t + road.phase) * envelope;
+            return { x, z: road.base + offset };
+        })
+    }));
+
     // A four-stop orbital bus route follows the main road network around downtown.
     const busStopLayout = [
         { id: 0, x: 0, z: -84.8, roadX: 0, roadZ: -92.2, axis: "x", name: "תחנת השדרה הצפונית" },
@@ -718,7 +734,7 @@ export function generateWorld(seed = 7) {
     // Open perimeter lets visitors reach the beach and boarding points.
     const b0 = buildings[0];
     const trafficSignals = crosswalks.filter((crossing) => crossing.signal);
-    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, busStops, busRoutes, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, busStops, busRoutes, curvedRoads, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

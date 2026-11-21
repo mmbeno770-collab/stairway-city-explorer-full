@@ -579,7 +579,7 @@ function UnderwaterAtmosphere({enabled,fogColor,fogNear,fogFar}){
  return null;
 }
 
-function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
+function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = [], publicSpaces = [] }) {
   const data = useMemo(() => {
     const size = 1536;
     const surfaceCanvas = document.createElement("canvas");
@@ -632,13 +632,16 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
       const recreationLot = (i === 8 && k === 2) || (i === 7 && k === 8);
       const residentialLot = (i === 0 || i === GRID - 1 || k === 0 || k === GRID - 1) && (i + k) % 2 === 0;
       const civicLot = (i === 4 && k === 3) || (i === 7 && k === 6);
+      const heritageLot = i >= 2 && i <= 4 && k >= 5 && k <= 8;
+      const gardenQuarterLot = i >= 7 && i <= 9 && k >= 3 && k <= 5;
+      const creativeLot = i >= 2 && i <= 4 && k >= 2 && k <= 4;
       const coreLot = Math.abs(i - Math.floor(GRID / 2)) + Math.abs(k - Math.floor(GRID / 2)) <= 3;
-      const lotColor = parkLot ? "#788d65" : recreationLot ? "#87966e" : residentialLot ? "#9ca38b" : civicLot ? "#aaa99c" : coreLot ? "#abaea9" : ((i + k) % 2 ? "#b8b5a9" : "#c0bbae");
+      const lotColor = parkLot ? "#788d65" : recreationLot ? "#87966e" : residentialLot ? "#9ca38b" : gardenQuarterLot ? "#a7ae96" : heritageLot ? "#b4a18e" : creativeLot ? "#aaa9a0" : civicLot ? "#aaa99c" : coreLot ? "#abaea9" : ((i + k) % 2 ? "#b8b5a9" : "#c0bbae");
       ctx.fillStyle = lotColor;
       ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
       ctx.strokeStyle = parkLot || recreationLot ? "#91a37a" : "#a49f91";
       ctx.lineWidth = .8;
-      if (parkLot || recreationLot || civicLot) {
+      if (parkLot || recreationLot || civicLot || gardenQuarterLot) {
         ctx.save();
         const left = x + 1.1, top = z + 1.1, right = x + BLOCK - 9.1, bottom = z + BLOCK - 9.1;
         ctx.beginPath();
@@ -648,7 +651,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
         ctx.bezierCurveTo(to(right - 14.8), to(bottom + 1.4), to(left + 8.0), to(bottom - .1), to(left + 2.4), to(bottom - 6.1));
         ctx.bezierCurveTo(to(left - .7), to(bottom - 12.6), to(left - 1.1), to(top + 12.0), to(left + 2.4), to(top + 5.4));
         ctx.closePath();
-        ctx.fillStyle = parkLot ? "#718760" : recreationLot ? "#7b8e67" : "#98a184";
+        ctx.fillStyle = parkLot ? "#718760" : recreationLot ? "#7b8e67" : gardenQuarterLot ? "#829575" : "#98a184";
         ctx.fill();
         ctx.strokeStyle = parkLot || recreationLot ? "#90a37a" : "#b0a88f";
         ctx.lineWidth = Math.max(.8, p * .22);
@@ -658,7 +661,9 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
           ? [[7.2, 7.8, 4.8, 2.5], [23.5, 8.2, 5.1, 2.4], [8.8, 26.0, 5.8, 2.7], [25.2, 25.0, 4.3, 2.2]]
           : recreationLot
             ? [[6.5, 8.2, 4.8, 2.6], [25.3, 8.8, 4.2, 2.4], [7.5, 26.2, 5.0, 2.5], [25.2, 25.0, 4.6, 2.4]]
-            : [[6.2, 7.0, 4.8, 2.2], [25.0, 8.5, 4.5, 2.3], [7.4, 26.0, 4.4, 2.4], [25.0, 25.2, 4.9, 2.1]];
+            : gardenQuarterLot
+              ? [[5.4, 8.2, 5.1, 2.6], [23.0, 8.6, 4.8, 2.5], [7.0, 24.5, 5.4, 2.4], [24.5, 24.0, 4.2, 2.2]]
+              : [[6.2, 7.0, 4.8, 2.2], [25.0, 8.5, 4.5, 2.3], [7.4, 26.0, 4.4, 2.4], [25.0, 25.2, 4.9, 2.1]];
         for (const [dx, dz, rx, rz] of beds) {
           ctx.beginPath();
           ctx.ellipse(to(x + dx), to(z + dz), rx * p, rz * p, .12, 0, Math.PI * 2);
@@ -680,6 +685,10 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
           ctx.moveTo(to(x + 5), to(z + 8));
           ctx.bezierCurveTo(to(x + 13), to(z + 15), to(x + 7), to(z + 23), to(x + 17), to(z + 28));
           ctx.bezierCurveTo(to(x + 24), to(z + 31), to(x + 27), to(z + 21), to(x + 23), to(z + 17));
+        } else if (gardenQuarterLot) {
+          ctx.moveTo(to(x + 3), to(z + 20));
+          ctx.bezierCurveTo(to(x + 9), to(z + 10), to(x + 19), to(z + 12), to(x + 23), to(z + 4));
+          ctx.bezierCurveTo(to(x + 28), to(z + 12), to(x + 20), to(z + 22), to(x + 29), to(z + 29));
         } else {
           ctx.moveTo(to(x + 4), to(z + 18));
           ctx.bezierCurveTo(to(x + 10), to(z + 5), to(x + 25), to(z + 5), to(x + 29), to(z + 15));
@@ -687,6 +696,23 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
         }
         ctx.stroke();
         ctx.restore();
+      } else if (heritageLot) {
+        ctx.strokeStyle = "#9d8974";
+        ctx.lineWidth = Math.max(.8, .42 * p);
+        const brickW = 3.25, brickH = 1.55;
+        for (let row = 0; row < 18; row++) {
+          const zz = z + row * brickH;
+          ctx.beginPath();
+          ctx.moveTo(to(x), to(zz)); ctx.lineTo(to(x + BLOCK - 8), to(zz));
+          ctx.stroke();
+          const offset = row % 2 ? brickW / 2 : 0;
+          for (let col = -1; col < 9; col++) {
+            const xx = x + col * brickW + offset;
+            ctx.beginPath(); ctx.moveTo(to(xx), to(zz)); ctx.lineTo(to(xx), to(zz + brickH)); ctx.stroke();
+          }
+        }
+        ctx.strokeStyle = "#d5c1a6"; ctx.lineWidth = Math.max(1, 1.35 * p);
+        ctx.strokeRect(to(x + .45), to(z + .45), (BLOCK - 8 - .9) * p, (BLOCK - 8 - .9) * p);
       } else {
         const tileSize = 2.05 + ((i * 3 + k * 5) % 3) * .45;
         for (let t = 0; t < BLOCK - 8; t += tileSize) {
@@ -701,6 +727,44 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
         ctx.fillRect(to(x + 1.1), to(z + 2.4), 5.2 * p, 3.4 * p);
         ctx.fillRect(to(x + BLOCK - 14), to(z + BLOCK - 13), 5.5 * p, 3.6 * p);
       }
+    }
+    for (const plaza of publicSpaces) {
+      const px = to(plaza.x), pz = to(plaza.z), rx = plaza.radiusX * p, rz = plaza.radiusZ * p;
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(px, pz, rx, rz, -.12, 0, Math.PI * 2);
+      ctx.fillStyle = plaza.style === "garden" ? "#9aa98b" : "#b7a58c";
+      ctx.fill();
+      ctx.strokeStyle = plaza.style === "garden" ? "#d5c8a6" : "#8c775f";
+      ctx.lineWidth = Math.max(1.4, p * .34);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(px, pz, rx * .82, rz * .78, -.12, 0, Math.PI * 2);
+      ctx.strokeStyle = plaza.style === "garden" ? "#d7d0b4" : "#d6c5a8";
+      ctx.lineWidth = Math.max(1.5, p * .42);
+      ctx.setLineDash([p * 1.8, p * .9]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (plaza.style === "heritage") {
+        ctx.strokeStyle = "#a48e74";
+        ctx.lineWidth = Math.max(.7, p * .2);
+        for (let spoke = 0; spoke < 12; spoke++) {
+          const angle = spoke / 12 * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(px + Math.cos(angle) * rx * .42, pz + Math.sin(angle) * rz * .42);
+          ctx.lineTo(px + Math.cos(angle) * rx * .74, pz + Math.sin(angle) * rz * .7);
+          ctx.stroke();
+        }
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(to(plaza.x - 7.5), to(plaza.z + 6.8));
+        ctx.bezierCurveTo(to(plaza.x - 3), to(plaza.z + 1.5), to(plaza.x + 4), to(plaza.z + 7), to(plaza.x + 8.0), to(plaza.z + 2.8));
+        ctx.strokeStyle = "#e3d6b8";
+        ctx.lineWidth = Math.max(2.2, p * 1.0);
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+      ctx.restore();
     }
     ctx.fillStyle = "#f2e9c9";
     for (let i = 0; i <= GRID; i++) {
@@ -766,6 +830,31 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
       }
       ctx.restore();
     }
+    for (const alley of alleyways) {
+      const points = alley.points || [];
+      if (points.length < 2) continue;
+      const trace = () => {
+        ctx.beginPath();
+        points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo(to(point.x), to(point.z));
+          else ctx.lineTo(to(point.x), to(point.z));
+        });
+      };
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#8d8475";
+      ctx.lineWidth = Math.max(4, p * (alley.width || 1.8) * 1.18);
+      trace(); ctx.stroke();
+      ctx.strokeStyle = alley.district === "garden" ? "#d4c9a8" : alley.district === "heritage" ? "#c9b28f" : "#bcb5a5";
+      ctx.lineWidth = Math.max(3, p * (alley.width || 1.8) * .88);
+      trace(); ctx.stroke();
+      ctx.strokeStyle = "rgba(91,82,69,.46)";
+      ctx.lineWidth = Math.max(.8, p * .12);
+      ctx.setLineDash([p * .7, p * .65]);
+      trace(); ctx.stroke();
+      ctx.restore();
+    }
     // The central boulevard's planted median is painted into the ground texture too.
     const boulevardX = -CITY_HALF + Math.floor(GRID / 2) * BLOCK;
     ctx.fillStyle = "#71855f";
@@ -816,7 +905,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [] }) {
     }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = true;
     return { texture, surfaceTexture, total };
-  }, [buildings, busRoutes, curvedRoads]);
+  }, [buildings, busRoutes, curvedRoads, alleyways, publicSpaces]);
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
@@ -1796,7 +1885,7 @@ export default function Game() {
         h("hemisphereLight", { args: [environment.hemisphereSky, environment.hemisphereGround, environment.hemisphereIntensity] }), h("ambientLight", { intensity: environment.ambientIntensity }),
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
-        h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads }),
+        h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
         h(MarineWorld, { marine, boats, divingRef, quality }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),

@@ -284,6 +284,35 @@ function makeSocialSeatDestinations(world) {
     });
 }
 
+function makeBusStopDestinations(world) {
+  return (world.busStops || []).map((stop) => {
+    const gridX = clamp(Math.floor((stop.x + CITY_HALF) / BLOCK), 0, 10);
+    const gridZ = clamp(Math.floor((stop.z + CITY_HALF) / BLOCK), 0, 10);
+    const proxyBuilding = {
+      gridX, gridZ,
+      x0: stop.x - 5.7, x1: stop.x + 5.7,
+      z0: stop.z - 5.3, z1: stop.z + 5.3
+    };
+    const point = stop.axis === "x"
+      ? { x: stop.x + 3.45, z: stop.z - Math.sign(stop.roadZ - stop.z) * 1.55 }
+      : { x: stop.x - Math.sign(stop.roadX - stop.x) * 1.55, z: stop.z + 3.45 };
+    return { ...stop, gridX, gridZ, point, proxyBuilding };
+  });
+}
+
+function chooseBusStop(person, stops) {
+  let best = null, bestScore = Infinity;
+  for (const stop of stops) {
+    const gridDistance = Math.abs(stop.gridX - person.building.gridX) + Math.abs(stop.gridZ - person.building.gridZ);
+    if (gridDistance > 1) continue;
+    const distance = Math.hypot(stop.point.x - person.x, stop.point.z - person.z);
+    if (distance > 39) continue;
+    const score = distance + nextRandom(person) * 2;
+    if (score < bestScore) { best = stop; bestScore = score; }
+  }
+  return best;
+}
+
 function chooseSocialSeat(person, seats) {
   let best = null, bestScore = Infinity;
   for (const seat of seats) {
@@ -548,6 +577,7 @@ function autonomousTrafficSignal(car, driver, world, now) {
 }
 
 function updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv) {
+  driver.passengerIds ||= [];
   const path = driver.busRoute;
   if (!path?.length) return;
   if (driver.busStopTimer > 0) {
@@ -569,14 +599,62 @@ function updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv) {
   }
   const distance = Math.hypot(target.x - car.x, target.z - car.z);
   if (target.stopId !== undefined && distance < 2.35 && Math.abs(car.speed || 0) < 1.25) {
-    const exiting = Math.min(driver.passengerCount, target.stopId % 2 + 1);
-    const boarding = [2, 3, 1, 2][target.stopId] || 1;
-    driver.passengerCount = Math.min(5, driver.passengerCount - exiting + boarding);
+    const stop = (world.busStops || []).find((item) => item.id === target.stopId);
+    const exitIds = driver.passengerIds.filter((id) =>
+      walkers.some((person) => person.id === id && person.busDestinationStopId === target.stopId)
+    );
+    for (const id of exitIds) {
+      const person = walkers.find((item) => item.id === id);
+      if (!person) continue;
+      driver.passengerIds = driver.passengerIds.filter((passengerId) => passengerId !== id);
+      person.onBus = false;
+      person.waitingForBus = false;
+      person.hidden = false;
+      person.busDriverId = null;
+      person.busDestinationStopId = null;
+      person.visiting = false;
+      person.visitKind = "";
+      person.visitTarget = null;
+      person.route = person.sidewalkRoute;
+      const side = person.rngState % 2 ? 1 : -1;
+      person.x = stop ? stop.x + (stop.axis === "x" ? side * 3.55 : -Math.sign(stop.roadX - stop.x) * 1.5) : person.x;
+      person.z = stop ? stop.z + (stop.axis === "x" ? -Math.sign(stop.roadZ - stop.z) * 1.5 : side * 3.55) : person.z;
+      person.y = carEnv.ground(person.x, person.z, 0);
+      person.waypoint = nearestLoopIndex(person.sidewalkRoute, person.x, person.z);
+      person.wait = 1.15;
+      person.visitCountdown = nextPersonalVisitDelay(person);
+      person.socialCooldown = 12;
+      person.bubbleText = "הגעתי לתחנה, תודה על הנסיעה!";
+      person.bubbleUntil = now + 3;
+      if (person.rig.root) {
+        person.rig.root.position.set(person.x, person.y, person.z);
+        person.rig.root.visible = true;
+      }
+    }
+    const capacity = 5;
+    const waiting = walkers.filter((person) => person.waitingForBus && !person.onBus
+      && person.waitingBusStopId === target.stopId)
+      .sort((a, b) => a.busQueueSlot - b.busQueueSlot || a.id.localeCompare(b.id));
+    const boarding = waiting.slice(0, Math.max(0, capacity - driver.passengerIds.length));
+    for (const person of boarding) {
+      person.waitingForBus = false;
+      person.onBus = true;
+      person.busDriverId = driver.id;
+      const stopCount = Math.max(1, (world.busStops || []).length);
+      const travelStops = 1 + Math.floor(nextRandom(person) * Math.min(2, stopCount - 1));
+      person.busDestinationStopId = (target.stopId + travelStops) % stopCount;
+      person.bubbleText = "";
+      person.bubbleUntil = 0;
+      person.hidden = true;
+      if (person.rig.root) person.rig.root.visible = false;
+      driver.passengerIds.push(person.id);
+    }
+    driver.passengerCount = driver.passengerIds.length;
     car.passengerCount = driver.passengerCount;
     car.speed = 0;
     car.brake = true;
     car.doorOpen = true;
-    driver.busStopTimer = 4.6;
+    driver.busStopTimer = Math.max(3.8, 3.8 + boarding.length * .65 + exitIds.length * .45);
     return;
   }
   if (target.stopId === undefined && distance < 2.9) {
@@ -749,6 +827,8 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       socialPairPartnerId: null, socialPairRole: "", socialPairUntil: 0, socialPairSide: 0,
       socialPairChatTimer: 0, socialPairReplyTimer: 0, socialPairReplyText: "",
       socialPairCooldown: 5 + (i % 4) * 2,
+      waitingForBus: false, waitingBusStopId: null, busQueueSlot: 0, busWaitTimer: 0,
+      onBus: false, busDriverId: null, busDestinationStopId: null,
       seatReturnRoute: null, returningFromSeat: false,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
@@ -757,6 +837,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   }
 
   const socialSeats = makeSocialSeatDestinations(world);
+  const busStops = makeBusStopDestinations(world);
 
   const drivers = [];
   cars.forEach((car, carIndex) => {
@@ -767,7 +848,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach",
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),
       ...lane, busRoute: Number.isInteger(car.busRouteId) ? (world.busRoutes || []).find((route) => route.id === car.busRouteId)?.path || null : null,
-      busRouteIndex: 1, busStopTimer: 0, passengerCount: car.passengerCount || 0,
+      busRouteIndex: 1, busStopTimer: 0, passengerCount: 0, passengerIds: [],
       turnTimer: 0, turnElapsed: 0, turnDuration: 2.8,
       distanceLeft: 34 + drivers.length * 9,
       blocked: 0, routePause: 0, phase: 0, tOffset: 5 + drivers.length
@@ -801,7 +882,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       waypoint: 0, phase: 0, tOffset: 18
     });
   });
-  return { walkers, drivers, airPilots, heliPilots, socialSeats, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
+  return { walkers, drivers, airPilots, heliPilots, socialSeats, busStops, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
 }
 
 export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle }) {
@@ -816,7 +897,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
     const dt = Math.min(simulationClock.current, .045);
     simulationClock.current = 0;
     const now = state.clock.elapsedTime;
-    const walkers = sim.walkers, drivers = sim.drivers, socialSeats = sim.socialSeats;
+    const walkers = sim.walkers, drivers = sim.drivers, socialSeats = sim.socialSeats, busStops = sim.busStops;
     const carEnv = {
       ground: (x, z, y) => collider.groundAt(x, z, y, .65, 1),
       resolve: (point, yLo, yHi, radius, ignore) => {
@@ -932,6 +1013,37 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleText = person.socialPairReplyText;
           person.bubbleUntil = now + 2.7;
           person.socialPairReplyText = "";
+        }
+      }
+      if (person.onBus) {
+        if (rig.root) rig.root.visible = false;
+        continue;
+      }
+      if (person.waitingForBus) {
+        person.busWaitTimer = Math.max(0, person.busWaitTimer - dt);
+        if (person.busWaitTimer <= 0) {
+          person.waitingForBus = false;
+          person.waitingBusStopId = null;
+          person.visiting = false;
+          person.visitKind = "";
+          person.visitTarget = null;
+          person.route = person.sidewalkRoute;
+          person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
+          person.visitCountdown = 5;
+          person.wait = .25;
+          person.bubbleText = "האוטובוס מתעכב, אמשיך ברגל.";
+          person.bubbleUntil = now + 2.8;
+        } else {
+          const stop = busStops.find((item) => item.id === person.waitingBusStopId);
+          if (stop) person.yaw = Math.atan2(stop.roadX - stop.x, stop.roadZ - stop.z);
+          if (rig.root) {
+            rig.root.position.set(person.x, person.y, person.z);
+            rig.root.rotation.y = person.yaw;
+            rig.root.visible = true;
+          }
+          person.phase += dt * .18;
+          poseHuman(rig, { mode: "observe", style: "look", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+          continue;
         }
       }
       if (conversationRef?.current?.personId === person.id) {
@@ -1056,8 +1168,17 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       }
       if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId) person.visitCountdown -= dt;
       if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId && person.visitCountdown <= 0) {
-        const seat = nextRandom(person) < .42 ? chooseSocialSeat(person, socialSeats) : null;
-        if (seat) {
+        const busStop = nextRandom(person) < .24 ? chooseBusStop(person, busStops) : null;
+        const seat = busStop ? null : (nextRandom(person) < .42 ? chooseSocialSeat(person, socialSeats) : null);
+        if (busStop) {
+          person.visitKind = "busStop";
+          person.visitTarget = busStop.proxyBuilding;
+          person.busWaitTimer = randomRange(person, 24, 42);
+          person.busQueueSlot = Math.abs(person.rngState) % 8;
+          person.visitRoute = [{ x: busStop.point.x, y: 0, z: busStop.point.z, action: "busWait", stopId: busStop.id }];
+          person.visiting = true;
+          person.route = routeToVisit(person, busStop.proxyBuilding, world);
+        } else if (seat) {
           seat.occupiedBy = person.id;
           person.visitKind = "seat";
           person.seatTarget = seat;
@@ -1215,6 +1336,17 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
             : ["הפסקת קפה קצרה, ואז ממשיכים.", "כיף לשבת קצת ליד הרחוב.", "המקום הזה מתאים בדיוק לעצירה."];
           person.bubbleText = lines[Math.floor(nextRandom(person) * lines.length)];
           person.bubbleUntil = now + 3.2;
+        } else if (target.action === "busWait") {
+          person.waitingForBus = true;
+          person.waitingBusStopId = target.stopId;
+          person.visiting = true;
+          person.visitKind = "busStop";
+          person.wait = 0;
+          const stop = busStops.find((item) => item.id === target.stopId);
+          if (stop) person.yaw = Math.atan2(stop.roadX - stop.x, stop.roadZ - stop.z);
+          person.bubbleText = "מחכה לאוטובוס...";
+          person.bubbleUntil = now + 2.6;
+          person.waypoint++;
         } else if (target.action === "pause") {
           person.waypoint++;
           person.wait = Math.max(person.wait, 1.35);

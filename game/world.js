@@ -982,7 +982,7 @@ export function generateWorld(seed = 7) {
     inter.push({
         type: "car", x: -70, y: .12, z: -92.2, face: Math.PI / 2,
         color: "#277c98", kind: "bus", vehicleId: "city-loop-bus",
-        npcControlled: true, busRouteId: 0, passengerCount: 3
+        npcControlled: true, busRouteId: 0, passengerCount: 0
     });
 
     // Painted zebra crossings align with the sidewalk-to-sidewalk routes used by pedestrians.

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { CITY_HALF } from "./world.js";
@@ -265,7 +265,7 @@ function IslandAnimal({animal}){
   legRefs.current.forEach((leg,i)=>{if(leg)leg.rotation.x=stride*(i%2?-.24:.24);});
   wingRefs.current.forEach((wing,i)=>{if(wing)wing.rotation.z=(i===0?-1:1)*Math.sin(t*6.2+animal.phase)*.36;});
  });
- const animalColor={penguin:"#273b46",fox:"#bd7042",arcticFox:"#f2eee4",deer:"#a97c4d",moose:"#765538",lizard:"#5d9363",seal:"#829ca5",polarBear:"#ece9df",bear:"#765b49",wolf:"#8d9195",owl:"#92765a",parrot:"#27a77b",toucan:"#253b40",monkey:"#9a6842",crab:"#d65b45",goat:"#ded6c1",ibex:"#96734d",turtle:"#607b49",rabbit:"#d3c7b5",flamingo:"#e58e9f",camel:"#bf925d",fennec:"#d5b47a",eagle:"#715b45",otter:"#705c4d",duck:"#c7a45d",peacock:"#267c83",squirrel:"#9b6946",raccoon:"#65686a",seaLion:"#687f89",snowOwl:"#eee9df",reindeer:"#8a6447",hare:"#c9c0b6",snowFox:"#e9e3d9",walrus:"#71645d",hedgehog:"#88735d",goose:"#e4e0d6",boar:"#665044",woodpecker:"#b64e3e",badger:"#77736c",mountainGoat:"#ddd7c8",vulture:"#6b5c4a",gecko:"#739b63",scorpion:"#9b7951",desertOwl:"#d7c19a",jerboa:"#c8a77d",gazelle:"#c08c5c",seagull:"#e7e9e4",ray:"#526b78",pelican:"#d9d5c8",wildBoar:"#665044"}[animal.type]||"#72876a";
+ const animalColor={penguin:"#273b46",fox:"#bd7042",arcticFox:"#f2eee4",deer:"#a97c4d",moose:"#765538",lizard:"#5d9363",seal:"#829ca5",polarBear:"#ece9df",bear:"#765b49",wolf:"#8d9195",owl:"#92765a",parrot:"#27a77b",toucan:"#253b40",monkey:"#9a6842",crab:"#d65b45",goat:"#ded6c1",ibex:"#96734d",turtle:"#607b49",rabbit:"#d3c7b5",flamingo:"#e58e9f",camel:"#bf925d",fennec:"#d5b47a",eagle:"#715b45",otter:"#705c4d",duck:"#c7a45d",peacock:"#267c83",squirrel:"#9b6946",raccoon:"#65686a",seaLion:"#687f89",snowOwl:"#eee9df",reindeer:"#8a6447",hare:"#c9c0b6",snowFox:"#e9e3d9",walrus:"#71645d",hedgehog:"#88735d",goose:"#e4e0d6",boar:"#665044",woodpecker:"#b64e3e",badger:"#77736c",mountainGoat:"#ddd7c8",vulture:"#6b5c4a",gecko:"#739b63",scorpion:"#9b7951",desertOwl:"#d7c19a",jerboa:"#c8a77d",gazelle:"#c08c5c",horse:"#8a5c3e",seagull:"#e7e9e4",ray:"#526b78",pelican:"#d9d5c8",wildBoar:"#665044"}[animal.type]||"#72876a";
  const bodyMat=new THREE.MeshStandardMaterial({color:animalColor,roughness:.9}),white=new THREE.MeshStandardMaterial({color:"#f1f1e9"}),feetMat=new THREE.MeshStandardMaterial({color:animal.type==="penguin"?"#eaa64a":"#51493e"});
  return React.createElement("group",{ref,position:[animal.x,.27,animal.z],scale:animal.scale},
   React.createElement("mesh",{position:[0,.62,0],material:bodyMat},React.createElement("sphereGeometry",{args:[(animal.type==="penguin"||animal.type==="seal") ? .38 : .55,(animal.type==="penguin"||animal.type==="seal") ? .58 : .36,.34]})),
@@ -365,22 +365,101 @@ function createIslandTexture(baseHex,accentHex,seed,repeat){
  return texture;
 }
 
+
+function createOwnedIslandNameTexture(name) {
+ const canvas=document.createElement("canvas");canvas.width=640;canvas.height=144;
+ const ctx=canvas.getContext("2d");ctx.fillStyle="#102631";ctx.fillRect(0,0,640,144);
+ ctx.strokeStyle="#e4c68b";ctx.lineWidth=8;ctx.strokeRect(5,5,630,134);
+ ctx.fillStyle="#fff0cf";ctx.textAlign="center";ctx.textBaseline="middle";ctx.font="bold 56px Rubik, Arial, sans-serif";
+ let label=String(name||"האי שלי");while(ctx.measureText(label).width>570&&label.length>4)label=label.slice(0,-1);
+ ctx.fillText(label,320,73);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;return texture;
+}
+function OwnedIslandFlag({island}) {
+ const texture=useMemo(()=>createOwnedIslandNameTexture(island.name),[island.name]);
+ const signMaterial=useMemo(()=>new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}),[texture]);
+ const clothMaterial=useMemo(()=>new THREE.MeshStandardMaterial({color:island.flagColor||"#d84b45",side:THREE.DoubleSide,roughness:.82}),[island.flagColor]);
+ useEffect(()=>()=>{texture.dispose();signMaterial.dispose();clothMaterial.dispose();},[texture,signMaterial,clothMaterial]);
+ return React.createElement("group",{position:[island.x-island.rx*.48,.3,island.z-island.rz*.28]},
+  React.createElement("mesh",{position:[0,2.45,0],material:landmarkWood,castShadow:true},React.createElement("cylinderGeometry",{args:[.085,.11,4.9,8]})),
+  React.createElement("mesh",{position:[.78,4.05,0],material:clothMaterial,castShadow:true},React.createElement("planeGeometry",{args:[1.55,1.02]})),
+  React.createElement("mesh",{position:[0,5.16,0],material:landmarkWood},React.createElement("boxGeometry",{args:[4.6,.12,.18]})),
+  React.createElement("mesh",{position:[0,5.85,.02],material:signMaterial},React.createElement("planeGeometry",{args:[4.55,1.02]})),
+  React.createElement("mesh",{position:[0,5.17,0],material:landmarkWood},React.createElement("boxGeometry",{args:[.12,1.45,.14]}))
+ );
+}
+function OwnedIslandField({field}) {
+ const soil=new THREE.MeshStandardMaterial({color:"#76543b",roughness:1});
+ const crop=new THREE.MeshStandardMaterial({color:"#88a84f",roughness:.94});
+ const gold=new THREE.MeshStandardMaterial({color:"#d5b45e",roughness:.96});
+ return React.createElement("group",{position:[field.x,.33,field.z]},
+  React.createElement("mesh",{rotation:[-Math.PI/2,0,0],position:[0,.02,0],material:soil,receiveShadow:true},React.createElement("planeGeometry",{args:[11,8]})),
+  ...Array.from({length:5},(_,row)=>Array.from({length:7},(_,col)=>{
+   const x=(col-3)*1.35,z=(row-2)*1.3;
+   return React.createElement("group",{key:row+"-"+col,position:[x,.11,z]},
+    React.createElement("mesh",{position:[0,.42,0],material:crop,castShadow:true},React.createElement("cylinderGeometry",{args:[.035,.055,.82,5]})),
+    React.createElement("mesh",{position:[-.16,.46,.02],rotation:[0,0,-.7],material:crop},React.createElement("sphereGeometry",{args:[.19,.08,.28]})),
+    React.createElement("mesh",{position:[.16,.55,-.02],rotation:[0,0,.7],material:row%2?gold:crop},React.createElement("sphereGeometry",{args:[.18,.08,.25]}))
+   );
+  }))
+ );
+}
+function OwnedIslandStructure({structure}) {
+ if(structure.type==="house")return React.createElement("group",{position:[structure.x,.31,structure.z]},
+  React.createElement("mesh",{position:[0,1.2,0],material:landmarkStone,castShadow:true,receiveShadow:true},React.createElement("boxGeometry",{args:[4.6,2.4,3.9]})),
+  React.createElement("mesh",{position:[0,2.75,0],material:landmarkRoof,castShadow:true},React.createElement("coneGeometry",{args:[3.35,1.75,4]})),
+  React.createElement("mesh",{position:[0,.72,1.98],material:landmarkWood},React.createElement("boxGeometry",{args:[.82,1.45,.12]})),
+  React.createElement("mesh",{position:[-1.25,1.45,1.99],material:glass},React.createElement("boxGeometry",{args:[.72,.72,.08]})),
+  React.createElement("mesh",{position:[1.25,1.45,1.99],material:glass},React.createElement("boxGeometry",{args:[.72,.72,.08]}))
+ );
+ if(structure.type==="building")return React.createElement("group",{position:[structure.x,.31,structure.z]},
+  React.createElement("mesh",{position:[0,2.45,0],material:landmarkStone,castShadow:true,receiveShadow:true},React.createElement("boxGeometry",{args:[6.8,4.9,6.2]})),
+  React.createElement("mesh",{position:[0,5.05,0],material:landmarkRoof,castShadow:true},React.createElement("boxGeometry",{args:[7.15,.32,6.55]})),
+  ...[-1,0,1].flatMap((x)=>[1,2,3].map((y)=>React.createElement("mesh",{key:x+"-"+y,position:[x*1.85,y*1.15,3.12],material:glass},React.createElement("boxGeometry",{args:[.85,.72,.08]})))),
+  React.createElement("mesh",{position:[0,.95,3.15],material:landmarkWood},React.createElement("boxGeometry",{args:[1.05,1.85,.12]}))
+ );
+ if(structure.type==="signal-tower")return React.createElement("group",{position:[structure.x,.31,structure.z]},
+  React.createElement("mesh",{position:[0,3.2,0],material:landmarkWood,castShadow:true},React.createElement("cylinderGeometry",{args:[.17,.3,6.4,8]})),
+  React.createElement("mesh",{position:[0,6.6,0],material:landmarkLava},React.createElement("octahedronGeometry",{args:[.62,0]})),
+  React.createElement("mesh",{position:[0,5.45,0],material:landmarkStone},React.createElement("torusGeometry",{args:[.72,.075,6,18]})),
+  React.createElement("mesh",{position:[0,4.4,0],material:landmarkStone},React.createElement("torusGeometry",{args:[.5,.06,6,16]}))
+ );
+ if(structure.type==="guard-camp")return React.createElement("group",{position:[structure.x,.31,structure.z]},
+  React.createElement("mesh",{position:[0,1.15,0],material:landmarkWood,castShadow:true},React.createElement("coneGeometry",{args:[2.7,2.4,6]})),
+  React.createElement("mesh",{position:[0,.75,2.35],material:landmarkStone},React.createElement("boxGeometry",{args:[1.1,1.45,.1]})),
+  ...[-1,1].map((side)=>React.createElement("group",{key:"guard-"+side,position:[side*2.2,.35,1.15]},
+   React.createElement("mesh",{position:[0,.65,0],material:landmarkWood},React.createElement("capsuleGeometry",{args:[.22,.58,4,8]})),
+   React.createElement("mesh",{position:[0,1.35,0],material:landmarkStone},React.createElement("sphereGeometry",{args:[.25,12,10]})),
+   React.createElement("mesh",{position:[side*.32,.75,.12],material:new THREE.MeshStandardMaterial({color:"#7898b3"})},React.createElement("circleGeometry",{args:[.34,10]}))
+  ))
+ );
+ if(structure.type==="shield-kit")return React.createElement("group",{position:[structure.x,.31,structure.z]},
+  ...Array.from({length:5},(_,i)=>React.createElement("mesh",{key:i,position:[(i-2)*.68,.82,0],material:new THREE.MeshStandardMaterial({color:"#7898b3",metalness:.28,roughness:.55}),castShadow:true},React.createElement("cylinderGeometry",{args:[.28,.28,.12,6]})))
+ );
+ return null;
+}
 function IslandModel({island}){
- const base=useMemo(()=>islandShape(island,1.06,true),[island]),top=useMemo(()=>islandShape(island,.86,false),[island]);
+ const base=useMemo(()=>islandShape(island,1.06,true),[island]);
+ const top=useMemo(()=>islandShape(island,.86,false),[island]);
  const beach=useMemo(()=>beachGeometry(island),[island]);
  const textureSeed=Math.abs(Math.floor(island.x*17+island.z*11));
  const sandTexture=useMemo(()=>createIslandTexture(island.sand,"#f7e8c7",textureSeed,.035),[island.sand,textureSeed]);
  const grassTexture=useMemo(()=>createIslandTexture(island.color,islandAccentColors[island.biome]||"#86aa72",textureSeed+19,.028),[island.color,island.biome,textureSeed]);
- const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({map:sandTexture,roughness:.96}),[sandTexture]),beachMat=useMemo(()=>new THREE.MeshStandardMaterial({map:sandTexture,roughness:.84}),[sandTexture]),grassMat=useMemo(()=>new THREE.MeshStandardMaterial({map:grassTexture,roughness:.94}),[grassTexture]);
+ const sandMat=useMemo(()=>new THREE.MeshStandardMaterial({map:sandTexture,roughness:.96}),[sandTexture]);
+ const beachMat=useMemo(()=>new THREE.MeshStandardMaterial({map:sandTexture,roughness:.84}),[sandTexture]);
+ const grassMat=useMemo(()=>new THREE.MeshStandardMaterial({map:grassTexture,roughness:.94}),[grassTexture]);
  return React.createElement("group",{position:[0,0,0]},
   React.createElement("mesh",{geometry:base,position:[island.x,-1.85,island.z],material:sandMat,receiveShadow:true,castShadow:true}),
   React.createElement("mesh",{geometry:beach,position:[island.x,.285,island.z],material:beachMat,receiveShadow:true}),
   React.createElement("mesh",{geometry:top,position:[island.x,.29,island.z],material:grassMat,receiveShadow:true}),
   React.createElement(IslandFoam,{island}),
-  React.createElement(IslandLandmark,{island}),
-  ...island.rocks.map((rock,i)=>React.createElement(IslandRock,{key:"rock-"+i,rock,island})),
-  ...island.trees.map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
-  ...island.animals.map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal}))
+  !island.isPlayerIsland && React.createElement(IslandLandmark,{island}),
+  island.isPlayerIsland && React.createElement(OwnedIslandFlag,{island}),
+  ...(island.rocks||[]).map((rock,i)=>React.createElement(IslandRock,{key:"rock-"+i,rock,island})),
+  ...(island.trees||[]).map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
+  ...(island.animals||[]).map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal})),
+  ...(island.fields||[]).map((field,i)=>React.createElement(OwnedIslandField,{key:field.id||"field-"+i,field})),
+  ...(island.structures||[]).map((structure,i)=>React.createElement(OwnedIslandStructure,{key:structure.id||"structure-"+i,structure}))
  );
 }
 const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];

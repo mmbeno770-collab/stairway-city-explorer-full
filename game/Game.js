@@ -1123,12 +1123,51 @@ function DiverSuit({ rig }) {
 
 function PickupProps({ items, heldItemRef, playerPositionRef }) {
   const nodes = useRef({});
+  const impactNodes = useRef({});
+  const impactSeen = useRef({});
+  const particleBursts = useRef({});
   useFrame(({ clock }) => {
     const player = playerPositionRef.current || { x: 0, y: 0, z: 0, yaw: 0 };
     const held = heldItemRef.current;
     for (const item of items) {
       const node = nodes.current[item.id];
       if (!node) continue;
+      if (item.impactAt && impactSeen.current[item.id] !== item.impactAt) {
+        impactSeen.current[item.id] = item.impactAt;
+        const strength = item.impactStrength || .65;
+        const size = item.size || { width: .72, height: .58, depth: .64 };
+        particleBursts.current[item.id] = Array.from({ length: 8 }, () => {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = (.55 + Math.random() * 1.15) * strength;
+          return {
+            start: clock.elapsedTime,
+            life: .32 + Math.random() * .24,
+            x: (Math.random() - .5) * size.width * .45,
+            y: size.height * (.35 + Math.random() * .35),
+            z: (Math.random() - .5) * size.depth * .45,
+            vx: Math.cos(angle) * speed,
+            vy: (.7 + Math.random() * 1.1) * strength,
+            vz: Math.sin(angle) * speed
+          };
+        });
+      }
+      const burst = particleBursts.current[item.id] || [];
+      const particleMeshes = impactNodes.current[item.id] || [];
+      burst.forEach((particle, index) => {
+        const mesh = particleMeshes[index];
+        if (!mesh) return;
+        const age = clock.elapsedTime - particle.start;
+        if (age >= particle.life) { mesh.visible = false; return; }
+        mesh.visible = true;
+        mesh.position.set(
+          particle.x + particle.vx * age,
+          particle.y + particle.vy * age - 3.2 * age * age,
+          particle.z + particle.vz * age
+        );
+        const fade = 1 - age / particle.life;
+        mesh.scale.setScalar(.45 + fade * .65);
+        if (mesh.material) mesh.material.opacity = fade * .86;
+      });
       if (held === item || item.carried) {
         const yaw = player.yaw || 0;
         const bob = Math.sin(clock.elapsedTime * 3.1) * .012;
@@ -1164,6 +1203,18 @@ function PickupProps({ items, heldItemRef, playerPositionRef }) {
       },
         h("boxGeometry", { args: [.045, height * .78, .018] }),
         h("meshStandardMaterial", { color: "#dfc18a", roughness: .8 })
+      )),
+      ...Array.from({ length: 8 }, (_, index) => h("mesh", {
+        key: "impact-particle-" + index,
+        ref: (node) => {
+          if (!impactNodes.current[item.id]) impactNodes.current[item.id] = [];
+          impactNodes.current[item.id][index] = node;
+        },
+        visible: false,
+        position: [0, 0, 0]
+      },
+        h("boxGeometry", { args: [.055, .055, .055] }),
+        h("meshStandardMaterial", { color: "#d0ad70", roughness: .9, transparent: true, opacity: 0, depthWrite: false })
       ))
     );
   }));
@@ -1257,7 +1308,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
   const jetSkiIndices = useMemo(() => { let n = 0; const map = new Map(); world.interactables.forEach((item, index) => { if (item.type === "jetSki") map.set(index, n++); }); return map; }, [world]);
   const parkRides = useMemo(() => getParkRideLocations((world.landmarks || []).find((place) => place.type === "amusement")), [world]);
   const bar = useRef(-1);
-  useFrame((_, rawDt) => {
+  useFrame(({ clock }, rawDt) => {
     const dt = Math.min(rawDt, .05), s = st.current, inp = input.current, keys = inp.keys;
     activeVehicleRef.current.mode = s.mode; activeVehicleRef.current.target = s.target;
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
@@ -1459,14 +1510,28 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         const size = item.size || { width: .72, height: .58, depth: .64 };
         item.vy = (item.vy || 0) - 17 * dt;
         const next = { x: item.x + (item.vx || 0) * dt, z: item.z + (item.vz || 0) * dt };
+        const proposed = { x: next.x, z: next.z };
         const radius = Math.max(size.width, size.depth) * .5;
         const ground = col.groundAt(next.x, next.z, item.y, STEP, radius) + .025;
         col.resolve(next, item.y, item.y + size.height, radius);
         resolvePickupObstacles(next, item.y, item.y + size.height, radius, pickupItems, item);
+        const sideImpact = Math.hypot(next.x - proposed.x, next.z - proposed.z) > .035;
         const floor = pickupSupportHeight(next.x, next.z, item, pickupItems, ground, ground + 2.35, item.y + .12);
         item.x = next.x; item.z = next.z; item.y += item.vy * dt;
+        const groundImpact = item.y <= floor && item.vy < -0.45;
+        if (sideImpact && clock.elapsedTime - (item.lastImpactAt ?? -10) > .2) {
+          item.impactAt = clock.elapsedTime + .0001;
+          item.impactStrength = Math.min(1, .45 + Math.hypot(item.vx || 0, item.vz || 0) * .075);
+          item.lastImpactAt = clock.elapsedTime;
+          item.vx *= -.18; item.vz *= -.18;
+        }
         if (item.y <= floor) {
           item.y = floor;
+          if (groundImpact && clock.elapsedTime - (item.lastImpactAt ?? -10) > .2) {
+            item.impactAt = clock.elapsedTime + .0001;
+            item.impactStrength = Math.min(1, .4 + Math.abs(item.vy) * .12);
+            item.lastImpactAt = clock.elapsedTime;
+          }
           if (Math.abs(item.vy) > 1.25) item.vy = Math.abs(item.vy) * .22;
           else item.vy = 0;
           item.vx = (item.vx || 0) * .78; item.vz = (item.vz || 0) * .78;

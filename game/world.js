@@ -622,9 +622,15 @@ export function generateWorld(seed = 7) {
             }
         }
         for (let crate = 0; crate < 5; crate++) {
-            const xx = x0 + 5.2 + (crate % 3) * 2.25, zz = z1 - 1.6 - Math.floor(crate / 3) * 1.35, yy = -3.52 + (crate % 2) * .05;
-            add(xx - .42, -4, zz - .42, xx + .42, yy + .52, zz + .42, crate % 2 ? "#826744" : "#68777a", "solid", false);
-            add(xx - .43, yy + .36, zz - .44, xx + .43, yy + .42, zz + .44, "#b2915f", "solid", false);
+            const xx = x0 + 5.2 + (crate % 3) * 2.25, zz = z1 - 1.6 - Math.floor(crate / 3) * 1.35;
+            inter.push({
+                type: "pickup", id: "warehouse-crate-" + id + "-" + crate,
+                label: "ארגז מהמחסן",
+                x: xx, y: -4, z: zz, face: crate % 2 ? .035 : -.035,
+                color: crate % 2 ? "#826744" : "#68777a",
+                size: { width: .84, height: .96, depth: .84 },
+                mass: 2.4, carried: false
+            });
         }
         add((x0 + x1) / 2 - 1.4, -.38, (z0 + z1) / 2, (x0 + x1) / 2 + 1.4, -.29, (z0 + z1) / 2 + .14, "#ffe2a5", "glow", false);
         add(sx1 + .25, -1.12, sz0 + 4.6, sx1 + .36, -.55, sz0 + 5.7, "#293c46", "solid", false);

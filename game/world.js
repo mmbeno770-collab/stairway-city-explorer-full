@@ -1003,6 +1003,21 @@ export function generateWorld(seed = 7) {
         }
     );
 
+    const pickupProps = [
+        { id: "cargo-north", x: -4.65, z: -84.7, color: "#9b7750", face: .08 },
+        { id: "cargo-east", x: 84.7, z: -4.45, color: "#718b83", face: Math.PI / 2 },
+        { id: "cargo-south", x: 4.65, z: 84.7, color: "#ad8755", face: Math.PI },
+        { id: "cargo-west", x: -84.7, z: 4.45, color: "#667f91", face: -Math.PI / 2 }
+    ];
+    for (const item of pickupProps) {
+        inter.push({
+            type: "pickup", id: item.id, label: "ארגז ציוד קטן",
+            x: item.x, y: .035, z: item.z, face: item.face,
+            color: item.color, size: { width: .72, height: .58, depth: .64 }, mass: 1.4,
+            carried: false
+        });
+    }
+
     // Painted zebra crossings align with the sidewalk-to-sidewalk routes used by pedestrians.
     const addZebraCrossing = (axis, cx, cz) => {
         const id = crosswalks.length;
@@ -1296,7 +1311,7 @@ export class Collider {
     constructor(boxes) {
         this.boxes = boxes;
         for (const b of boxes) {
-            if (!b.collide) continue;
+            if (!b.collide && b.kind !== "solid" && b.kind !== "glass" && b.kind !== "collisionOnly") continue;
             for (let i = Math.floor(b.x0 / this.cell); i <= Math.floor(b.x1 / this.cell); i++)
                 for (let k = Math.floor(b.z0 / this.cell); k <= Math.floor(b.z1 / this.cell); k++) {
                     const key = i + "," + k; let a = this.map.get(key); if (!a) this.map.set(key, a = []); a.push(b);
@@ -1312,7 +1327,7 @@ export class Collider {
     groundAt(x, z, y, step, rad = .2) {
         let g = 0, basementGround = -Infinity;
         for (const b of this.near(x, z, rad)) {
-            if (b.noGround) continue;
+            if (b.noGround || !b.collide) continue;
             if (x + rad < b.x0 || x - rad > b.x1 || z + rad < b.z0 || z - rad > b.z1) continue;
             if (b.basementGround) {
                 if (b.y1 <= y + step && b.y1 >= y - .65 && b.y1 > basementGround) basementGround = b.y1;

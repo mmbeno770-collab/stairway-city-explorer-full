@@ -1121,11 +1121,106 @@ function DiverSuit({ rig }) {
   );
 }
 
-function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, onTalk }) {
+function PickupProps({ items, heldItemRef, playerPositionRef }) {
+  const nodes = useRef({});
+  useFrame(({ clock }) => {
+    const player = playerPositionRef.current || { x: 0, y: 0, z: 0, yaw: 0 };
+    const held = heldItemRef.current;
+    for (const item of items) {
+      const node = nodes.current[item.id];
+      if (!node) continue;
+      if (held === item || item.carried) {
+        const yaw = player.yaw || 0;
+        const bob = Math.sin(clock.elapsedTime * 3.1) * .012;
+        node.position.set(player.x + Math.sin(yaw) * .64, player.y + .68 + bob, player.z + Math.cos(yaw) * .64);
+        node.rotation.y = yaw;
+        node.visible = true;
+      } else {
+        node.position.set(item.x, item.y, item.z);
+        node.rotation.y = item.face || 0;
+        node.visible = true;
+      }
+    }
+  });
+  return h(React.Fragment, null, items.map((item) => {
+    const size = item.size || { width: .72, height: .58, depth: .64 };
+    const width = size.width, height = size.height, depth = size.depth;
+    return h("group", {
+      key: item.id,
+      ref: (node) => { nodes.current[item.id] = node; }
+    },
+      h("mesh", { position: [0, height * .5, 0], castShadow: true, receiveShadow: true },
+        h("boxGeometry", { args: [width, height, depth] }),
+        h("meshStandardMaterial", { color: item.color || "#9b7750", roughness: .82 })
+      ),
+      h("mesh", { position: [0, height * .78, 0], castShadow: true },
+        h("boxGeometry", { args: [width + .025, .055, depth + .025] }),
+        h("meshStandardMaterial", { color: "#c4a16e", roughness: .78 })
+      ),
+      ...[-1, 1].map((side) => h("mesh", {
+        key: "crate-band-" + side,
+        position: [side * (width * .31), height * .48, depth * .5 + .006],
+        castShadow: true
+      },
+        h("boxGeometry", { args: [.045, height * .78, .018] }),
+        h("meshStandardMaterial", { color: "#dfc18a", roughness: .8 })
+      ))
+    );
+  }));
+}
+
+function resolvePickupObstacles(point, yLo, yHi, radius, items, heldItem) {
+  for (let pass = 0; pass < 2; pass++) for (const item of items) {
+    if (item === heldItem || item.carried) continue;
+    const size = item.size || { width: .72, height: .58, depth: .64 };
+    if (item.y + size.height <= yLo || item.y >= yHi) continue;
+    const x0 = item.x - size.width * .5, x1 = item.x + size.width * .5;
+    const z0 = item.z - size.depth * .5, z1 = item.z + size.depth * .5;
+    const cx = THREE.MathUtils.clamp(point.x, x0, x1), cz = THREE.MathUtils.clamp(point.z, z0, z1);
+    const dx = point.x - cx, dz = point.z - cz, d2 = dx * dx + dz * dz;
+    if (d2 >= radius * radius) continue;
+    if (d2 > 1e-8) {
+      const d = Math.sqrt(d2), push = radius - d;
+      point.x += dx / d * push; point.z += dz / d * push;
+    } else {
+      const options = [point.x - x0, x1 - point.x, point.z - z0, z1 - point.z];
+      const side = options.indexOf(Math.min(...options));
+      if (side === 0) point.x = x0 - radius;
+      else if (side === 1) point.x = x1 + radius;
+      else if (side === 2) point.z = z0 - radius;
+      else point.z = z1 + radius;
+    }
+  }
+}
+
+function resolveCitizenObstacles(point, yLo, yHi, radius, citizens) {
+  for (const person of citizens || []) {
+    if (person.hidden || person.onBus || Math.abs(person.y - yLo) > 2.2) continue;
+    if (person.y + 1.68 <= yLo || person.y >= yHi) continue;
+    const dx = point.x - person.x, dz = point.z - person.z;
+    const minDistance = radius + .29, distanceSquared = dx * dx + dz * dz;
+    if (distanceSquared >= minDistance * minDistance) continue;
+    if (distanceSquared > 1e-8) {
+      const distance = Math.sqrt(distanceSquared), push = minDistance - distance;
+      point.x += dx / distance * push; point.z += dz / distance * push;
+    } else {
+      point.x += minDistance;
+    }
+  }
+}
+
+function isPortablePickup(item) {
+  const size = item?.size || {};
+  return Math.max(size.width || 0, size.height || 0, size.depth || 0) <= 1.25
+    && (item.mass || 0) <= 2.5;
+}
+
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, onTalk }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
+  const pickupItems = useMemo(() => world.interactables.filter((item) => item.type === "pickup"), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, nearParkRide: null, parkRide: null, parkRideStart: 0, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, climbVelocity: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, nearParkRide: null, parkRide: null, parkRideStart: 0, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, heldItem: null, nearPickup: -1, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, climbVelocity: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
   const terrainGround = (x, z, y, step = .6, radius = .6) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, step, Math.max(.2, radius));
   const heliEnv = useMemo(() => ({ ground: (x, z, y, radius = 1) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, .6, Math.max(.2, radius)), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStatesRef, airVehicles, marine]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStatesRef, helis, airVehicles]);
@@ -1148,6 +1243,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     activeVehicleRef.current.mode = s.mode; activeVehicleRef.current.target = s.target;
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
+    const pickupAction = !!inp.pickup; inp.pickup = false;
+    if (heldItemRef) heldItemRef.current = s.heldItem;
     if (inp.closeTalk) {
       inp.closeTalk = false;
       if (s.mode === "talk") { s.mode = "walk"; s.talkTarget = null; s.nearPerson = -1; s.v.set(0, 0, 0); onMode("walk"); onPrompt(""); }
@@ -1155,7 +1252,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     const p = s.p, root = rig.root;
     divingRef.current = s.mode === "swim" || s.mode === "dolphin";
     if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? (s.waterSwimBlend || 0) * Math.PI / 2 : 0, s.face, 0); }
-    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z };
+    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       const elevatorCar = elevatorCars[s.elevatorId];
@@ -1307,10 +1404,11 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       poseHuman(rig, { mode: "walk", phase: 0, speed: 0, air: false, t: s.t, dt });
       camTarget.set(p.x, p.y + 2.2, p.z); camDist = 6.4; followYaw = s.face;
     } else if (s.mode === "walk") {
-      const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), wx = worldMove.x, wz = worldMove.z, speed = shift ? RUN : WALK, blend = 1 - Math.exp(-ACCEL * dt);
+      const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), wx = worldMove.x, wz = worldMove.z;
+      const speed = s.heldItem ? 4.25 : shift ? RUN : WALK, blend = 1 - Math.exp(-ACCEL * dt);
       s.v.x += (wx * speed - s.v.x) * blend; s.v.z += (wz * speed - s.v.z) * blend;
       if (Math.hypot(wx, wz) > .1) { const target = Math.atan2(wx, wz); let d = target - s.face; d = Math.atan2(Math.sin(d), Math.cos(d)); s.face += d * (1 - Math.exp(-12 * dt)); if (moveZ >= -.1) followYaw = s.face; }
-      if (jump && s.onGround) { s.v.y = JUMP; s.onGround = false; }
+      if (jump && s.onGround && !s.heldItem) { s.v.y = JUMP; s.onGround = false; }
       s.v.y -= GRAVITY * dt;
       const next = { x: p.x + s.v.x * dt, z: p.z + s.v.z * dt };
       const stairwell = world.buildings.some((building) => {
@@ -1323,6 +1421,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       resolveHelicopterObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, helis);
       resolveAirVehicleObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, airVehicles);
       resolveClosedDoors(next, p.y + stepHeight, p.y + HEIGHT, RAD, world, doorStatesRef.current);
+      resolvePickupObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, pickupItems, s.heldItem);
+      resolveCitizenObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, citizensRef?.current || []);
       p.x = next.x; p.z = next.z;
       let ny = p.y + s.v.y * dt, ceiling = col.ceilingAt(p.x, p.z, p.y + HEIGHT - .05);
       if (ny + HEIGHT > ceiling && s.v.y > 0) { ny = ceiling - HEIGHT; s.v.y = 0; }
@@ -1334,10 +1434,43 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         p.y = -2.7; s.v.set(0, 0, 0); s.waterSwimBlend = 0; s.mode = "swim"; s.onGround = false;
         s.lastPrompt = ""; onMode("swim"); onPrompt("נכנסתם למים · חליפת צלילה הופעלה"); onHud("");
       }
+      if (pickupAction && s.mode === "walk" && s.onGround) {
+        if (s.heldItem) {
+          const item = s.heldItem, size = item.size || { width: .72, height: .58, depth: .64 };
+          const drop = {
+            x: p.x + Math.sin(s.face) * (.86 + size.depth * .5),
+            z: p.z + Math.cos(s.face) * (.86 + size.depth * .5)
+          };
+          const ground = col.groundAt(drop.x, drop.z, p.y, STEP, Math.max(size.width, size.depth) * .5);
+          col.resolve(drop, ground + .03, ground + size.height + .03, Math.max(size.width, size.depth) * .5);
+          resolvePickupObstacles(drop, ground + .03, ground + size.height + .03, Math.max(size.width, size.depth) * .5, pickupItems, item);
+          resolveCitizenObstacles(drop, ground + .03, ground + size.height + .03, Math.max(size.width, size.depth) * .5, citizensRef?.current || []);
+          item.x = drop.x; item.z = drop.z; item.y = ground + .025; item.face = s.face; item.carried = false;
+          s.heldItem = null;
+          if (heldItemRef) heldItemRef.current = null;
+          onPrompt("הנחת את " + item.label);
+        } else {
+          let nearest = null, nearestDistance = 1.75;
+          for (const item of pickupItems) {
+            if (item.carried || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) continue;
+            const distance = Math.hypot(p.x - item.x, p.z - item.z);
+            if (distance < nearestDistance) { nearest = item; nearestDistance = distance; }
+          }
+          if (nearest) {
+            nearest.carried = true;
+            s.heldItem = nearest;
+            s.v.x = 0; s.v.z = 0;
+            if (heldItemRef) heldItemRef.current = nearest;
+            onPrompt("הרמת " + nearest.label + " · G להנחה");
+          }
+        }
+        s.lastPrompt = "";
+      }
       s.timer -= dt;
-      if (s.mode === "walk" && (s.timer <= 0 || act)) {
+      if (s.mode === "walk" && (s.timer <= 0 || act || pickupAction)) {
         s.timer = .14; let best = -1, bestD = Infinity;
         world.interactables.forEach((it, i) => {
+          if (it.type === "pickup") return;
           let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "boat" ? 5.5 : it.type === "jetSki" ? 7.4 : it.type === "sled" ? 3.8 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : it.type === "door" ? 2.7 : 1.8;
           if (it.type === "heli") { const item = helis[heliIndices.get(i)]; x = item.x; y = item.y; z = item.z; if (!item.grounded) return; }
           if (it.type === "car") { const item = cars[carIndices.get(i)]; x = item.x; y = item.y; z = item.z; }
@@ -1347,6 +1480,13 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           if (Math.abs(p.y - y) > (it.type === "car" || it.type === "airVehicle" ? 1.8 : 1.2)) return;
           const d = Math.hypot(p.x - x, p.z - z); if (d < radius && d < bestD) { best = i; bestD = d; }
         });
+        let nearestPickup = -1, nearestPickupD = 1.82;
+        if (!s.heldItem) pickupItems.forEach((item, index) => {
+          if (item.carried || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) return;
+          const distance = Math.hypot(p.x - item.x, p.z - item.z);
+          if (distance < nearestPickupD) { nearestPickup = index; nearestPickupD = distance; }
+        });
+        s.nearPickup = nearestPickup;
         let nearestPerson = -1, nearestPersonD = 3.35;
         if (s.mode === "walk") {
           (citizensRef?.current || []).forEach((person, index) => {
@@ -1382,7 +1522,11 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         s.near = best;
         const person = nearestPerson >= 0 && best < 0 ? citizensRef.current[nearestPerson] : null;
         const it = best >= 0 ? world.interactables[best] : null, actionText = it ? (it.type === "door" && doorStatesRef.current[best] ? "לסגור דלת" : PROMPTS[it.type]) : "";
-        const text = person ? `F / פעולה — לדבר עם ${person.name}` : nearestParkRide ? `F / פעולה — לעלות על ${nearestParkRide.label}` : it ? `F / פעולה — ${actionText}` : "";
+        const actionHint = person ? `F / פעולה — לדבר עם ${person.name}` : nearestParkRide ? `F / פעולה — לעלות על ${nearestParkRide.label}` : it && actionText ? `F / פעולה — ${actionText}` : "";
+        const pickupHint = s.heldItem
+          ? "G — להניח " + s.heldItem.label
+          : nearestPickup >= 0 ? "G — להרים " + pickupItems[nearestPickup].label : "";
+        const text = [actionHint, pickupHint].filter(Boolean).join(" · ");
         if (text !== s.lastPrompt) { s.lastPrompt = text; onPrompt(text); }
       }
       if (act && s.nearParkRide && s.mode === "walk" && s.onGround) {
@@ -1467,7 +1611,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       }
       if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
       s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
-      poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: !s.onGround, t: s.t, dt });
+      poseHuman(rig, { mode: s.heldItem ? "carry" : "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: !s.onGround && !s.heldItem, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z);
     } else if (s.mode === "park-ride") {
       const ride = s.parkRide;
@@ -1848,6 +1992,14 @@ export default function Game() {
     const city = generateWorld(7);
     city.islands = marine.islands;
     city.boxes.push(...createIslandCollisionBoxes(marine.islands));
+    city.boxes.push(...city.trees.map((tree) => {
+      const radius = .18 * (tree.s || 1);
+      return { x0: tree.x - radius, x1: tree.x + radius, y0: 0, y1: 2.5 * (tree.s || 1), z0: tree.z - radius, z1: tree.z + radius, kind: "collisionOnly", collide: true, noGround: true };
+    }));
+    city.boxes.push(...city.lamps.map((lamp) => ({
+      x0: lamp.x - .12, x1: lamp.x + .12, y0: 0, y1: 4.1,
+      z0: lamp.z - .12, z1: lamp.z + .12, kind: "collisionOnly", collide: true, noGround: true
+    })));
     city.interactables.push(...marine.boats.map(boat => ({ ...boat, type: "boat" })));
     city.interactables.push(...(marine.sleds||[]).map(sled => ({ ...sled, type: "sled" })));
     city.interactables.push(...(marine.jetSkis||[]).map(jetSki => ({ ...jetSki, type: "jetSki" })));
@@ -1855,7 +2007,7 @@ export default function Game() {
   }, [marine]);
   const boats = marine.boats;
   const cableCurve = useMemo(() => makeCableCurve(), []);
-  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null });
+  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
@@ -1865,6 +2017,7 @@ export default function Game() {
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
   const busInfoRef = useRef({ activeBuses: 0, stops: [] });
+  const heldItemRef = useRef(null);
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
@@ -1931,6 +2084,7 @@ export default function Game() {
       if (event.target instanceof HTMLElement && event.target.closest(".climate-panel, .elevator-dialog")) return;
       input.current.keys.add(event.code);
       if ((event.code === "KeyF" || String(event.key).toLowerCase() === "f") && !event.repeat) input.current.action = true;
+      if ((event.code === "KeyG" || String(event.key).toLowerCase() === "g") && !event.repeat) { input.current.pickup = true; event.preventDefault(); }
       if (event.code === "Space" || event.code.startsWith("Arrow")) event.preventDefault();
     };
     const up = (event) => input.current.keys.delete(event.code), blur = () => input.current.keys.clear();
@@ -1964,8 +2118,9 @@ export default function Game() {
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
+        h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
-        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, onTalk: beginConversation })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -2007,6 +2162,7 @@ export default function Game() {
         h("li", null, h("b", null, "גרירת עכבר"), " — סיבוב מצלמה · ", h("b", null, "גלגלת"), " — זום"),
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
         h("li", null, h("b", null, "F"), " — פעולה, פתיחת דלתות, עלייה לכלי רכב ודיבור עם תושבים. התקרבו לתושב ולחצו F כדי לפתוח שיחה."),
+        h("li", null, h("b", null, "G"), " — להרים ארגז קטן שעומדים לידו או להניח חפץ שמחזיקים. בזמן נשיאה הולכים לאט יותר ולא קופצים."),
         h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
         h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A ימינה ו־D שמאלה; Shift בלימה ברכב."),
         h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),

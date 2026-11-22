@@ -302,6 +302,22 @@ export function poseHuman(R, P) {
         R.head.rotation.set(-0.012 - run * 0.018 + Math.sin(P.t * 1.15) * 0.008, Math.sin(P.t * 0.42) * (0.035 + idle * 0.035), Math.sin(P.t * 0.7) * 0.012 * idle);
         R.root.rotation.x = 0;
         R.root.rotation.z = 0;
+    } else if (P.mode === "carry") {
+        const speed = Math.max(0, P.speed || 0), amp = THREE.MathUtils.clamp(speed / 4.5, 0, 1);
+        const phase = P.phase;
+        for (let i = 0; i < 2; i++) {
+            const ph = phase + (i ? Math.PI : 0), swing = Math.sin(ph), forward = Math.max(0, Math.cos(ph));
+            th[i].rotation.set(-swing * .3 * amp, 0, side[i] * .012 * amp);
+            kn[i].rotation.x = forward * .38 * amp;
+            an[i].position.set(0, -.42 + forward * .035 * amp, 0);
+            sh[i].rotation.set(-.68 + Math.sin(P.t * 1.8 + i) * .018, 0, side[i] * .13);
+            el[i].rotation.set(-.98 + forward * .035, 0, side[i] * .045);
+            if (R["hand" + i]) R["hand" + i].rotation.set(-.08, 0, side[i] * .04);
+        }
+        R.hips.position.set(Math.sin(phase) * .004 * amp, .95 + Math.sin(phase * 2) * .006 * amp, 0);
+        R.spine.rotation.set(-.025, -Math.sin(phase) * .012 * amp, 0);
+        R.head.rotation.set(-.018, Math.sin(P.t * .42) * .025, 0);
+        R.root.rotation.x = 0; R.root.rotation.z = 0;
     } else if (P.mode === "walk" && P.air) {
         th[0].rotation.x = -0.7; kn[0].rotation.x = 0.95; th[1].rotation.x = -0.12; kn[1].rotation.x = 0.42;
         for (let i = 0; i < 2; i++) { sh[i].rotation.set(-0.42, 0, side[i] * 0.38); el[i].rotation.x = -0.48; an[i].rotation.x = 0.12; }

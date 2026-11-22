@@ -1301,12 +1301,12 @@ function isPortablePickup(item) {
     && (item.mass || 0) <= 2.5;
 }
 
-function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, onTalk }) {
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onTalk }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const pickupItems = useMemo(() => world.interactables.filter((item) => item.type === "pickup"), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, nearParkRide: null, parkRide: null, parkRideStart: 0, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, heldItem: null, nearPickup: -1, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, climbVelocity: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, nearParkRide: null, parkRide: null, parkRideStart: 0, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, heldItem: null, nearPickup: -1, nearWildlife: null, nearIslandClaim: false, deerRide: null, deerRideTime: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, climbVelocity: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
   const terrainGround = (x, z, y, step = .6, radius = .6) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, step, Math.max(.2, radius));
   const heliEnv = useMemo(() => ({ ground: (x, z, y, radius = 1) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, .6, Math.max(.2, radius)), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStatesRef, airVehicles, marine]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStatesRef, helis, airVehicles]);
@@ -1339,7 +1339,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     const p = s.p, root = rig.root;
     divingRef.current = s.mode === "swim" || s.mode === "dolphin";
     if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? (s.waterSwimBlend || 0) * Math.PI / 2 : 0, s.face, 0); }
-    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode };
+    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode, sneaking: keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight") };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       const elevatorCar = elevatorCars[s.elevatorId];
@@ -1364,7 +1364,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     inp.zoom = 0;
     const axes = readMoveAxes(keys, inp.joy);
     const moveX = axes.x, moveZ = axes.z, steerX = -moveX;
-    const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), jump = keys.has("Space") || inp.up;
+    const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), sneaking = !!inp.sneak || keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight"), jump = keys.has("Space") || inp.up;
     let camTarget = new THREE.Vector3(p.x, p.y + 1.5, p.z), camDist = s.dist, followYaw = null;
     if (s.mode === "elevator") {
       const elevatorCar = elevatorCars[s.elevatorId];
@@ -1492,7 +1492,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       camTarget.set(p.x, p.y + 2.2, p.z); camDist = 6.4; followYaw = s.face;
     } else if (s.mode === "walk") {
       const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), wx = worldMove.x, wz = worldMove.z;
-      const speed = s.heldItem ? 4.25 : shift ? RUN : WALK, blend = 1 - Math.exp(-ACCEL * dt);
+      const speed = s.heldItem ? 4.25 : sneaking ? 1.55 : shift ? RUN : WALK, blend = 1 - Math.exp((sneaking ? 9 : ACCEL) * -dt);
       s.v.x += (wx * speed - s.v.x) * blend; s.v.z += (wz * speed - s.v.z) * blend;
       if (Math.hypot(wx, wz) > .1) { const target = Math.atan2(wx, wz); let d = target - s.face; d = Math.atan2(Math.sin(d), Math.cos(d)); s.face += d * (1 - Math.exp(-12 * dt)); if (moveZ >= -.1) followYaw = s.face; }
       if (jump && s.onGround && !s.heldItem) { s.v.y = JUMP; s.onGround = false; }
@@ -1657,7 +1657,24 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
             if (d < nearestPersonD) { nearestPerson = index; nearestPersonD = d; }
           });
         }
-        // Give an entrance door priority over a nearby pedestrian.
+        let nearestWildlife = null, nearestWildlifeD = Infinity;
+        if (s.mode === "walk") {
+          (wildlifeRef?.current?.animals || []).forEach((animal) => {
+            if (!animal || animal.caught || animal.fleeing || animal.mounted || (animal.type !== "deer" && animal.type !== "squirrel")) return;
+            const d = Math.hypot(p.x - animal.x, p.z - animal.z);
+            const vertical = Math.abs((p.y + 1.35) - (animal.y || 0));
+            const reach = animal.type === "deer" ? 2.55 : 2.2;
+            if (d < reach && vertical < 3.05 && d < nearestWildlifeD) {
+              nearestWildlife = animal;
+              nearestWildlifeD = d;
+            }
+          });
+        }
+        const palmIsland = marine.islands.find((island) => island.id === "palm");
+        const nearIslandClaim = s.mode === "walk" && !!palmIsland && !wildlifeRef?.current?.islandClaimed
+          && getIslandAt(p.x, p.z, marine.islands)?.id === "palm"
+          && Math.hypot(p.x - palmIsland.x, p.z - palmIsland.z) < 7.5;
+        // Give an entrance door priority over a nearby pedestrian or animal.
         let nearestDoor = -1, nearestDoorD = 2.7;
         world.interactables.forEach((item, index) => {
           if (item.type !== "door" || Math.abs(p.y - item.y) > 2.2) return;
@@ -1672,8 +1689,10 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
             nearestParkRideD = distance;
           }
         });
-        if (nearestDoor >= 0) { best = nearestDoor; bestD = nearestDoorD; nearestPerson = -1; nearestParkRide = null; }
-        else if (nearestParkRide && nearestParkRideD < bestD && nearestParkRideD < nearestPersonD) {
+        if (nearestDoor >= 0) { best = nearestDoor; bestD = nearestDoorD; nearestPerson = -1; nearestParkRide = null; nearestWildlife = null; }
+        else if (nearestWildlife && nearestWildlifeD < bestD && nearestWildlifeD < nearestPersonD) {
+          best = -1; nearestPerson = -1; nearestParkRide = null;
+        } else if (nearestParkRide && nearestParkRideD < bestD && nearestParkRideD < nearestPersonD) {
           best = -1; nearestPerson = -1;
         } else {
           nearestParkRide = null;
@@ -1681,15 +1700,55 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         }
         s.nearParkRide = nearestParkRide;
         s.nearPerson = nearestPerson;
+        s.nearWildlife = nearestWildlife;
+        s.nearIslandClaim = nearIslandClaim;
         s.near = best;
         const person = nearestPerson >= 0 && best < 0 ? citizensRef.current[nearestPerson] : null;
         const it = best >= 0 ? world.interactables[best] : null, actionText = it ? (it.type === "door" && doorStatesRef.current[best] ? "לסגור דלת" : PROMPTS[it.type]) : "";
-        const actionHint = person ? `F / פעולה — לדבר עם ${person.name}` : nearestParkRide ? `F / פעולה — לעלות על ${nearestParkRide.label}` : it && actionText ? `F / פעולה — ${actionText}` : "";
+        const actionHint = nearestWildlife
+          ? nearestWildlife.type === "deer" ? "F / פעולה — לעלות על האייל (כדאי להתגנב עם C)" : "F / פעולה — לתפוס את הסנאי"
+          : nearIslandClaim ? "F / פעולה — לכבוש את אי הדקלים"
+            : person ? `F / פעולה — לדבר עם ${person.name}`
+              : nearestParkRide ? `F / פעולה — לעלות על ${nearestParkRide.label}`
+                : it && actionText ? `F / פעולה — ${actionText}` : "";
         const pickupHint = s.heldItem
           ? "G — להניח " + s.heldItem.label
           : nearestPickup >= 0 ? "G — להרים " + pickupItems[nearestPickup].label : "";
         const text = [actionHint, pickupHint].filter(Boolean).join(" · ");
         if (text !== s.lastPrompt) { s.lastPrompt = text; onPrompt(text); }
+      }
+      if (act && s.nearWildlife && s.mode === "walk" && s.onGround) {
+        const animal = s.nearWildlife;
+        if (animal.type === "deer") {
+          animal.mounted = true;
+          animal.fleeing = false;
+          animal.fleeTimer = 0;
+          s.deerRide = animal;
+          s.deerRideTime = 0;
+          s.mode = "deer-ride";
+          s.v.set(0, 0, 0);
+          p.set(animal.x, (animal.y || .02) + 1.18, animal.z);
+          s.face = animal.yaw || 0;
+          s.nearWildlife = null;
+          s.lastPrompt = "";
+          onMode("deer-ride");
+          onHud("רכיבה על אייל · W/S לתנועה · A/D להיגוי · F לירידה");
+          onPrompt("עליתם על האייל! החזיקו מעמד 8 שניות להשלמת המשימה");
+        } else if (animal.type === "squirrel") {
+          animal.caught = true;
+          animal.fleeing = false;
+          s.nearWildlife = null;
+          onWildlifeEvent?.("squirrel-catch");
+          onPrompt("תפסתם סנאי! קיבלתם נקודות משימה");
+          s.lastPrompt = "";
+        }
+      }
+      if (act && s.nearIslandClaim && s.mode === "walk" && s.onGround) {
+        wildlifeRef.current.islandClaimed = true;
+        onWildlifeEvent?.("island");
+        s.nearIslandClaim = false;
+        onPrompt("האי נכבש! הדגל שלכם הונף באי הדקלים");
+        s.lastPrompt = "";
       }
       if (act && s.nearParkRide && s.mode === "walk" && s.onGround) {
         const ride = s.nearParkRide;
@@ -1775,6 +1834,54 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.9;
       poseHuman(rig, { mode: s.heldItem ? "carry" : "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: !s.onGround && !s.heldItem, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.55, p.z);
+    } else if (s.mode === "deer-ride") {
+      const animal = s.deerRide;
+      if (!animal) {
+        s.mode = "walk"; onMode("walk"); onHud(""); onPrompt("");
+      } else if (act) {
+        animal.mounted = false;
+        animal.fleeing = true;
+        animal.fleeTimer = 2.6;
+        p.set(animal.x + Math.cos(animal.yaw || 0) * .9, 0, animal.z - Math.sin(animal.yaw || 0) * .9);
+        p.y = col.groundAt(p.x, p.z, .1, STEP, RAD);
+        s.face = animal.yaw || 0;
+        s.v.set(0, 0, 0);
+        s.deerRide = null;
+        s.mode = "walk";
+        onMode("walk"); onHud(""); onPrompt("ירדתם מהאייל");
+      } else {
+        const riderSteer = -moveX;
+        const forward = moveZ;
+        animal.yaw = (animal.yaw || 0) + riderSteer * 1.25 * dt;
+        const gallop = shift ? 7.2 : 4.15;
+        const next = { x: animal.x + Math.sin(animal.yaw) * forward * gallop * dt, z: animal.z + Math.cos(animal.yaw) * forward * gallop * dt };
+        const center = wildlifeRef?.current?.reserveCenter || { x: animal.homeX, z: animal.homeZ };
+        const fromCenter = Math.hypot(next.x - center.x, next.z - center.z);
+        if (fromCenter > 21.5) {
+          const dx = next.x - center.x, dz = next.z - center.z;
+          next.x = center.x + dx / fromCenter * 21.5;
+          next.z = center.z + dz / fromCenter * 21.5;
+        }
+        col.resolve(next, animal.y || .02, (animal.y || .02) + 1.8, .46);
+        animal.x = next.x; animal.z = next.z;
+        animal.fleeing = false; animal.fleeTimer = 0;
+        p.set(animal.x, (animal.y || .02) + 1.18, animal.z);
+        s.face = animal.yaw;
+        s.deerRideTime += dt;
+        if (s.deerRideTime >= 8 && !animal.rideMissionAwarded) {
+          animal.rideMissionAwarded = true;
+          onWildlifeEvent?.("deer-ride");
+          onPrompt("השלמתם את משימת רכיבה על אייל!");
+          s.lastPrompt = "";
+        }
+        if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+        poseHuman(rig, { mode: "sit", phase: 0, speed: Math.abs(forward) * gallop, air: false, t: s.t, dt });
+        camTarget.set(p.x, p.y + 1.45, p.z);
+        camDist = 5.6; followYaw = s.face;
+        s.hudTimer -= dt;
+        if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("רכיבה על אייל · W/S לתנועה · A/D להיגוי · F לירידה"); }
+        onPrompt("רכיבה על אייל · " + Math.max(0, 8 - s.deerRideTime).toFixed(1) + " שניות להשלמה · F לירידה");
+      }
     } else if (s.mode === "park-ride") {
       const ride = s.parkRide;
       if (!ride) {
@@ -2170,25 +2277,38 @@ export default function Game() {
   }, [marine]);
   const boats = marine.boats;
   const cableCurve = useMemo(() => makeCableCurve(), []);
-  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false, throw: false });
+  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false, throw: false, sneak: false });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
-  const [wildlifeMission, setWildlifeMission] = useState({ step: 0, completed: false, points: 0 });
+  const [wildlifeMission, setWildlifeMission] = useState({ completedIds: [], points: 0 });
+  const [missionOpen, setMissionOpen] = useState(false);
+  const wildlifeRef = useRef({ animals: [], completedIds: [], islandClaimed: false, reserveCenter: null });
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
   const busInfoRef = useRef({ activeBuses: 0, stops: [] });
-  const completeWildlifeMission = useCallback((step) => {
+  const completeWildlifeMission = useCallback((missionId) => {
+    const mission = WILDLIFE_MISSIONS.find((item) => item.id === missionId);
+    if (!mission) return;
     setWildlifeMission((current) => {
-      if (current.completed || current.step !== step) return current;
-      const nextStep = step + 1;
-      return { step: nextStep, completed: nextStep >= WILDLIFE_MISSIONS.length, points: current.points + 100 };
+      if (current.completedIds.includes(missionId)) return current;
+      const completedIds = [...current.completedIds, missionId];
+      wildlifeRef.current.completedIds = completedIds;
+      if (missionId === "island") wildlifeRef.current.islandClaimed = true;
+      return { completedIds, points: current.points + mission.points };
     });
   }, []);
-  const restartWildlifeMission = useCallback(() => setWildlifeMission({ step: 0, completed: false, points: 0 }), []);
+  const restartWildlifeMission = useCallback(() => {
+    wildlifeRef.current.completedIds = [];
+    wildlifeRef.current.islandClaimed = false;
+    wildlifeRef.current.animals.forEach((animal) => {
+      animal.caught = false; animal.mounted = false; animal.fleeing = false; animal.fleeTimer = 0; animal.rideMissionAwarded = false;
+    });
+    setWildlifeMission({ completedIds: [], points: 0 });
+  }, []);
   const heldItemRef = useRef(null);
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
@@ -2282,7 +2402,7 @@ export default function Game() {
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
         h(MarineWorld, { marine, boats, divingRef, quality }),
-         h(WildlifeReserve, { reserve: world.wildlifeReserve, playerPositionRef, missionStep: wildlifeMission.step, completed: wildlifeMission.completed, onMissionComplete: completeWildlifeMission }),
+         h(WildlifeReserve, { reserve: world.wildlifeReserve, playerPositionRef, wildlifeRef, completedIds: wildlifeMission.completedIds, onMissionComplete: completeWildlifeMission }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Boxes, { world, kind: "roadMarking" }), h(Boxes, { world, kind: "tactile" }),
@@ -2294,18 +2414,34 @@ export default function Game() {
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
         h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
-        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, onTalk: beginConversation })
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onTalk: beginConversation })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
     h(BusArrivalBoard, { busInfoRef }),
-     h("section", { className: "hud-panel wildlife-mission-panel", dir: "rtl", "aria-live": "polite" },
-       h("div", { className: "wildlife-mission-heading" }, h("strong", null, "🌿 סיור בשמורת הטבע"), h("span", null, wildlifeMission.completed ? "הושלם" : (wildlifeMission.step + 1) + " / " + WILDLIFE_MISSIONS.length)),
-       h("div", { className: "wildlife-mission-track" }, h("span", { style: { width: (wildlifeMission.completed ? 100 : wildlifeMission.step / WILDLIFE_MISSIONS.length * 100) + "%" } })),
-       wildlifeMission.completed
-         ? h("div", { className: "wildlife-mission-finished" }, h("strong", null, "כל הכבוד! הסיור הושלם"), h("span", null, "צברתם " + wildlifeMission.points + " נקודות טבע"), h("button", { type: "button", onClick: restartWildlifeMission }, "לצאת לסיור נוסף"))
-         : h("div", { className: "wildlife-mission-copy" }, h("strong", null, WILDLIFE_MISSIONS[wildlifeMission.step].title), h("p", null, WILDLIFE_MISSIONS[wildlifeMission.step].description), h("span", null, "הגיעו לסמן הזהוב בשמורה · " + wildlifeMission.points + " נקודות"))
-     ),
+    h("section", { className: "hud-panel wildlife-quest-panel", dir: "rtl", "aria-live": "polite" },
+      h("button", { type: "button", className: "wildlife-quest-toggle", onClick: () => setMissionOpen((value) => !value), "aria-expanded": missionOpen },
+        h("span", { className: "wildlife-quest-title" }, "🧭 משימות"),
+        h("strong", { className: "wildlife-quest-points" }, "★ " + wildlifeMission.points + " נקודות"),
+        h("span", { className: "wildlife-quest-count" }, wildlifeMission.completedIds.length + "/" + WILDLIFE_MISSIONS.length + (missionOpen ? " −" : " +"))
+      ),
+      missionOpen && h("div", { className: "wildlife-quest-list" },
+        ...WILDLIFE_MISSIONS.map((mission) => {
+          const done = wildlifeMission.completedIds.includes(mission.id);
+          return h("article", { key: mission.id, className: "wildlife-quest-item" + (done ? " is-complete" : "") },
+            h("div", { className: "wildlife-quest-item-top" },
+              h("strong", null, (done ? "✓ " : "◈ ") + mission.title),
+              h("span", null, mission.points + " נק׳")
+            ),
+            h("p", null, mission.description),
+            h("small", null, "📍 " + mission.location)
+          );
+        }),
+        wildlifeMission.completedIds.length === WILDLIFE_MISSIONS.length
+          ? h("button", { type: "button", className: "wildlife-quest-reset", onClick: restartWildlifeMission }, "איפוס המשימות והתחלה מחדש")
+          : null
+      )
+    ),
     h("section", { className: "hud-panel climate-panel", "aria-label": "הגדרות מזג אוויר וזמן" },
       h("div", { className: "climate-heading" }, h("span", null, "סביבת העיר"), h("span", { className: "climate-status" }, quality === "high" ? "איכות גבוהה" : quality === "balanced" ? "מאוזן" : "חיסכון")),
       h("label", { className: "climate-field" }, "מזג אוויר", h("select", { value: weather, onChange: (e) => setWeather(e.target.value) }, WEATHER_OPTIONS.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),
@@ -2370,10 +2506,14 @@ export default function Game() {
     h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" || mode === "swim" ? "עלייה" : mode === "car" || mode === "boat" || mode === "dolphin" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
     h("button", { type: "button", className: "item-action-btn pickup-touch-btn", onPointerDown: (e) => e.stopPropagation(), onClick: () => { input.current.pickup = true; }, "aria-label": "הרמה או הנחה של ארגז" }, "G · הרמה"),
     h("button", { type: "button", className: "item-action-btn throw-touch-btn", onPointerDown: (e) => e.stopPropagation(), onClick: () => { input.current.throw = true; }, "aria-label": "זריקת הארגז שמוחזק" }, "H · זריקה"),
+    h("button", { type: "button", className: "sneak-touch-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.sneak = true; }, onPointerUp: () => { input.current.sneak = false; }, onPointerLeave: () => { input.current.sneak = false; }, onPointerCancel: () => { input.current.sneak = false; }, "aria-label": "להתגנב בשקט" }, "🤫 התגנבות"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
-      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: שכונות מפורטות, חוף וים, שמונה איים, עולם תת־ימי, רכבל מעל העיר ושמורת טבע חדשה עם חיות חופשיות ומשימות סיור."),
-      h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך"),
+      h("div", { className: "start-kicker" }, "עולם פתוח · הרפתקה תלת־ממדית"),
+      h("h1", null, "Stairway City Explorer"),
+      h("p", null, "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות. ההרפתקה הבאה שלכם מתחילה כאן."),
+      h("div", { className: "start-features" }, h("span", null, "🌲 טבע וחיות"), h("span", null, "🏝️ איים"), h("span", null, "🏆 משימות")),
+      h("button", { className: "start-btn", onClick: () => setStarted(true) }, "התחלת המשחק"),
       h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
     ))
   );

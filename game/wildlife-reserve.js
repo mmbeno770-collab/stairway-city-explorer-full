@@ -58,7 +58,7 @@ function CityAnimal({ animal, playerPositionRef, reserveCenter }) {
     const player = playerPositionRef?.current;
     const distance = player ? Math.hypot(player.x - animal.x, player.z - animal.z) : Infinity;
     const crouched = !!player?.sneaking;
-    const detectionRange = isDeer ? (crouched ? 1.55 : 10.5) : isSquirrel ? (crouched ? 1.35 : 7.2) : 3.4;
+    const detectionRange = (isDeer ? (crouched ? 1.55 : 10.5) : isSquirrel ? (crouched ? 1.35 : 7.2) : 3.4) * (player?.camouflage ? .72 : 1);
 
     if (animal.caught) {
       root.current.visible = false;

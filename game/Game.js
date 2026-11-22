@@ -83,6 +83,56 @@ function vehicleExitPoint(x, z, yaw, distance, islands, side = -1) {
 }
 const WALK = 6.2, RUN = 10.5, ACCEL = 16, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", jetSki: "לרכוב באופנוע ים", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
+const SHOP_STORAGE_KEY = "stairway-city-explorer-shop-v1";
+const SHOP_ITEMS = [
+  { id: "scout-boots", icon: "🥾", title: "נעלי סייר", price: 60, effect: "מהירות הליכה וריצה +15%", description: "חוצים את העיר והאיים קצת יותר מהר." },
+  { id: "camouflage", icon: "🧥", title: "חליפת הסוואה", price: 75, effect: "חיות מבחינות בכם מטווח קצר יותר", description: "מתקרבים לחיות הבר בלי להבריח אותן כל כך מהר." },
+  { id: "spring-boots", icon: "🦘", title: "מגפי קפיצה", price: 90, effect: "עוצמת הקפיצה +22%", description: "קופצים גבוה יותר ומגיעים למקומות חדשים." }
+];
+function readShopSave() {
+  const empty = { coins: 0, ownedItems: [], visitedIslandIds: [] };
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SHOP_STORAGE_KEY) || "null");
+    if (!saved || typeof saved !== "object") return empty;
+    const knownIds = new Set(SHOP_ITEMS.map((item) => item.id));
+    return {
+      coins: Math.max(0, Math.floor(Number(saved.coins) || 0)),
+      ownedItems: Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter((id) => knownIds.has(id)))] : [],
+      visitedIslandIds: Array.isArray(saved.visitedIslandIds) ? [...new Set(saved.visitedIslandIds.filter((id) => typeof id === "string"))] : []
+    };
+  } catch { return empty; }
+}
+function ShopPanel({ coins, ownedItems, notice, onBuy, onClose }) {
+  return h("div", { className: "shop-overlay", role: "dialog", "aria-modal": true, "aria-label": "חנות שדרוגים", dir: "rtl" },
+    h("section", { className: "shop-card" },
+      h("header", { className: "shop-header" },
+        h("div", null, h("div", { className: "shop-kicker" }, "STairway CITY · MARKET"), h("h2", null, "🛒 חנות ההרפתקנים")),
+        h("button", { type: "button", className: "shop-close", onClick: onClose, "aria-label": "סגירת החנות" }, "×")
+      ),
+      h("div", { className: "shop-wallet" }, h("span", null, "הארנק שלך"), h("strong", null, "🪙 " + coins + " מטבעות")),
+      h("p", { className: "shop-howto" }, "מרוויחים מטבע אחד על כל 10 נקודות ממשימות ומגילוי איים. הקניות נשמרות גם כשיוצאים מהמשחק."),
+      h("div", { className: "shop-grid" }, ...SHOP_ITEMS.map((item) => {
+        const owned = ownedItems.includes(item.id);
+        const enough = coins >= item.price;
+        return h("article", { key: item.id, className: "shop-item" + (owned ? " is-owned" : "") },
+          h("div", { className: "shop-item-icon", "aria-hidden": true }, item.icon),
+          h("h3", null, item.title),
+          h("p", null, item.description),
+          h("div", { className: "shop-item-effect" }, item.effect),
+          h("div", { className: "shop-item-buyrow" },
+            h("strong", null, "🪙 " + item.price),
+            h("button", {
+              type: "button", disabled: owned || !enough,
+              onClick: () => onBuy(item)
+            }, owned ? "✓ נרכש" : enough ? "קנייה" : "חסרים " + (item.price - coins))
+          )
+        );
+      })),
+      notice && h("div", { className: "shop-notice", role: "status" }, notice),
+      h("button", { type: "button", className: "shop-back", onClick: onClose }, "חזרה למסך הפתיחה")
+    )
+  );
+}
 
 function getNpcTopic(message, previousTopic = "") {
   const text = String(message || "").toLocaleLowerCase("he");
@@ -1301,7 +1351,7 @@ function isPortablePickup(item) {
     && (item.mass || 0) <= 2.5;
 }
 
-function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk }) {
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk, shopOwned = [] }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const pickupItems = useMemo(() => world.interactables.filter((item) => item.type === "pickup"), [world]);
   const rig = useMemo(() => ({}), []);
@@ -1339,7 +1389,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     const p = s.p, root = rig.root;
     divingRef.current = s.mode === "swim" || s.mode === "dolphin";
     if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? (s.waterSwimBlend || 0) * Math.PI / 2 : 0, s.face, 0); }
-    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode, sneaking: !!inp.sneak || keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight") };
+    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode, sneaking: !!inp.sneak || keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight"), camouflage: shopOwned.includes("camouflage") };
     const islandAtFeet = s.mode === "walk" && p.y <= 1.35 ? getIslandAt(p.x, p.z, marine.islands) : null;
     if (islandAtFeet) {
       if (s.lastIslandVisit !== islandAtFeet.id) {
@@ -1499,10 +1549,10 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       camTarget.set(p.x, p.y + 2.2, p.z); camDist = 6.4; followYaw = s.face;
     } else if (s.mode === "walk") {
       const worldMove = cameraRelativeMove(moveX, moveZ, s.yaw), wx = worldMove.x, wz = worldMove.z;
-      const speed = s.heldItem ? 4.25 : sneaking ? 1.55 : shift ? RUN : WALK, blend = 1 - Math.exp((sneaking ? 9 : ACCEL) * -dt);
+      const speed = (s.heldItem ? 4.25 : sneaking ? 1.55 : shift ? RUN : WALK) * (shopOwned.includes("scout-boots") && !sneaking ? 1.15 : 1), blend = 1 - Math.exp((sneaking ? 9 : ACCEL) * -dt);
       s.v.x += (wx * speed - s.v.x) * blend; s.v.z += (wz * speed - s.v.z) * blend;
       if (Math.hypot(wx, wz) > .1) { const target = Math.atan2(wx, wz); let d = target - s.face; d = Math.atan2(Math.sin(d), Math.cos(d)); s.face += d * (1 - Math.exp(-12 * dt)); if (moveZ >= -.1) followYaw = s.face; }
-      if (jump && s.onGround && !s.heldItem) { s.v.y = JUMP; s.onGround = false; }
+      if (jump && s.onGround && !s.heldItem) { s.v.y = JUMP * (shopOwned.includes("spring-boots") ? 1.22 : 1); s.onGround = false; }
       s.v.y -= GRAVITY * dt;
       const next = { x: p.x + s.v.x * dt, z: p.z + s.v.z * dt };
       const stairwell = world.buildings.some((building) => {
@@ -2292,32 +2342,63 @@ export default function Game() {
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
   const [wildlifeMission, setWildlifeMission] = useState({ completedIds: [], points: 0 });
   const [missionOpen, setMissionOpen] = useState(false);
+  const [shopSave, setShopSave] = useState(readShopSave);
+  const shopSaveRef = useRef(shopSave);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [shopNotice, setShopNotice] = useState("");
   const wildlifeRef = useRef({ animals: [], completedIds: [], islandClaimed: false, reserveCenter: null });
-  const visitedIslandIdsRef = useRef(new Set());
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
   const busInfoRef = useRef({ activeBuses: 0, stops: [] });
+  useEffect(() => {
+    shopSaveRef.current = shopSave;
+    try { window.localStorage.setItem(SHOP_STORAGE_KEY, JSON.stringify(shopSave)); } catch { /* Storage may be unavailable. */ }
+  }, [shopSave]);
+  const addShopCoins = useCallback((points) => {
+    const earned = Math.floor(Number(points) / 10);
+    if (earned <= 0) return 0;
+    const next = { ...shopSaveRef.current, coins: shopSaveRef.current.coins + earned };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    return earned;
+  }, []);
+  const buyShopItem = useCallback((item) => {
+    const current = shopSaveRef.current;
+    if (current.ownedItems.includes(item.id)) return;
+    if (current.coins < item.price) {
+      setShopNotice("חסרים לך " + (item.price - current.coins) + " מטבעות.");
+      return;
+    }
+    const next = { ...current, coins: current.coins - item.price, ownedItems: [...current.ownedItems, item.id] };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setShopNotice("רכשת את " + item.title + "! השדרוג פעיל במשחק.");
+  }, []);
   const completeWildlifeMission = useCallback((missionId) => {
     const mission = WILDLIFE_MISSIONS.find((item) => item.id === missionId);
-    if (!mission) return;
-    setWildlifeMission((current) => {
-      if (current.completedIds.includes(missionId)) return current;
-      const completedIds = [...current.completedIds, missionId];
-      wildlifeRef.current.completedIds = completedIds;
-      if (missionId === "island") wildlifeRef.current.islandClaimed = true;
-      return { completedIds, points: current.points + mission.points };
+    if (!mission || wildlifeRef.current.completedIds.includes(missionId)) return;
+    wildlifeRef.current.completedIds = [...wildlifeRef.current.completedIds, missionId];
+    if (missionId === "island") wildlifeRef.current.islandClaimed = true;
+    addShopCoins(mission.points);
+    setWildlifeMission((current) => current.completedIds.includes(missionId) ? current : {
+      completedIds: [...current.completedIds, missionId], points: current.points + mission.points
     });
-  }, []);
+  }, [addShopCoins]);
   const awardIslandVisit = useCallback((island) => {
     const islandId = island?.id;
-    if (!islandId || visitedIslandIdsRef.current.has(islandId)) return false;
-    visitedIslandIdsRef.current.add(islandId);
-    setWildlifeMission((current) => ({ ...current, points: current.points + 150 }));
+    const current = shopSaveRef.current;
+    if (!islandId || current.visitedIslandIds.includes(islandId)) return false;
+    const next = {
+      ...current, coins: current.coins + 15,
+      visitedIslandIds: [...current.visitedIslandIds, islandId]
+    };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: score.points + 150 }));
     return true;
   }, []);
   const restartWildlifeMission = useCallback(() => {
-    visitedIslandIdsRef.current.clear();
     wildlifeRef.current.completedIds = [];
     wildlifeRef.current.islandClaimed = false;
     wildlifeRef.current.animals.forEach((animal) => {
@@ -2325,6 +2406,7 @@ export default function Game() {
     });
     setWildlifeMission({ completedIds: [], points: 0 });
   }, []);
+  useEffect(() => { if (!shopOpen) setShopNotice(""); }, [shopOpen]);
   const heldItemRef = useRef(null);
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
@@ -2430,7 +2512,7 @@ export default function Game() {
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
         h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
-        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation })
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, shopOwned: shopSave.ownedItems })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -2438,17 +2520,17 @@ export default function Game() {
     h("section", { className: "hud-panel wildlife-quest-panel", dir: "rtl", "aria-live": "polite" },
       h("button", { type: "button", className: "wildlife-quest-toggle", onClick: () => setMissionOpen((value) => !value), "aria-expanded": missionOpen },
         h("span", { className: "wildlife-quest-title" }, "🧭 משימות"),
-        h("strong", { className: "wildlife-quest-points" }, "★ " + wildlifeMission.points + " נקודות"),
+        h("strong", { className: "wildlife-quest-points" }, "★ " + wildlifeMission.points + " נק׳ · 🪙 " + shopSave.coins),
         h("span", { className: "wildlife-quest-count" }, wildlifeMission.completedIds.length + "/" + WILDLIFE_MISSIONS.length + (missionOpen ? " −" : " +"))
       ),
       missionOpen && h("div", { className: "wildlife-quest-list" },
-        h("small", { className: "wildlife-quest-island-bonus" }, "🏝️ הגעה לכל אי חדש: ‎+150 נקודות (פעם אחת לכל אי)"),
+        h("small", { className: "wildlife-quest-island-bonus" }, "🏝️ אי חדש: ‎+150 נקודות ו־15 מטבעות (פעם אחת לכל אי)"),
         ...WILDLIFE_MISSIONS.map((mission) => {
           const done = wildlifeMission.completedIds.includes(mission.id);
           return h("article", { key: mission.id, className: "wildlife-quest-item" + (done ? " is-complete" : "") },
             h("div", { className: "wildlife-quest-item-top" },
               h("strong", null, (done ? "✓ " : "◈ ") + mission.title),
-              h("span", null, mission.points + " נק׳")
+              h("span", null, mission.points + " נק׳ · +" + Math.floor(mission.points / 10) + " 🪙")
             ),
             h("p", null, mission.description),
             h("small", null, "📍 " + mission.location)
@@ -2525,13 +2607,20 @@ export default function Game() {
     h("button", { type: "button", className: "item-action-btn throw-touch-btn", onPointerDown: (e) => e.stopPropagation(), onClick: () => { input.current.throw = true; }, "aria-label": "זריקת הארגז שמוחזק" }, "H · זריקה"),
     h("button", { type: "button", className: "sneak-touch-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.sneak = true; }, onPointerUp: () => { input.current.sneak = false; }, onPointerLeave: () => { input.current.sneak = false; }, onPointerCancel: () => { input.current.sneak = false; }, "aria-label": "להתגנב בשקט" }, "🤫 התגנבות"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
-    !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
-      h("div", { className: "start-kicker" }, "עולם פתוח · הרפתקה תלת־ממדית"),
-      h("h1", null, "Stairway City Explorer"),
-      h("p", null, "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות. ההרפתקה הבאה שלכם מתחילה כאן."),
-      h("div", { className: "start-features" }, h("span", null, "🌲 טבע וחיות"), h("span", null, "🏝️ איים"), h("span", null, "🏆 משימות")),
-      h("button", { className: "start-btn", onClick: () => setStarted(true) }, "התחלת המשחק"),
-      h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
-    ))
+    !started && h("div", { className: "start-overlay" },
+      !shopOpen && h("div", { className: "start-card" },
+        h("div", { className: "start-kicker" }, "עולם פתוח · הרפתקה תלת־ממדית"),
+        h("h1", null, "Stairway City Explorer"),
+        h("p", null, "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות ומטבעות. ההרפתקה הבאה שלכם מתחילה כאן."),
+        h("div", { className: "start-wallet" }, "🪙 בארנק: " + shopSave.coins + " מטבעות"),
+        h("div", { className: "start-features" }, h("span", null, "🌲 טבע וחיות"), h("span", null, "🏝️ איים"), h("span", null, "🏆 משימות")),
+        h("div", { className: "start-actions" },
+          h("button", { className: "start-btn", onClick: () => setStarted(true) }, "התחלת המשחק"),
+          h("button", { className: "start-shop-btn", onClick: () => { setShopNotice(""); setShopOpen(true); } }, "🛒 חנות")
+        ),
+        h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
+      ),
+      shopOpen && h(ShopPanel, { coins: shopSave.coins, ownedItems: shopSave.ownedItems, notice: shopNotice, onBuy: buyShopItem, onClose: () => setShopOpen(false) })
+    )
   );
 }

@@ -409,3 +409,42 @@ button { font: inherit; }
   .sneak-touch-btn { display: block; }
   .wildlife-quest-panel { bottom: max(190px, calc(env(safe-area-inset-bottom) + 190px)); }
 }
+
+/* Start-screen shop */
+.start-wallet { margin: 13px auto 3px; width: fit-content; padding: 8px 16px; border: 1px solid rgba(232,204,143,.38); border-radius: 999px; color: #f8e5b7; background: rgba(176,137,67,.14); font-weight: 800; font-size: 14px; }
+.start-actions { display: flex; align-items: center; justify-content: center; gap: 11px; flex-wrap: wrap; margin-top: 18px; }
+.start-actions .start-btn { margin-top: 0; }
+.start-shop-btn { padding: 12px 20px; min-height: 48px; border-radius: 14px; color: #f7e8c9; background: linear-gradient(145deg, rgba(181,139,65,.28), rgba(94,70,35,.35)); border: 1px solid rgba(231,199,132,.5); font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.1); }
+.start-shop-btn:hover { background: rgba(181,139,65,.4); }
+.shop-overlay { position: absolute; inset: 0; z-index: 25; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4,11,18,.82); backdrop-filter: blur(12px); }
+.shop-card { width: min(740px, 100%); max-height: min(88vh, 790px); overflow-y: auto; padding: 24px; border-radius: 23px; color: #f6f0df; background: linear-gradient(145deg, rgba(31,43,49,.98), rgba(9,19,27,.98)); border: 1px solid rgba(225,194,128,.38); box-shadow: 0 28px 100px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.06); }
+.shop-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.shop-kicker { color: #c9a96d; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.shop-header h2 { margin: 3px 0 0; color: #f4e3bf; font-size: clamp(23px, 4vw, 30px); }
+.shop-close { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); color: #fff4dd; background: rgba(255,255,255,.08); font-size: 25px; cursor: pointer; }
+.shop-wallet { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 18px 0 8px; padding: 12px 15px; border-radius: 13px; background: rgba(196,154,75,.13); border: 1px solid rgba(227,195,128,.24); color: #d9d0bb; font-size: 13px; }
+.shop-wallet strong { color: #f7d993; font-size: 17px; }
+.shop-howto { margin: 8px 0 16px; color: #c2c6c0; font-size: 12px; line-height: 1.6; }
+.shop-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.shop-item { display: flex; flex-direction: column; min-width: 0; padding: 15px 13px 13px; border-radius: 16px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.045); }
+.shop-item.is-owned { border-color: rgba(129,201,159,.42); background: rgba(67,139,104,.11); }
+.shop-item-icon { font-size: 33px; margin-bottom: 8px; }
+.shop-item h3 { margin: 0 0 7px; color: #f2e2c1; font-size: 16px; }
+.shop-item p { min-height: 54px; margin: 0; color: #c2c9c4; font-size: 12px; line-height: 1.5; }
+.shop-item-effect { min-height: 34px; margin: 8px 0; color: #e7c987; font-size: 11px; font-weight: 700; }
+.shop-item-buyrow { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-top: auto; color: #f4d994; font-size: 13px; }
+.shop-item-buyrow button { padding: 8px 11px; border-radius: 10px; color: #17221e; background: #e6c77f; border: 0; font-weight: 800; font-size: 12px; cursor: pointer; }
+.shop-item-buyrow button:disabled { color: #c4c8c2; background: rgba(255,255,255,.11); cursor: default; }
+.shop-notice { margin-top: 13px; color: #e8d39e; text-align: center; font-size: 12px; }
+.shop-back { display: block; margin: 15px auto 0; padding: 9px 18px; border: 1px solid rgba(255,255,255,.17); border-radius: 11px; color: #e5e8e2; background: rgba(255,255,255,.06); font-weight: 700; cursor: pointer; }
+@media (max-width: 700px) {
+  .start-actions { gap: 9px; }
+  .start-actions .start-btn, .start-shop-btn { width: 100%; }
+  .shop-card { padding: 18px 14px; }
+  .shop-grid { grid-template-columns: 1fr; gap: 9px; }
+  .shop-item { display: grid; grid-template-columns: 44px 1fr auto; column-gap: 10px; align-items: center; padding: 11px; }
+  .shop-item-icon { grid-row: span 3; margin: 0; font-size: 29px; }
+  .shop-item h3 { margin: 0; }
+  .shop-item p, .shop-item-effect { min-height: 0; grid-column: 2 / 4; }
+  .shop-item-buyrow { grid-column: 2 / 4; }
+}

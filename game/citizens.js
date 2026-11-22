@@ -80,7 +80,7 @@ function nextPersonalVisitDelay(person) {
 
 function startPersonalRoutine(person, now) {
   const profile = person.routineProfile || ROUTINE_PROFILES[0];
-  if (person.routineCooldown > 0 || person.visiting || person.followPlayer || person.ridingElevator) return false;
+  if (person.routineCooldown > 0 || person.visiting || person.followPlayer || person.ridingElevator || person.socialPairPartnerId) return false;
   person.routineCooldown = randomRange(person, profile.cooldownMin, profile.cooldownMax);
   if (nextRandom(person) > profile.pauseChance) return false;
   const duration = randomRange(person, profile.pauseMin, profile.pauseMax);
@@ -336,6 +336,45 @@ function releaseSocialSeat(person, walkers = []) {
   releaseSeatConversation(person, walkers);
   if (person.seatTarget?.occupiedBy === person.id) person.seatTarget.occupiedBy = null;
   person.seatTarget = null;
+}
+
+function endWalkingPair(person, walkers) {
+  const partner = walkers.find((walker) => walker.id === person.socialPairPartnerId);
+  const wasFollower = person.socialPairRole === "follower";
+  person.socialPairPartnerId = null;
+  person.socialPairRole = "";
+  person.socialPairUntil = 0;
+  person.socialPairSide = 0;
+  person.socialPairCooldown = 22;
+  if (partner?.socialPairPartnerId === person.id) {
+    const partnerWasFollower = partner.socialPairRole === "follower";
+    partner.socialPairPartnerId = null;
+    partner.socialPairRole = "";
+    partner.socialPairUntil = 0;
+    partner.socialPairSide = 0;
+    partner.socialPairCooldown = 22;
+    if (partnerWasFollower && partner.route === partner.sidewalkRoute) {
+      partner.waypoint = nearestLoopIndex(partner.sidewalkRoute, partner.x, partner.z);
+    }
+  }
+  if (wasFollower && person.route === person.sidewalkRoute) {
+    person.waypoint = nearestLoopIndex(person.sidewalkRoute, person.x, person.z);
+  }
+}
+
+function startWalkingPair(leader, follower, now) {
+  const until = now + randomRange(leader, 11, 18);
+  const side = nextRandom(leader) < .5 ? -1 : 1;
+  leader.socialPairPartnerId = follower.id;
+  leader.socialPairRole = "leader";
+  leader.socialPairUntil = until;
+  leader.socialPairSide = 0;
+  follower.socialPairPartnerId = leader.id;
+  follower.socialPairRole = "follower";
+  follower.socialPairUntil = until;
+  follower.socialPairSide = side;
+  leader.socialPairCooldown = 28;
+  follower.socialPairCooldown = 28;
 }
 
 function pedestrianCrossingStatus(from, to, cars) {
@@ -697,6 +736,8 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       visiting: false, visitCountdown: routineProfile.visitMin + (i % 5) * 1.8,
       visitKind: "", seatTarget: null, seated: false, seatTimer: 0, seatYaw: 0,
       seatChatPartner: null, seatChatCooldown: .8 + (i % 5) * .32,
+      socialPairPartnerId: null, socialPairRole: "", socialPairUntil: 0, socialPairSide: 0,
+      socialPairCooldown: 5 + (i % 4) * 2,
       seatReturnRoute: null, returningFromSeat: false,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
@@ -808,6 +849,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       person.greetCooldown = Math.max(0, person.greetCooldown - dt);
       const routineProfile = person.routineProfile || ROUTINE_PROFILES[0];
       person.socialCooldown = Math.max(0, person.socialCooldown - dt * routineProfile.socialRate);
+      person.socialPairCooldown = Math.max(0, (person.socialPairCooldown || 0) - dt);
       person.routineCooldown = Math.max(0, (person.routineCooldown || 0) - dt);
       if (person.bubbleUntil <= now) person.bubbleText = "";
       if (person.ridingElevator && person.elevatorTrip) {
@@ -849,6 +891,10 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           }
           continue;
         }
+      }
+      if (person.socialPairPartnerId && (now >= person.socialPairUntil
+        || person.followPlayer || conversationRef?.current?.personId === person.id)) {
+        endWalkingPair(person, walkers);
       }
       if (conversationRef?.current?.personId === person.id) {
         const player = playerPositionRef?.current;
@@ -970,8 +1016,8 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleUntil = now + 2.8;
         }
       }
-      if (!person.visiting && !person.followPlayer) person.visitCountdown -= dt;
-      if (!person.visiting && !person.followPlayer && person.visitCountdown <= 0) {
+      if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId) person.visitCountdown -= dt;
+      if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId && person.visitCountdown <= 0) {
         const seat = nextRandom(person) < .42 ? chooseSocialSeat(person, socialSeats) : null;
         if (seat) {
           seat.occupiedBy = person.id;
@@ -995,11 +1041,16 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         person.waypoint = person.route.length > 1 ? 1 : 0;
         person.stuck = 0;
       }
-      if (!person.visiting && !person.followPlayer && person.socialCooldown <= 0 && personIndex < walkers.length - 1) {
-        let companion = null, closest = 1.55;
+      if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId
+        && person.socialCooldown <= 0 && person.socialPairCooldown <= 0 && personIndex < walkers.length - 1) {
+        let companion = null, closest = 1.7;
         for (let j = personIndex + 1; j < walkers.length; j++) {
           const other = walkers[j];
-          if (other.visiting || other.followPlayer || other.socialCooldown > 0 || conversationRef?.current?.personId === other.id) continue;
+          if (other.visiting || other.followPlayer || other.routineTimer > 0 || other.wait > .3
+            || other.socialCooldown > 0 || other.socialPairCooldown > 0
+            || other.socialPairPartnerId || other.route !== other.sidewalkRoute
+            || other.building?.gridX !== person.building?.gridX || other.building?.gridZ !== person.building?.gridZ
+            || conversationRef?.current?.personId === other.id) continue;
           const distance = Math.hypot(other.x - person.x, other.z - person.z);
           if (distance < closest && Math.abs(other.y - person.y) < .8) { closest = distance; companion = other; }
         }
@@ -1012,6 +1063,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleText = openers[Math.floor(nextRandom(person) * openers.length)]; person.bubbleUntil = now + 2.8;
           companion.bubbleText = answers[Math.floor(nextRandom(companion) * answers.length)]; companion.bubbleUntil = now + 2.8;
           person.socialCooldown = 28; companion.socialCooldown = 31;
+          startWalkingPair(person, companion, now);
         } else person.socialCooldown = 5 + (person.rngState % 500) / 100;
       }
       if (person.wait > 0 || person.actionWait > 0) {
@@ -1028,6 +1080,13 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         continue;
       }
       const following = !!(person.followPlayer && player);
+      const walkingPartner = person.socialPairRole === "follower"
+        ? walkers.find((walker) => walker.id === person.socialPairPartnerId && walker.socialPairRole === "leader")
+        : null;
+      if (person.socialPairRole === "follower" && !walkingPartner) endWalkingPair(person, walkers);
+      const walkingTarget = walkingPartner
+        ? localOffset(walkingPartner.x, walkingPartner.z, person.socialPairSide * .82, -.16, walkingPartner.yaw)
+        : null;
       if (following && playerDistance <= 2.75) {
         person.yaw = Math.atan2(player.x - person.x, player.z - person.z);
         if (rig.root) {
@@ -1042,13 +1101,22 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       }
       const target = following
         ? { x: player.x - Math.sin(person.yaw) * 2.35, z: player.z - Math.cos(person.yaw) * 2.35 }
-        : person.route[person.waypoint];
+        : walkingTarget || person.route[person.waypoint];
       if (!target) continue;
       const dx = target.x - person.x, dz = target.z - person.z, distance = Math.hypot(dx, dz);
-      const threshold = following ? 1.8 : (target.precise ? .19 : .55);
+      const threshold = following ? 1.8 : walkingPartner ? .46 : (target.precise ? .19 : .55);
       if (distance < threshold) {
         if (following) {
           person.wait = .12;
+        } else if (walkingPartner) {
+          person.yaw += angleDiff(walkingPartner.yaw - person.yaw, 0) * (1 - Math.exp(-3.5 * dt));
+          person.moveSpeed = THREE.MathUtils.damp(person.moveSpeed || 0, walkingPartner.moveSpeed || 0, 5, dt);
+          if (rig.root) {
+            rig.root.position.set(person.x, person.y, person.z);
+            rig.root.rotation.y = person.yaw;
+            rig.root.visible = true;
+          }
+          poseHuman(rig, { mode: "walk", phase: person.phase, speed: person.moveSpeed, air: false, t: now + person.tOffset, dt });
         } else if (target.action === "crossingWait") {
           const crossingEnd = person.route[person.waypoint + 1];
           const traffic = pedestrianCrossingStatus(target, crossingEnd, cars);
@@ -1154,7 +1222,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         }
         continue;
       }
-      const maxSpeed = following ? 2.9 : person.visiting ? 1.8 : person.speed;
+      const maxSpeed = following ? 2.9 : walkingPartner ? 2.1 : person.visiting ? 1.8 : person.speed;
       const nx = dx / Math.max(distance, .001), nz = dz / Math.max(distance, .001);
       const brakingDistance = Math.max(0, distance - threshold);
       const targetSpeed = Math.min(maxSpeed, Math.sqrt(2 * 3.2 * brakingDistance));
@@ -1238,6 +1306,10 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleText = "יש כאן מכשול, אמשיך מכאן בסיור שלי.";
           person.bubbleUntil = now + 2.8;
           person.visitCountdown = 4;
+        } else if (person.socialPairPartnerId) {
+          endWalkingPair(person, walkers);
+          person.waypoint = nearestLoopIndex(person.sidewalkRoute, person.x, person.z);
+          person.stuckSideChanged = false;
         } else if (person.visitKind === "seat") {
           releaseSocialSeat(person, walkers);
           person.seated = false;

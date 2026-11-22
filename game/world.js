@@ -18,6 +18,7 @@ const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [], busStops = [], alleyways = [], publicSpaces = [];
+    let wildlifeReserve = null;
     const elevators = [];
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
     const addRooftopHelicopter = (x, y, z, scale, padSize) => {
@@ -281,28 +282,22 @@ export function generateWorld(seed = 7) {
             continue;
         }
         if (gx === GRID - 2 && gz === GRID - 2) {
-            // A calm garden district in the new outer neighbourhood.
-            // The garden is left open to the ground canvas so its paths can meander naturally.
-            // Trees are grouped in loose groves instead of four identical square planters.
-            const gardenGrove = [
-                [-9.0, -7.2, .92], [-6.2, -9.1, .72], [-2.0, -8.7, .84],
-                [7.4, -8.1, .98], [9.1, -4.3, .78],
-                [-9.2, 4.2, .86], [-7.0, 8.4, .96],
-                [5.7, 8.8, .82], [9.0, 6.3, .90]
+            // A dedicated wildlife reserve with a natural pond, meadow clearings and shaded paths.
+            wildlifeReserve = { x: cx, z: cz, pond: { x: cx - 5, z: cz - 2, radius: 3.6 } };
+            const grove = [
+                [-11.0, -9.0, .96], [-8.8, -11.0, .82], [-2.5, -10.6, .88],
+                [4.8, -10.8, .9], [10.7, -8.8, .84], [11.0, -1.2, .78],
+                [-11.0, 4.4, .9], [-9.2, 10.2, .84], [-3.8, 11.0, .82],
+                [4.7, 10.8, .92], [10.6, 9.2, .88], [0.8, -11.2, .72]
             ];
-            for (const [dx, dz, size] of gardenGrove) {
-                trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .16, turn: r() * .6 });
+            for (const [dx, dz, size] of grove) trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .14, turn: r() * .7 });
+            // Hidden collider keeps visitors on the pond's curved shoreline.
+            add(cx - 8.8, 0, cz - 5.1, cx - 1.2, .62, cz + 1.1, "#527f82", "collisionOnly", true, true);
+            for (const bx of [-9.1, 9.1]) {
+                add(cx + bx - 1.2, .48, cz + 1.2, cx + bx + 1.2, .68, cz + 1.48, "#76583d", "solid", false);
+                add(cx + bx - 1.2, .68, cz + 1.2, cx + bx + 1.2, 1.25, cz + 1.38, "#76583d", "solid", false);
             }
-            add(cx - 2.45, .2, cz - 2.45, cx + 2.45, .48, cz + 2.45, "#8c948e", "solid", false);
-            add(cx - 2.15, .48, cz - 2.15, cx + 2.15, .58, cz + 2.15, "#c9c4b8", "solid", false);
-            add(cx - 1.82, .59, cz - 1.82, cx + 1.82, .66, cz + 1.82, "#58aabd", "glow", false);
-            add(cx - .34, .66, cz - .34, cx + .34, 1.55, cz + .34, "#d1b173", "solid", false);
-            add(cx - .72, 1.48, cz - .72, cx + .72, 1.62, cz + .72, "#8bbbc5", "glow", false);
-            for (const dx of [-8.6, 8.6]) {
-                add(cx + dx - 1.15, .32, cz - .22, cx + dx + 1.15, .5, cz + .22, "#795a42", "solid", false);
-                add(cx + dx - 1.15, .5, cz - .22, cx + dx + 1.15, 1.12, cz - .02, "#795a42", "solid", false);
-            }
-            lamps.push({ x: cx - 10.2, z: cz - 10.2 }, { x: cx + 10.2, z: cz + 10.2 });
+            lamps.push({ x: cx - 10.8, z: cz - 10.5 }, { x: cx + 10.8, z: cz + 10.5 });
             continue;
         }
         if (gx === 1 && gz === 1) {
@@ -1085,7 +1080,7 @@ export function generateWorld(seed = 7) {
     // Open perimeter lets visitors reach the beach and boarding points.
     const b0 = buildings[0];
     const trafficSignals = crosswalks.filter((crossing) => crossing.signal);
-    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, busStops, busRoutes, curvedRoads, alleyways, publicSpaces, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, busStops, busRoutes, curvedRoads, alleyways, publicSpaces, wildlifeReserve, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

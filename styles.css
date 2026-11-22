@@ -239,3 +239,38 @@ button { font: inherit; }
 @media (max-width: 700px) {
   .bus-board-title { font-size: 12px; }
 }
+
+
+/* Wildlife reserve mission HUD */
+.wildlife-mission-panel {
+  top: max(204px, calc(env(safe-area-inset-top) + 190px));
+  left: max(14px, env(safe-area-inset-left));
+  width: min(286px, calc(100vw - 28px));
+  padding: 12px 14px;
+  direction: rtl;
+  background: rgba(8, 24, 24, .9);
+  border-color: rgba(166, 195, 139, .38);
+}
+.wildlife-mission-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wildlife-mission-heading strong { color: #e4edcf; font-size: 13px; }
+.wildlife-mission-heading span { color: #d6c18c; font-size: 11px; font-weight: 800; }
+.wildlife-mission-track { height: 5px; margin: 10px 0; overflow: hidden; border-radius: 10px; background: rgba(255,255,255,.12); }
+.wildlife-mission-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #78945c, #d1bd7c); transition: width .3s ease; }
+.wildlife-mission-copy strong, .wildlife-mission-finished strong { display: block; color: #f2e5c6; font-size: 13px; }
+.wildlife-mission-copy p { margin: 5px 0 8px; color: #d1ded5; font-size: 12px; line-height: 1.55; }
+.wildlife-mission-copy span, .wildlife-mission-finished span { color: #b5c8b6; font-size: 10px; }
+.wildlife-mission-finished { display: grid; gap: 7px; }
+.wildlife-mission-finished button { min-height: 34px; margin-top: 3px; border: 1px solid rgba(220,195,137,.38); border-radius: 9px; color: #f4ebd8; background: rgba(182,145,75,.2); font-weight: 700; cursor: pointer; }
+.wildlife-mission-finished button:hover { background: rgba(182,145,75,.32); }
+@media (max-width: 700px) {
+  .wildlife-mission-panel {
+    top: max(238px, calc(env(safe-area-inset-top) + 225px));
+    left: 10px;
+    width: min(268px, calc(100vw - 20px));
+    padding: 10px 12px;
+  }
+  .wildlife-mission-copy p { font-size: 11px; }
+}
+@media (pointer: coarse) {
+  .wildlife-mission-panel { top: max(238px, calc(env(safe-area-inset-top) + 225px)); }
+}

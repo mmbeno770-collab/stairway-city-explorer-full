@@ -19,6 +19,7 @@ import { advanceElevatorTrip, floorHeight, makeElevatorTrip } from "./elevator-s
 import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./environment.js";
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
 import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, mainlandCoastRadius, MarineWorld } from "./marine-world.js";
+import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
 
 const h = React.createElement;
 
@@ -2136,8 +2137,9 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     if(underwaterView)camera.position.y=Math.min(camera.position.y,-.58);
     camera.lookAt(camTarget);
     const islandHere = getIslandAt(p.x, p.z, marine.islands);
-    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "jetSki" ? "רוכבים באופנוע ים" : s.mode === "swim" ? "מתחת למים" : s.mode === "dolphin" ? "רכיבה על דולפין" : islandHere ? islandHere.name : locate(world, p.x, p.y, p.z);
-    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || s.mode === "dolphin" || islandHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
+    const wildlifeHere = world.wildlifeReserve && Math.abs(p.x - world.wildlifeReserve.x) < 15.5 && Math.abs(p.z - world.wildlifeReserve.z) < 15.5;
+    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "jetSki" ? "רוכבים באופנוע ים" : s.mode === "swim" ? "מתחת למים" : s.mode === "dolphin" ? "רכיבה על דולפין" : islandHere ? islandHere.name : wildlifeHere ? "שמורת הטבע העירונית" : locate(world, p.x, p.y, p.z);
+    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || s.mode === "dolphin" || islandHere || wildlifeHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
@@ -2174,10 +2176,19 @@ export default function Game() {
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
+  const [wildlifeMission, setWildlifeMission] = useState({ step: 0, completed: false, points: 0 });
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
   const busInfoRef = useRef({ activeBuses: 0, stops: [] });
+  const completeWildlifeMission = useCallback((step) => {
+    setWildlifeMission((current) => {
+      if (current.completed || current.step !== step) return current;
+      const nextStep = step + 1;
+      return { step: nextStep, completed: nextStep >= WILDLIFE_MISSIONS.length, points: current.points + 100 };
+    });
+  }, []);
+  const restartWildlifeMission = useCallback(() => setWildlifeMission({ step: 0, completed: false, points: 0 }), []);
   const heldItemRef = useRef(null);
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
@@ -2271,6 +2282,7 @@ export default function Game() {
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
         h(MarineWorld, { marine, boats, divingRef, quality }),
+         h(WildlifeReserve, { reserve: world.wildlifeReserve, playerPositionRef, missionStep: wildlifeMission.step, completed: wildlifeMission.completed, onMissionComplete: completeWildlifeMission }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Boxes, { world, kind: "roadMarking" }), h(Boxes, { world, kind: "tactile" }),
@@ -2287,6 +2299,13 @@ export default function Game() {
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
     h(BusArrivalBoard, { busInfoRef }),
+     h("section", { className: "hud-panel wildlife-mission-panel", dir: "rtl", "aria-live": "polite" },
+       h("div", { className: "wildlife-mission-heading" }, h("strong", null, "🌿 סיור בשמורת הטבע"), h("span", null, wildlifeMission.completed ? "הושלם" : (wildlifeMission.step + 1) + " / " + WILDLIFE_MISSIONS.length)),
+       h("div", { className: "wildlife-mission-track" }, h("span", { style: { width: (wildlifeMission.completed ? 100 : wildlifeMission.step / WILDLIFE_MISSIONS.length * 100) + "%" } })),
+       wildlifeMission.completed
+         ? h("div", { className: "wildlife-mission-finished" }, h("strong", null, "כל הכבוד! הסיור הושלם"), h("span", null, "צברתם " + wildlifeMission.points + " נקודות טבע"), h("button", { type: "button", onClick: restartWildlifeMission }, "לצאת לסיור נוסף"))
+         : h("div", { className: "wildlife-mission-copy" }, h("strong", null, WILDLIFE_MISSIONS[wildlifeMission.step].title), h("p", null, WILDLIFE_MISSIONS[wildlifeMission.step].description), h("span", null, "הגיעו לסמן הזהוב בשמורה · " + wildlifeMission.points + " נקודות"))
+     ),
     h("section", { className: "hud-panel climate-panel", "aria-label": "הגדרות מזג אוויר וזמן" },
       h("div", { className: "climate-heading" }, h("span", null, "סביבת העיר"), h("span", { className: "climate-status" }, quality === "high" ? "איכות גבוהה" : quality === "balanced" ? "מאוזן" : "חיסכון")),
       h("label", { className: "climate-field" }, "מזג אוויר", h("select", { value: weather, onChange: (e) => setWeather(e.target.value) }, WEATHER_OPTIONS.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),
@@ -2337,7 +2356,9 @@ export default function Game() {
         h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
         h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),
         h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
-        h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
+        h("li", null, "בשמורת הטבע העירונית אפשר לפגוש איילים, שועלים, ארנבים, ברווזים, סנאים, חתולים, כלבים ויונים. החיות מסתובבות, עוצרות ומגיבות לסביבה."),
+         h("li", null, "עקבו אחרי סיור שמורת הטבע בלוח המשימות. מגיעים לסמן הזהוב בכל תחנה כדי להשלים את המשימה ולצבור נקודות."),
+         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
       )
     ),
     h("div", { ref: joyRef, className: "joy", "aria-label": "שליטה בכיוון: למעלה קדימה, למטה אחורה, שמאלה שמאלה, ימינה ימינה", onPointerDown: (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }, onPointerMove: joyMove, onPointerUp: joyEnd, onPointerCancel: joyEnd },
@@ -2351,7 +2372,7 @@ export default function Game() {
     h("button", { type: "button", className: "item-action-btn throw-touch-btn", onPointerDown: (e) => e.stopPropagation(), onClick: () => { input.current.throw = true; }, "aria-label": "זריקת הארגז שמוחזק" }, "H · זריקה"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
-      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, חוף וים, 36 סירות, שמונה איים שונים, עולם תת־ימי עם יצורים ימיים, ורכבל עם שמונה תחנות מעל העיר."),
+      h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: שכונות מפורטות, חוף וים, שמונה איים, עולם תת־ימי, רכבל מעל העיר ושמורת טבע חדשה עם חיות חופשיות ומשימות סיור."),
       h("button", { className: "start-btn", onClick: () => setStarted(true) }, "יוצאים לדרך"),
       h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
     ))

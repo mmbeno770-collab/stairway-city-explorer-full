@@ -2530,7 +2530,12 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
 }
 
 export default function Game() {
-  const marine = useMemo(() => createMarineWorld(), []);
+  const [shopSave, setShopSave] = useState(readShopSave);
+  const shopSaveRef = useRef(shopSave);
+  const baseMarine = useMemo(() => createMarineWorld(), []);
+  const marine = useMemo(() => shopSave.customIsland
+    ? { ...baseMarine, islands: [...baseMarine.islands, shopSave.customIsland] }
+    : baseMarine, [baseMarine, shopSave.customIsland]);
   const world = useMemo(() => {
     const city = generateWorld(7);
     city.islands = marine.islands;
@@ -2557,12 +2562,13 @@ export default function Game() {
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
-  const [wildlifeMission, setWildlifeMission] = useState({ completedIds: [], points: 0 });
-  const [shopSave, setShopSave] = useState(readShopSave);
-  const shopSaveRef = useRef(shopSave);
+  const [wildlifeMission, setWildlifeMission] = useState(() => ({
+    completedIds: shopSave.completedMissionIds,
+    points: shopSave.points
+  }));
   const [shopOpen, setShopOpen] = useState(false);
   const [shopNotice, setShopNotice] = useState("");
-  const wildlifeRef = useRef({ animals: [], completedIds: [], islandClaimed: false, reserveCenter: null });
+  const wildlifeRef = useRef({ animals: [], completedIds: shopSave.completedMissionIds, islandClaimed: shopSave.completedMissionIds.includes("island"), reserveCenter: null });
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
@@ -2594,11 +2600,20 @@ export default function Game() {
   const completeWildlifeMission = useCallback((missionId) => {
     const mission = WILDLIFE_MISSIONS.find((item) => item.id === missionId);
     if (!mission || wildlifeRef.current.completedIds.includes(missionId)) return;
-    wildlifeRef.current.completedIds = [...wildlifeRef.current.completedIds, missionId];
+    const completedMissionIds = [...wildlifeRef.current.completedIds, missionId];
+    wildlifeRef.current.completedIds = completedMissionIds;
     if (missionId === "island") wildlifeRef.current.islandClaimed = true;
     addShopCoins(mission.points);
+    const saved = shopSaveRef.current;
+    const nextSave = {
+      ...saved,
+      points: saved.points + mission.points,
+      completedMissionIds
+    };
+    shopSaveRef.current = nextSave;
+    setShopSave(nextSave);
     setWildlifeMission((current) => current.completedIds.includes(missionId) ? current : {
-      completedIds: [...current.completedIds, missionId], points: current.points + mission.points
+      completedIds: completedMissionIds, points: current.points + mission.points
     });
   }, [addShopCoins]);
   const awardIslandVisit = useCallback((island) => {
@@ -2606,7 +2621,7 @@ export default function Game() {
     const current = shopSaveRef.current;
     if (!islandId || current.visitedIslandIds.includes(islandId)) return false;
     const next = {
-      ...current, coins: current.coins + 15,
+      ...current, coins: current.coins + 15, points: current.points + 150,
       visitedIslandIds: [...current.visitedIslandIds, islandId]
     };
     shopSaveRef.current = next;
@@ -2620,7 +2635,55 @@ export default function Game() {
     wildlifeRef.current.animals.forEach((animal) => {
       animal.caught = false; animal.mounted = false; animal.fleeing = false; animal.fleeTimer = 0; animal.rideMissionAwarded = false;
     });
+    const next = { ...shopSaveRef.current, points: 0, completedMissionIds: [] };
+    shopSaveRef.current = next;
+    setShopSave(next);
     setWildlifeMission({ completedIds: [], points: 0 });
+  }, []);
+  const createPlayerIsland = useCallback((draft) => {
+    const current = shopSaveRef.current;
+    if (current.customIsland) { setShopNotice("כבר יש לך אי אישי."); return; }
+    if (current.points < 5000) { setShopNotice("צריך 5,000 נקודות כדי לקנות אי."); return; }
+    const name = String(draft?.name || "").trim().slice(0, 24);
+    if (!name) { setShopNotice("צריך לבחור שם לאי."); return; }
+    const island = makeOwnedIsland(name, draft.style, draft.flagColor);
+    const next = { ...current, points: current.points - 5000, customIsland: island };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setShopNotice("האי " + name + " נוצר! הוא מופיע עכשיו בעולם ובמפה.");
+  }, []);
+  const expandPlayerIsland = useCallback(() => {
+    const current = shopSaveRef.current, island = current.customIsland;
+    if (!island || current.points < 80 || island.expansionCount >= 5) return;
+    const expanded = { ...island, rx: Math.min(118, island.rx + 12), rz: Math.min(96, island.rz + 10), expansionCount: island.expansionCount + 1 };
+    const next = { ...current, points: current.points - 80, customIsland: expanded };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setShopNotice("האי הורחב! השטח החדש כבר מופיע בעולם.");
+  }, []);
+  const buildOnPlayerIsland = useCallback((item) => {
+    const current = shopSaveRef.current, island = current.customIsland;
+    if (!island || current.points < item.price) return;
+    const count = island.animals.length + island.fields.length + island.structures.length;
+    const col = count % 4, row = Math.floor(count / 4) % 4;
+    const x = island.x + (col - 1.5) * Math.min(13, island.rx * .22);
+    const z = island.z + (row - 1.5) * Math.min(10, island.rz * .28);
+    let updated = { ...island };
+    if (item.type === "animal") {
+      updated.animals = [...island.animals, { type: item.animalType, x, z, phase: count * .83, scale: .9 }];
+    } else if (item.type === "field") {
+      updated.fields = [...island.fields, { id: "field-" + count, x, z }];
+    } else if (item.type === "shield") {
+      updated.guardShields = (island.guardShields || 0) + 5;
+      updated.structures = [...island.structures, { id: "shield-" + count, type: "shield-kit", x, z }];
+    } else {
+      updated.structures = [...island.structures, { id: item.id + "-" + count, type: item.id, x, z }];
+      if (item.id === "guard-camp") updated.guardCount = (island.guardCount || 0) + 5;
+    }
+    const next = { ...current, points: current.points - item.price, customIsland: updated };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setShopNotice("נוסף לאי: " + item.title + " · " + item.price + " נקודות");
   }, []);
   useEffect(() => { if (!shopOpen) setShopNotice(""); }, [shopOpen]);
   const heldItemRef = useRef(null);
@@ -2855,7 +2918,11 @@ export default function Game() {
         ),
         h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
       ),
-      shopOpen && h(ShopPanel, { coins: shopSave.coins, ownedItems: shopSave.ownedItems, notice: shopNotice, onBuy: buyShopItem, onClose: () => setShopOpen(false) })
+      shopOpen && h(ShopPanel, {
+        coins: shopSave.coins, points: shopSave.points, ownedItems: shopSave.ownedItems, island: shopSave.customIsland,
+        notice: shopNotice, onBuy: buyShopItem, onCreateIsland: createPlayerIsland,
+        onExpandIsland: expandPlayerIsland, onBuildIslandItem: buildOnPlayerIsland, onClose: () => setShopOpen(false)
+      })
     )
   );
 }

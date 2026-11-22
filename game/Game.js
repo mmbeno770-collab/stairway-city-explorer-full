@@ -22,6 +22,42 @@ import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslan
 
 const h = React.createElement;
 
+function BusArrivalBoard({ busInfoRef }) {
+  const [expanded, setExpanded] = useState(false);
+  const [, refresh] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => refresh((value) => value + 1), 900);
+    return () => window.clearInterval(timer);
+  }, []);
+  const info = busInfoRef.current || { activeBuses: 0, stops: [] };
+  return h("section", { className: "bus-board hud-panel", dir: "rtl" },
+    h("button", {
+      type: "button", className: "bus-board-toggle", onClick: () => setExpanded((value) => !value),
+      "aria-expanded": expanded
+    },
+      h("span", { className: "bus-board-title" }, "🚌 מידע על האוטובוסים"),
+      h("span", { className: "bus-board-count" }, (info.activeBuses || 0) + " פעילים"),
+      h("span", { className: "bus-board-chevron", "aria-hidden": true }, expanded ? "−" : "+")
+    ),
+    expanded && h("div", { className: "bus-board-content" },
+      h("div", { className: "bus-board-route" }, "קו 1 · הטבעת העירונית"),
+      ...(info.stops || []).map((stop) => h("article", { className: "bus-board-stop", key: stop.id },
+        h("div", { className: "bus-board-stop-heading" },
+          h("strong", null, stop.name),
+          h("span", null, stop.waiting + " ממתינים")
+        ),
+        stop.arrivals?.length
+          ? h("div", { className: "bus-board-arrivals" }, stop.arrivals.map((arrival) => h("div", { className: "bus-board-arrival", key: arrival.busId },
+              h("span", { className: "bus-board-bus" }, arrival.label),
+              h("strong", { className: arrival.atStop ? "is-at-stop" : "" }, arrival.atStop ? "בתחנה עכשיו" : "כ־" + Math.max(1, Math.ceil(arrival.seconds / 60)) + " דק׳")
+            )))
+          : h("div", { className: "bus-board-empty" }, "אין הגעה מחושבת כרגע")
+      )),
+      h("div", { className: "bus-board-footnote" }, "זמני ההגעה מחושבים ממיקום האוטובוסים בסימולציה")
+    )
+  );
+}
+
 function readMoveAxes(keys, joystick = { x: 0, y: 0 }) {
   const horizontal = Number(keys.has("KeyD") || keys.has("ArrowRight")) - Number(keys.has("KeyA") || keys.has("ArrowLeft")) + (joystick.x || 0);
   const forward = Number(keys.has("KeyW") || keys.has("ArrowUp")) - Number(keys.has("KeyS") || keys.has("ArrowDown")) + (joystick.y || 0);
@@ -1828,6 +1864,7 @@ export default function Game() {
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
+  const busInfoRef = useRef({ activeBuses: 0, stops: [] });
   const joyRef = useRef(null), [knob, setKnob] = useState({ x: 0, y: 0 });
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
@@ -1927,11 +1964,12 @@ export default function Game() {
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
-        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather }),
+        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
         h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
+    h(BusArrivalBoard, { busInfoRef }),
     h("section", { className: "hud-panel climate-panel", "aria-label": "הגדרות מזג אוויר וזמן" },
       h("div", { className: "climate-heading" }, h("span", null, "סביבת העיר"), h("span", { className: "climate-status" }, quality === "high" ? "איכות גבוהה" : quality === "balanced" ? "מאוזן" : "חיסכון")),
       h("label", { className: "climate-field" }, "מזג אוויר", h("select", { value: weather, onChange: (e) => setWeather(e.target.value) }, WEATHER_OPTIONS.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),

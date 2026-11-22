@@ -731,6 +731,65 @@ function updateCityBus(car, driver, cars, walkers, world, busStops, now, dt, car
   stepCar(car, { throttle, steer, brake: braking }, dt, carEnv);
 }
 
+function buildBusArrivalSnapshot(drivers, cars, walkers, busStops, activeVehicleRef) {
+  const activeBuses = drivers
+    .filter((driver) => driver.busRoute?.length && driver.state === "drive")
+    .map((driver, index) => {
+      const car = cars[driver.carIndex];
+      if (!car) return null;
+      const playerControlled = activeVehicleRef.current.mode === "car"
+        && activeVehicleRef.current.target === driver.carIndex;
+      return {
+        id: driver.id,
+        label: "אוטובוס " + (index + 1),
+        x: car.x, z: car.z,
+        speed: Math.abs(car.speed || 0),
+        route: driver.busRoute,
+        routeIndex: driver.busRouteIndex,
+        stopTimer: driver.busStopTimer || 0,
+        passengerCount: driver.passengerIds?.length || 0,
+        doorsOpen: !!car.doorOpen,
+        playerControlled
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    activeBuses: activeBuses.filter((bus) => !bus.playerControlled).length,
+    stops: busStops.map((stop) => {
+      const arrivals = activeBuses.filter((bus) => !bus.playerControlled).map((bus) => {
+        const path = bus.route;
+        const startIndex = ((bus.routeIndex % path.length) + path.length) % path.length;
+        const currentTarget = path[startIndex];
+        if (bus.stopTimer > 0 && currentTarget?.stopId === stop.id) {
+          return { busId: bus.id, label: bus.label, seconds: 0, atStop: true, passengers: bus.passengerCount };
+        }
+        let distance = 0, intermediateStops = 0;
+        let previous = { x: bus.x, z: bus.z };
+        let found = false;
+        for (let step = 0; step < path.length; step++) {
+          const point = path[(startIndex + step) % path.length];
+          distance += Math.hypot(point.x - previous.x, point.z - previous.z);
+          if (point.stopId !== undefined) {
+            if (point.stopId === stop.id) { found = true; break; }
+            intermediateStops++;
+          }
+          previous = point;
+        }
+        if (!found) return null;
+        const seconds = Math.max(1, Math.round(distance / 8.6 + intermediateStops * 5.2 + bus.stopTimer + 2));
+        return { busId: bus.id, label: bus.label, seconds, atStop: false, passengers: bus.passengerCount };
+      }).filter(Boolean).sort((a, b) => a.seconds - b.seconds);
+      return {
+        id: stop.id,
+        name: stop.name,
+        waiting: walkers.filter((person) => person.waitingForBus && person.waitingBusStopId === stop.id).length,
+        arrivals: arrivals.slice(0, 2)
+      };
+    })
+  };
+}
+
 function startAutonomousUTurn(car, driver) {
   const rightCrossSign = driver.laneAxis === "x" ? -driver.laneDirection : driver.laneDirection;
   driver.turnSide = Math.sign((-driver.laneOffset) / rightCrossSign) || 1;
@@ -939,7 +998,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   return { walkers, drivers, airPilots, heliPilots, socialSeats, busStops, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
 }
 
-export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, hour = 14, weather = "clear" }) {
+export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, hour = 14, weather = "clear", busInfoRef }) {
   const collider = useMemo(() => new Collider(world.boxes), [world]);
   const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider), [world, cars, helis, airVehicles, collider]);
   if (citizensRef) citizensRef.current = sim.walkers;
@@ -1673,6 +1732,8 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       }
       poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: now + driver.tOffset, dt });
     }
+
+    if (busInfoRef) busInfoRef.current = buildBusArrivalSnapshot(drivers, cars, walkers, busStops, activeVehicleRef);
 
     for (const pilot of sim.airPilots) {
       const vehicle = airVehicles[pilot.vehicleIndex], rig = pilot.rig;

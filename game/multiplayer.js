@@ -114,7 +114,7 @@ export function MultiplayerAuthPanel({ multiplayer }) {
       React.createElement("div", { className: "multiplayer-auth-icon" }, "✉️"),
       React.createElement("h2", null, "בדוק את תיבת הדואר"),
       React.createElement("p", null, multiplayer.authMessage || "שלחנו קישור לאימות כתובת האימייל. פתח אותו באותו מכשיר וחזור למשחק."),
-      React.createElement("button", { type: "button", className: "multiplayer-auth-secondary", onClick: () => chooseMode("signin") }, "חזרה לכניסה")
+      React.createElement("button", { type: "button", className: "multiplayer-auth-secondary", onClick: () => { chooseMode("signin"); multiplayer.showLogin(); } }, "חזרה לכניסה")
     );
   }
 
@@ -209,6 +209,11 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
   const connectedRef = useRef(false);
 
   const clearAuthMessage = () => setAuthMessage("");
+  const showLogin = () => {
+    setAuthMessage("");
+    setStatus("needs-login");
+    setStatusMessage("התחבר עם כתובת אימייל וסיסמה כדי לשחק.");
+  };
 
   const formatAuthError = (error) => {
     const message = String(error?.message || error || "");
@@ -303,7 +308,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       );
       if (sessionResponse.error) throw sessionResponse.error;
       const user = sessionResponse.data.session?.user;
-      if (!user) {
+      if (!user || user.is_anonymous) {
+        if (user?.is_anonymous) await supabase.auth.signOut();
         if (!active) return;
         setUserId(null);
         setStatus("needs-login");
@@ -512,6 +518,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     signIn,
     signUp,
     clearAuthMessage,
+    showLogin,
     retry
   };
 }

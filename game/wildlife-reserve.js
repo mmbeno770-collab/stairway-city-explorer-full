@@ -190,7 +190,7 @@ function CityAnimal({ animal, playerPositionRef, reserveCenter }) {
         h("mesh", { key: "eye-" + side, position: [side * (isDeer ? .135 : isBird ? .085 : .112), isDeer ? .035 : .025, isDeer ? .12 : isBird ? .085 : .12], material: EYE, scale: isDeer ? [.022, .03, .018] : [.027, .033, .025] }, h("sphereGeometry", { args: [1, 14, 10] })),
         h("mesh", { key: "eye-glint-" + side, position: [side * (isDeer ? .135 : .112) - .006, .035, isDeer ? .137 : .14], material: CREAM, scale: [.006, .008, .004] }, h("sphereGeometry", { args: [1, 10, 8] }))
       ]),
-      ...(isRabbit ? [-1, 1].map((side) => h("mesh", { key: "ear-" + side, position: [side * .105, .27, -.015], rotation: [side * .1, 0, side * -.13], material: coat, scale: [.075, .28, .07] }, h("sphereGeometry", { args: [1, 16, 12] })) : []),
+      ...(isRabbit ? [-1, 1].map((side) => h("mesh", { key: "ear-" + side, position: [side * .105, .27, -.015], rotation: [side * .1, 0, side * -.13], material: coat, scale: [.075, .28, .07] }, h("sphereGeometry", { args: [1, 16, 12] }))) : []),
       ...(isCat || isSquirrel ? [-1, 1].map((side) => h("group", { key: "ear-" + side, position: [side * (isSquirrel ? .095 : .13), .14, -.025] },
         h("mesh", { material: coat, position: [0, .045, 0], scale: isSquirrel ? [.055, .095, .055] : [.075, .11, .065] }, h("coneGeometry", { args: [.1, .22, 7] })),
         h("mesh", { material: PINK, position: [0, .05, .047], scale: [.028, .055, .014] }, h("sphereGeometry", { args: [1, 12, 8] }))

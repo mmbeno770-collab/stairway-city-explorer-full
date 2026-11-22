@@ -23,15 +23,111 @@ import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
 
 const h = React.createElement;
 
-function BusArrivalBoard({ busInfoRef }) {
-  const [expanded, setExpanded] = useState(false);
+function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) {
+  const [player, setPlayer] = useState({ x: 0, z: 0 });
+  useEffect(() => {
+    const update = () => {
+      const current = playerPositionRef?.current;
+      if (current) setPlayer({ x: current.x || 0, z: current.z || 0 });
+    };
+    update();
+    const timer = window.setInterval(update, 350);
+    return () => window.clearInterval(timer);
+  }, [playerPositionRef]);
+  const size = 520, pad = 28, span = 1700, inner = size - pad * 2;
+  const px = (x) => pad + ((x + 850) / span) * inner;
+  const py = (z) => pad + ((z + 850) / span) * inner;
+  const islands = marine?.islands || [];
+  const reserve = world.wildlifeReserve || { x: 0, z: 0 };
+  const missions = WILDLIFE_MISSIONS.map((mission, index) => ({
+    ...mission,
+    x: Number.isFinite(mission.x) ? mission.x : reserve.x + (mission.dx || 0),
+    z: Number.isFinite(mission.z) ? mission.z : reserve.z + (mission.dz || 0),
+    index
+  }));
+  const route = world.busRoutes?.[0]?.path || [];
+  const routeStep = Math.max(1, Math.ceil(route.length / 120));
+  const routePoints = route.filter((_, index) => index % routeStep === 0 || index === route.length - 1)
+    .map((point) => String(px(point.x)) + "," + String(py(point.z))).join(" ");
+  const landmarks = world.landmarks || [];
+  const busStops = world.busStops || [];
+  const transitSpaces = (world.publicSpaces || []).filter((place) => place.style === "transit");
+  const completedCount = missions.filter((mission) => completedIds.includes(mission.id)).length;
+  return h("div", { className: "tool-panel-scroll map-panel-body" },
+    h("div", { className: "map-status-line" },
+      h("span", null, "🔵 המיקום שלך"),
+      h("span", null, completedCount + "/" + missions.length + " משימות הושלמו")
+    ),
+    h("svg", { className: "world-map-svg", viewBox: "0 0 520 520", role: "img", "aria-label": "מפת העיר והאיים עם מיקום השחקן, משימות ותחנות מרכזיות" },
+      h("defs", null,
+        h("pattern", { id: "map-water-grid", width: "34", height: "34", patternUnits: "userSpaceOnUse" },
+          h("path", { d: "M 34 0 L 0 0 0 34", fill: "none", stroke: "#8eb8ba", strokeWidth: ".55", opacity: ".22" })
+        )
+      ),
+      h("rect", { x: 0, y: 0, width: size, height: size, rx: 18, fill: "#173f4a" }),
+      h("rect", { x: 0, y: 0, width: size, height: size, rx: 18, fill: "url(#map-water-grid)" }),
+      h("path", { d: "M " + px(-190) + " " + py(-175) + " L " + px(190) + " " + py(-175) + " L " + px(190) + " " + py(175) + " L " + px(-190) + " " + py(175) + " Z", fill: "#6b806a", stroke: "#b7b28c", strokeWidth: "2", opacity: ".82" }),
+      h("ellipse", { cx: px(0), cy: py(0), rx: 57, ry: 48, fill: "#778d72", stroke: "#e1d1a6", strokeWidth: "2", opacity: ".82" }),
+      ...islands.map((island) => h("g", { key: island.id },
+        h("ellipse", { cx: px(island.x), cy: py(island.z), rx: Math.max(10, island.rx * inner / span * .86), ry: Math.max(9, island.rz * inner / span * .86), fill: island.color || "#568c62", stroke: "#e6d5a7", strokeWidth: "2", opacity: ".94" }),
+        h("ellipse", { cx: px(island.x), cy: py(island.z), rx: Math.max(5, island.rx * inner / span * .62), ry: Math.max(5, island.rz * inner / span * .62), fill: "none", stroke: "rgba(255,255,255,.22)", strokeWidth: "1", strokeDasharray: "3 4" }),
+        h("text", { x: px(island.x), y: py(island.z) + 3, textAnchor: "middle", className: "map-island-label" }, island.name)
+      )),
+      routePoints && h("polyline", { points: routePoints, fill: "none", stroke: "#8de2e4", strokeWidth: "3", strokeDasharray: "7 5", strokeLinecap: "round", opacity: ".92" }),
+      ...transitSpaces.map((place) => h("circle", { key: place.id, cx: px(place.x), cy: py(place.z), r: 5, fill: "#3e9eca", stroke: "#e9f9ff", strokeWidth: "1.5" })),
+      ...busStops.map((stop) => h("g", { key: "bus-" + stop.id },
+        h("circle", { cx: px(stop.x), cy: py(stop.z), r: 6.5, fill: "#247ea7", stroke: "#e8f5ff", strokeWidth: "2" }),
+        h("text", { x: px(stop.x), y: py(stop.z) + 3, textAnchor: "middle", className: "map-pin-number" }, "ב")
+      )),
+      ...landmarks.map((place, index) => h("g", { key: "landmark-" + index },
+        h("path", { d: "M " + px(place.x) + " " + (py(place.z)-7) + " l 7 7 -7 7 -7 -7 Z", fill: "#e9b75c", stroke: "#fff0c6", strokeWidth: "1" }),
+        h("title", null, place.name)
+      )),
+      ...missions.map((mission) => {
+        const offset = mission.id === "deer-ride" ? -7 : mission.id === "squirrel-catch" ? 7 : 0;
+        const x = px(mission.x) + offset, y = py(mission.z);
+        const done = completedIds.includes(mission.id);
+        return h("g", { key: mission.id },
+          h("circle", { cx: x, cy: y, r: 10, fill: done ? "#568d70" : "#d69c36", stroke: done ? "#c8f1d4" : "#fff0bb", strokeWidth: "2" }),
+          h("text", { x, y: y + 3.5, textAnchor: "middle", className: "map-pin-number" }, String(mission.index + 1)),
+          h("title", null, mission.title + (done ? " · הושלמה" : " · משימה"))
+        );
+      }),
+      h("circle", { cx: px(player.x), cy: py(player.z), r: 11, fill: "none", stroke: "#8edcff", strokeWidth: "3", opacity: ".8" }),
+      h("circle", { cx: px(player.x), cy: py(player.z), r: 6, fill: "#1678ee", stroke: "#ffffff", strokeWidth: "2.5" }),
+      h("text", { x: px(0), y: py(0) + 66, textAnchor: "middle", className: "map-city-label" }, "עיר מרכזית")
+    ),
+    h("div", { className: "map-legend" },
+      h("span", null, "🟡 משימה פעילה"),
+      h("span", null, "🟢 משימה שהושלמה"),
+      h("span", null, "🔷 תחנת אוטובוס"),
+      h("span", null, "🔵 אתה כאן")
+    ),
+    h("div", { className: "map-mission-list" },
+      h("strong", null, "מיקומי המשימות"),
+      ...missions.map((mission) => h("div", { key: mission.id, className: "map-mission-row" },
+        h("span", { className: "map-mission-index" }, String(mission.index + 1)),
+        h("span", { className: completedIds.includes(mission.id) ? "is-done" : "" }, mission.title),
+        h("small", null, mission.location)
+      ))
+    ),
+    h("div", { className: "map-landmark-list" },
+      h("strong", null, "מקומות מרכזיים"),
+      ...landmarks.map((place, index) => h("span", { key: "l-" + index }, "◆ " + place.name)),
+      ...busStops.map((stop) => h("span", { key: "s-" + stop.id }, "🚌 " + stop.name))
+    )
+  );
+}
+
+function BusArrivalBoard({ busInfoRef, embedded = false }) {
+  const [expanded, setExpanded] = useState(embedded);
   const [, refresh] = useState(0);
   useEffect(() => {
     const timer = window.setInterval(() => refresh((value) => value + 1), 900);
     return () => window.clearInterval(timer);
   }, []);
   const info = busInfoRef.current || { activeBuses: 0, stops: [] };
-  return h("section", { className: "bus-board hud-panel", dir: "rtl" },
+  return h("section", { className: "bus-board hud-panel" + (embedded ? " bus-board-embedded" : ""), dir: "rtl" },
     h("button", {
       type: "button", className: "bus-board-toggle", onClick: () => setExpanded((value) => !value),
       "aria-expanded": expanded
@@ -2335,13 +2431,13 @@ export default function Game() {
   const boats = marine.boats;
   const cableCurve = useMemo(() => makeCableCurve(), []);
   const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false, throw: false, sneak: false });
-  const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
+  const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false);
+  const [dockOpen, setDockOpen] = useState(false), [activeDockPanel, setActiveDockPanel] = useState(null);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
   const [wildlifeMission, setWildlifeMission] = useState({ completedIds: [], points: 0 });
-  const [missionOpen, setMissionOpen] = useState(false);
   const [shopSave, setShopSave] = useState(readShopSave);
   const shopSaveRef = useRef(shopSave);
   const [shopOpen, setShopOpen] = useState(false);
@@ -2471,7 +2567,7 @@ export default function Game() {
         if (event.code === "Escape") { closeConversation(); event.preventDefault(); }
         return;
       }
-      if (event.target instanceof HTMLElement && event.target.closest(".climate-panel, .elevator-dialog")) return;
+      if (event.target instanceof HTMLElement && event.target.closest(".game-tool-panel, .elevator-dialog")) return;
       input.current.keys.add(event.code);
       if ((event.code === "KeyF" || String(event.key).toLowerCase() === "f") && !event.repeat) input.current.action = true;
       if ((event.code === "KeyG" || String(event.key).toLowerCase() === "g") && !event.repeat) { input.current.pickup = true; event.preventDefault(); }
@@ -2516,37 +2612,81 @@ export default function Game() {
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
-    h(BusArrivalBoard, { busInfoRef }),
-    h("section", { className: "hud-panel wildlife-quest-panel", dir: "rtl", "aria-live": "polite" },
-      h("button", { type: "button", className: "wildlife-quest-toggle", onClick: () => setMissionOpen((value) => !value), "aria-expanded": missionOpen },
-        h("span", { className: "wildlife-quest-title" }, "🧭 משימות"),
-        h("strong", { className: "wildlife-quest-points" }, "★ " + wildlifeMission.points + " נק׳ · 🪙 " + shopSave.coins),
-        h("span", { className: "wildlife-quest-count" }, wildlifeMission.completedIds.length + "/" + WILDLIFE_MISSIONS.length + (missionOpen ? " −" : " +"))
+    started && h(React.Fragment, null,
+      activeDockPanel && h("section", { className: "game-tool-panel hud-panel", dir: "rtl", role: "region", "aria-label": "לוח מידע" },
+        h("header", { className: "game-tool-panel-header" },
+          h("strong", null, ({ map: "🗺️ מפה", weather: "🌦️ מזג אוויר", help: "❔ עזרה", buses: "🚌 מידע על אוטובוסים", missions: "🧭 משימות" })[activeDockPanel]),
+          h("button", { type: "button", onClick: () => setActiveDockPanel(null), "aria-label": "סגירה" }, "×")
+        ),
+        activeDockPanel === "map" && h(WorldMapPanel, { world, marine, playerPositionRef, completedIds: wildlifeMission.completedIds }),
+        activeDockPanel === "weather" && h("div", { className: "tool-panel-scroll tool-weather" },
+          h("div", { className: "climate-heading" }, h("span", null, "סביבת העיר"), h("span", { className: "climate-status" }, quality === "high" ? "איכות גבוהה" : quality === "balanced" ? "מאוזן" : "חיסכון")),
+          h("label", { className: "climate-field" }, "מזג אוויר", h("select", { value: weather, onChange: (e) => setWeather(e.target.value) }, WEATHER_OPTIONS.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),
+          h("div", { className: "climate-time-row" }, h("label", { htmlFor: "tool-game-time" }, "שעה במשחק"), h("strong", null, formatGameTime(hour))),
+          h("input", { id: "tool-game-time", className: "climate-range", type: "range", min: "0", max: "23.75", step: ".25", value: hour, onChange: (e) => setHour(Number(e.target.value)) }),
+          h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
+        ),
+        activeDockPanel === "buses" && h(BusArrivalBoard, { busInfoRef, embedded: true }),
+        activeDockPanel === "missions" && h("div", { className: "tool-panel-scroll wildlife-quest-list" },
+          h("div", { className: "wildlife-quest-points" }, "★ " + wildlifeMission.points + " נקודות · 🪙 " + shopSave.coins + " מטבעות"),
+          h("small", { className: "wildlife-quest-island-bonus" }, "🏝️ אי חדש: ‎+150 נקודות ו־15 מטבעות (פעם אחת לכל אי)"),
+          ...WILDLIFE_MISSIONS.map((mission) => {
+            const done = wildlifeMission.completedIds.includes(mission.id);
+            return h("article", { key: mission.id, className: "wildlife-quest-item" + (done ? " is-complete" : "") },
+              h("div", { className: "wildlife-quest-item-top" },
+                h("strong", null, (done ? "✓ " : "◈ ") + mission.title),
+                h("span", null, mission.points + " נק׳ · +" + Math.floor(mission.points / 10) + " 🪙")
+              ),
+              h("p", null, mission.description),
+              h("small", null, "📍 " + mission.location)
+            );
+          }),
+          wildlifeMission.completedIds.length === WILDLIFE_MISSIONS.length
+            ? h("button", { type: "button", className: "wildlife-quest-reset", onClick: restartWildlifeMission }, "איפוס המשימות והתחלה מחדש")
+            : null
+        ),
+        activeDockPanel === "help" && h("div", { className: "tool-panel-scroll tool-help" },
+          h("ul", null,
+            h("li", null, h("b", null, "W A S D"), " / חיצים — הליכה"),
+            h("li", null, h("b", null, "Shift"), " — ריצה · ", h("b", null, "רווח"), " — קפיצה"),
+            h("li", null, h("b", null, "גרירת עכבר"), " — סיבוב מצלמה · ", h("b", null, "גלגלת"), " — זום"),
+            h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
+            h("li", null, h("b", null, "F"), " — פעולה, פתיחת דלתות, עלייה לכלי רכב ודיבור עם תושבים."),
+            h("li", null, h("b", null, "G"), " — להרים ארגז קטן או להניח חפץ שמחזיקים."),
+            h("li", null, h("b", null, "H"), " — לזרוק ארגז קדימה."),
+            h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. עולים לקרונית בלחיצה על F."),
+            h("li", null, "כלי רכב: F כדי להיכנס. W/S לתנועה ו־A/D להיגוי. רווח או Shift לפי סוג הכלי."),
+            h("li", null, "סירות: F ליד הסירה, W/S לשוט, A/D להיגוי ו־F לרדת בעצירה."),
+            h("li", null, "צלילה: W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק. F ליד דולפין כדי לעלות עליו."),
+            h("li", null, "חיות: התגנבו עם C והתקרבו לאיילים ולסנאים בזהירות."),
+            h("li", null, "המשימות מסומנות במפה. מגיעים לסמן הזהוב כדי להשלים משימות ביקור.")
+          )
+        )
       ),
-      missionOpen && h("div", { className: "wildlife-quest-list" },
-        h("small", { className: "wildlife-quest-island-bonus" }, "🏝️ אי חדש: ‎+150 נקודות ו־15 מטבעות (פעם אחת לכל אי)"),
-        ...WILDLIFE_MISSIONS.map((mission) => {
-          const done = wildlifeMission.completedIds.includes(mission.id);
-          return h("article", { key: mission.id, className: "wildlife-quest-item" + (done ? " is-complete" : "") },
-            h("div", { className: "wildlife-quest-item-top" },
-              h("strong", null, (done ? "✓ " : "◈ ") + mission.title),
-              h("span", null, mission.points + " נק׳ · +" + Math.floor(mission.points / 10) + " 🪙")
-            ),
-            h("p", null, mission.description),
-            h("small", null, "📍 " + mission.location)
-          );
-        }),
-        wildlifeMission.completedIds.length === WILDLIFE_MISSIONS.length
-          ? h("button", { type: "button", className: "wildlife-quest-reset", onClick: restartWildlifeMission }, "איפוס המשימות והתחלה מחדש")
-          : null
+      h("div", { className: "game-tool-dock", dir: "rtl" },
+        dockOpen && h("div", { className: "game-tool-dock-actions" },
+          ...[
+            ["map", "🗺️", "מפה"],
+            ["weather", "🌦️", "מזג אוויר"],
+            ["help", "❔", "עזרה"],
+            ["buses", "🚌", "אוטובוסים"],
+            ["missions", "🧭", "משימות"]
+          ].map(([key, icon, label]) => h("button", {
+            key, type: "button", title: label, "aria-label": label,
+            className: "game-tool-icon" + (activeDockPanel === key ? " is-active" : ""),
+            onClick: () => setActiveDockPanel((current) => current === key ? null : key)
+          }, icon))
+        ),
+        h("button", {
+          type: "button", className: "game-tool-main",
+          "aria-label": dockOpen ? "סגירת תפריט כלים" : "פתיחת תפריט כלים",
+          "aria-expanded": dockOpen,
+          onClick: () => {
+            if (dockOpen) { setDockOpen(false); setActiveDockPanel(null); }
+            else setDockOpen(true);
+          }
+        }, dockOpen ? "×" : "☰")
       )
-    ),
-    h("section", { className: "hud-panel climate-panel", "aria-label": "הגדרות מזג אוויר וזמן" },
-      h("div", { className: "climate-heading" }, h("span", null, "סביבת העיר"), h("span", { className: "climate-status" }, quality === "high" ? "איכות גבוהה" : quality === "balanced" ? "מאוזן" : "חיסכון")),
-      h("label", { className: "climate-field" }, "מזג אוויר", h("select", { value: weather, onChange: (e) => setWeather(e.target.value) }, WEATHER_OPTIONS.map((option) => h("option", { key: option.value, value: option.value }, option.label)))),
-      h("div", { className: "climate-time-row" }, h("label", { htmlFor: "game-time" }, "שעה במשחק"), h("strong", null, formatGameTime(hour))),
-      h("input", { id: "game-time", className: "climate-range", type: "range", min: "0", max: "23.75", step: ".25", value: hour, onChange: (e) => setHour(Number(e.target.value)) }),
-      h("button", { className: "climate-cycle", type: "button", onClick: () => setClockRunning((v) => !v) }, clockRunning ? "השהה מחזור יום/לילה" : "הפעל מחזור יום/לילה")
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
     hud && (mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable" || mode === "park-ride") && h("div", { className: "hud-panel vehicle-hud" }, hud),
@@ -2570,31 +2710,6 @@ export default function Game() {
       h("h3", null, elevatorMenu.buildingName ? "מעלית · " + elevatorMenu.buildingName : "מעלית · בחירת קומה"),
       h("div", { className: "elevator-floor-grid" }, [h("button", { key: -1, className: elevatorMenu.current === -1 ? "selected" : "", onClick: () => { input.current.elevatorFloor = -1; } }, "מחסן ‎-1"), ...Array.from({ length: elevatorMenu.floors }, (_, index) => { const floor = index; return h("button", { key: floor, className: floor === elevatorMenu.current ? "selected" : "", onClick: () => { input.current.elevatorFloor = floor; } }, floor === 0 ? "קרקע" : floor === elevatorMenu.floors - 1 ? "גג" : `קומה ${floor}`); })]),
       h("button", { className: "elevator-cancel", onClick: () => { input.current.action = true; } }, "יציאה מהמעלית")
-    ),
-    h("section", { className: `hud-panel hud-help ${help ? "" : "hud-collapsed"}` }, h("button", { className: "hud-btn", onClick: () => setHelp((v) => !v) }, help ? "הסתר" : "עזרה"),
-      help && h("ul", null,
-        h("li", null, h("b", null, "W A S D"), " / חיצים — הליכה"),
-        h("li", null, h("b", null, "Shift"), " — ריצה · ", h("b", null, "רווח"), " — קפיצה"),
-        h("li", null, h("b", null, "גרירת עכבר"), " — סיבוב מצלמה · ", h("b", null, "גלגלת"), " — זום"),
-        h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
-        h("li", null, h("b", null, "F"), " — פעולה, פתיחת דלתות, עלייה לכלי רכב ודיבור עם תושבים. התקרבו לתושב ולחצו F כדי לפתוח שיחה."),
-        h("li", null, h("b", null, "G"), " — להרים ארגז קטן שעומדים לידו או להניח חפץ שמחזיקים. בזמן נשיאה הולכים לאט יותר ולא קופצים."),
-        h("li", null, h("b", null, "H"), " — לזרוק את הארגז קדימה. הליכה לתוך ארגז שאינו מוחזק דוחפת אותו בעדינות."),
-        h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
-        h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A ימינה ו־D שמאלה; Shift בלימה ברכב."),
-        h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),
-        h("li", null, "תושבי העיר הם דמויות AI: הם מטיילים, עוצרים ומסתכלים סביב, נכנסים למכוניות, נוסעים ומטיסים מסוק, מטוס וטסלה. אפשר להשתלט על כלי רכב שה-AI נוהג בהם כשמתקרבים ולוחצים F."),
-        h("li", null, "מסוק: W קדימה, S אחורה, A ימינה, D שמאלה, רווח עלייה, Shift ירידה"),
-        h("li", null, "סירות: F ליד סירה בחוף כדי לעלות. W/S לשוט, A ימינה · D שמאלה, רווח לבלום, ו־F לרדת כשהסירה בעצירה. אפשר להגיע לאיים."),
-        h("li", null, "צלילה: כשיורדים מהחוף ונכנסים למים חליפת צלילה מופעלת והמצלמה צוללת איתכם. W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק; חפשו דגים, מדוזות, סוסוני ים, אלמוגים ודולפינים."),
-        h("li", null, "דולפינים: כשדולפין מתקרב בזמן צלילה, לחצו F כדי לעלות עליו. W/S לשוט קדימה ואחורה, A/D לכוון, רווח לבלום ו־F לרדת. גם בכפתורי המגע אפשר לכוון את הדולפין."),
-        h("li", null, "מכון כושר: F להתחלת אימון או לעצירה בהליכון ובמשקולות"),
-        h("li", null, "מחסן בכל בניין: F ליד פתח המדרגות. בבניין עם המעלית אפשר לבחור גם מחסן ‎-1 בתפריט המעלית."),
-        h("li", null, "גן השעשועים: F לנדנדה או למגלשה"),
-        h("li", null, "בשמורת הטבע העירונית אפשר לפגוש איילים, שועלים, ארנבים, ברווזים, סנאים, חתולים, כלבים ויונים. החיות מסתובבות, עוצרות ומגיבות לסביבה."),
-         h("li", null, "עקבו אחרי סיור שמורת הטבע בלוח המשימות. מגיעים לסמן הזהוב בכל תחנה כדי להשלים את המשימה ולצבור נקודות."),
-         h("li", null, "בחרו מזג אוויר, שעה ומחזור יום/לילה בפינה השמאלית.")
-      )
     ),
     h("div", { ref: joyRef, className: "joy", "aria-label": "שליטה בכיוון: למעלה קדימה, למטה אחורה, שמאלה שמאלה, ימינה ימינה", onPointerDown: (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }, onPointerMove: joyMove, onPointerUp: joyEnd, onPointerCancel: joyEnd },
       h("span", { className: "joy-direction up", "aria-hidden": true }, "↑"),

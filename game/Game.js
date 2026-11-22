@@ -1220,7 +1220,7 @@ function PickupProps({ items, heldItemRef, playerPositionRef }) {
   }));
 }
 
-function resolvePickupObstacles(point, yLo, yHi, radius, items, heldItem) {
+function resolvePickupObstacles(point, yLo, yHi, radius, items, heldItem, pushInput = null) {
   for (let pass = 0; pass < 2; pass++) for (const item of items) {
     if (item === heldItem || item.carried) continue;
     const size = item.size || { width: .72, height: .58, depth: .64 };
@@ -1230,6 +1230,21 @@ function resolvePickupObstacles(point, yLo, yHi, radius, items, heldItem) {
     const cx = THREE.MathUtils.clamp(point.x, x0, x1), cz = THREE.MathUtils.clamp(point.z, z0, z1);
     const dx = point.x - cx, dz = point.z - cz, d2 = dx * dx + dz * dz;
     if (d2 >= radius * radius) continue;
+    if (pushInput && !item.thrown) {
+      const moveLength = Math.hypot(pushInput.dx, pushInput.dz);
+      const speed = pushInput.dt > 0 ? moveLength / pushInput.dt : 0;
+      if (speed > .45) {
+        const impulse = Math.min(.78, speed * .13) * (1 - Math.min(.55, Math.sqrt(d2) / Math.max(.01, radius) * .25));
+        const currentX = item.vx || 0, currentZ = item.vz || 0;
+        const dirX = pushInput.dx / moveLength, dirZ = pushInput.dz / moveLength;
+        const nextVX = currentX + dirX * impulse, nextVZ = currentZ + dirZ * impulse;
+        const nextSpeed = Math.hypot(nextVX, nextVZ), maxSpeed = 3.6;
+        const scale = nextSpeed > maxSpeed ? maxSpeed / nextSpeed : 1;
+        item.vx = nextVX * scale; item.vz = nextVZ * scale;
+        item.vy = Math.max(item.vy || 0, .12);
+        item.thrown = true;
+      }
+    }
     if (d2 > 1e-8) {
       const d = Math.sqrt(d2), push = radius - d;
       point.x += dx / d * push; point.z += dz / d * push;
@@ -1492,7 +1507,10 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       resolveHelicopterObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, helis);
       resolveAirVehicleObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, airVehicles);
       resolveClosedDoors(next, p.y + stepHeight, p.y + HEIGHT, RAD, world, doorStatesRef.current);
-      resolvePickupObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, pickupItems, s.heldItem);
+      const pushInput = !s.heldItem && s.mode === "walk"
+        ? { dx: next.x - p.x, dz: next.z - p.z, dt }
+        : null;
+      resolvePickupObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, pickupItems, s.heldItem, pushInput);
       resolveCitizenObstacles(next, p.y + stepHeight, p.y + HEIGHT, RAD, citizensRef?.current || []);
       p.x = next.x; p.z = next.z;
       let ny = p.y + s.v.y * dt, ceiling = col.ceilingAt(p.x, p.z, p.y + HEIGHT - .05);
@@ -2307,6 +2325,7 @@ export default function Game() {
         h("li", null, h("b", null, "Q / E"), " — סיבוב מצלמה"),
         h("li", null, h("b", null, "F"), " — פעולה, פתיחת דלתות, עלייה לכלי רכב ודיבור עם תושבים. התקרבו לתושב ולחצו F כדי לפתוח שיחה."),
         h("li", null, h("b", null, "G"), " — להרים ארגז קטן שעומדים לידו או להניח חפץ שמחזיקים. בזמן נשיאה הולכים לאט יותר ולא קופצים."),
+        h("li", null, h("b", null, "H"), " — לזרוק את הארגז קדימה. הליכה לתוך ארגז שאינו מוחזק דוחפת אותו בעדינות."),
         h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. על הרציף הולכים לקרונית; כשהדלת נפתחת לוחצים F להיכנס. ↑ / W נוסע קדימה, ↓ / S אחורה, ו־F יוצאים ליד תחנה."),
         h("li", null, "חניון מרכז העיר: F ליד רכב, ג׳יפ, מכונית מרוץ, אוטובוס או טנק כדי להיכנס. W קדימה, S אחורה, A ימינה ו־D שמאלה; Shift בלימה ברכב."),
         h("li", null, "מטוס: F כדי להיכנס, W/S לתנועה, A/D להיגוי, רווח להמראה ו־Shift להנמכה. טסלה מעופפת: F כדי להיכנס, W/S לנסיעה, A/D להיגוי, רווח לעלייה נמוכה ו־Shift לירידה; מאחור יוצא עשן בזמן תנועה."),
@@ -2328,6 +2347,8 @@ export default function Game() {
       h("span", { className: "joy-direction left", "aria-hidden": true }, "←"),
       h("div", { className: "joy-knob", style: { transform: `translate(${knob.x * 34}px, ${knob.y * 34}px)` } })),
     h("button", { className: "jump-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.keys.add(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerUp: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); }, onPointerCancel: () => { input.current.keys.delete(mode === "cable-ladder" || mode === "cable" ? "ArrowUp" : "Space"); } }, mode === "heli" || mode === "airVehicle" || mode === "swim" ? "עלייה" : mode === "car" || mode === "boat" || mode === "dolphin" ? "בלימה" : mode === "cable-ladder" ? "טיפוס ↑" : mode === "cable" ? "קדימה ↑" : "קפיצה"),
+    h("button", { type: "button", className: "item-action-btn pickup-touch-btn", onPointerDown: (e) => e.stopPropagation(), onClick: () => { input.current.pickup = true; }, "aria-label": "הרמה או הנחה של ארגז" }, "G · הרמה"),
+    h("button", { type: "button", className: "item-action-btn throw-touch-btn", onPointerDown: (e) => e.stopPropagation(), onClick: () => { input.current.throw = true; }, "aria-label": "זריקת הארגז שמוחזק" }, "H · זריקה"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" }, h("div", { className: "start-card" },
       h("h1", null, "עיר פתוחה"), h("p", null, "עיר תלת־ממדית לחקור: בניינים מפורטים, חוף וים, 36 סירות, שמונה איים שונים, עולם תת־ימי עם יצורים ימיים, ורכבל עם שמונה תחנות מעל העיר."),

@@ -298,7 +298,42 @@ function chooseSocialSeat(person, seats) {
   return best;
 }
 
-function releaseSocialSeat(person) {
+function releaseSeatConversation(person, walkers) {
+  if (person.seatChatPartner) {
+    const partner = walkers.find((walker) => walker.id === person.seatChatPartner);
+    if (partner?.seatChatPartner === person.id) {
+      partner.seatChatPartner = null;
+      partner.seatChatCooldown = .75;
+    }
+  }
+  person.seatChatPartner = null;
+  person.seatChatCooldown = .6;
+}
+
+function startSeatConversation(person, partner, now) {
+  const openers = [
+    "איך עובר עליך היום?",
+    "כבר הספקת להכיר את הכיכר הזאת?",
+    "נעים לעצור כאן אחרי סיבוב בעיר.",
+    "איזה מקום נחמד לשבת ולדבר."
+  ];
+  const replies = [
+    "מצוין, בדיוק יצאתי לטייל קצת.",
+    "כן, יש כאן פינות ממש יפות.",
+    "בהחלט, עוד מעט אמשיך לגלות את העיר.",
+    "נכון, תמיד מגלים כאן משהו חדש."
+  ];
+  person.bubbleText = openers[Math.floor(nextRandom(person) * openers.length)];
+  partner.bubbleText = replies[Math.floor(nextRandom(partner) * replies.length)];
+  person.bubbleUntil = now + 2.8;
+  partner.bubbleUntil = now + 2.8;
+  const delay = randomRange(person, 3.8, 5.4);
+  person.seatChatCooldown = delay;
+  partner.seatChatCooldown = delay + .15;
+}
+
+function releaseSocialSeat(person, walkers = []) {
+  releaseSeatConversation(person, walkers);
   if (person.seatTarget?.occupiedBy === person.id) person.seatTarget.occupiedBy = null;
   person.seatTarget = null;
 }
@@ -661,6 +696,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       wait: (i % 4) * .55, actionWait: 0, stuck: 0, stuckSideChanged: false, hidden: false,
       visiting: false, visitCountdown: routineProfile.visitMin + (i % 5) * 1.8,
       visitKind: "", seatTarget: null, seated: false, seatTimer: 0, seatYaw: 0,
+      seatChatPartner: null, seatChatCooldown: .8 + (i % 5) * .32,
       seatReturnRoute: null, returningFromSeat: false,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
@@ -839,7 +875,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         person.bubbleUntil = now + 3.2;
       }
       if (person.followPlayer && person.visitKind === "seat") {
-        releaseSocialSeat(person);
+        releaseSocialSeat(person, walkers);
         person.seated = false;
         person.visiting = false;
         person.visitTarget = null;
@@ -853,7 +889,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       if (person.seated) {
         person.seatTimer = Math.max(0, person.seatTimer - dt);
         if (person.seatTimer <= 0) {
-          releaseSocialSeat(person);
+          releaseSocialSeat(person, walkers);
           person.seated = false;
           person.visiting = false;
           person.visitTarget = null;
@@ -865,6 +901,39 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.visitCountdown = nextPersonalVisitDelay(person);
           person.wait = .16;
         } else {
+          person.seatChatCooldown = Math.max(0, person.seatChatCooldown - dt);
+          let chatPartner = person.seatChatPartner
+            ? walkers.find((walker) => walker.id === person.seatChatPartner && walker.seated)
+            : null;
+          if (!chatPartner && person.seatChatPartner) {
+            person.seatChatPartner = null;
+            person.seatChatCooldown = .45;
+          }
+          if (!chatPartner && person.seatChatCooldown <= 0) {
+            let nearestIndex = -1, nearestDistance = 3.15;
+            for (let otherIndex = personIndex + 1; otherIndex < walkers.length; otherIndex++) {
+              const other = walkers[otherIndex];
+              if (!other.seated || !other.seatTarget || other.seatChatPartner || other.followPlayer
+                || conversationRef?.current?.personId === other.id
+                || Math.abs(other.y - person.y) > .8) continue;
+              const distance = Math.hypot(other.x - person.x, other.z - person.z);
+              if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = otherIndex; }
+            }
+            if (nearestIndex >= 0) {
+              chatPartner = walkers[nearestIndex];
+              person.seatChatPartner = chatPartner.id;
+              chatPartner.seatChatPartner = person.id;
+              startSeatConversation(person, chatPartner, now);
+            } else {
+              person.seatChatCooldown = .9 + nextRandom(person) * .8;
+            }
+          } else if (chatPartner && personIndex < walkers.indexOf(chatPartner) && person.seatChatCooldown <= 0) {
+            startSeatConversation(person, chatPartner, now);
+          }
+          if (chatPartner) {
+            const towardPartner = Math.atan2(chatPartner.x - person.x, chatPartner.z - person.z);
+            person.seatYaw += angleDiff(towardPartner, person.seatYaw) * (1 - Math.exp(-3.2 * dt));
+          }
           if (rig.root) {
             rig.root.position.set(person.x, person.y, person.z);
             rig.root.rotation.y = person.seatYaw;
@@ -1170,7 +1239,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleUntil = now + 2.8;
           person.visitCountdown = 4;
         } else if (person.visitKind === "seat") {
-          releaseSocialSeat(person);
+          releaseSocialSeat(person, walkers);
           person.seated = false;
           person.visiting = false;
           person.visitTarget = null;

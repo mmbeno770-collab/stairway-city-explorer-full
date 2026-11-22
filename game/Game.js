@@ -1927,7 +1927,7 @@ export default function Game() {
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
-        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor }),
+        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather }),
         h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, onTalk: beginConversation })
       )
     ),

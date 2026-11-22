@@ -73,6 +73,26 @@ function randomRange(person, min, max) {
   return min + nextRandom(person) * (max - min);
 }
 
+function getDailyActivityProfile(hour, weather) {
+  const clockHour = ((Number(hour) % 24) + 24) % 24;
+  const night = clockHour < 6 || clockHour >= 22;
+  const morningRush = clockHour >= 7 && clockHour < 10;
+  const eveningRush = clockHour >= 16 && clockHour < 19;
+  const rainy = weather === "rain" || weather === "storm" || weather === "snow";
+  return {
+    night,
+    rushHour: morningRush || eveningRush,
+    rainy,
+    socialRate: night ? .58 : (morningRush || eveningRush) ? 1.12 : 1,
+    routineRate: night ? .62 : rainy ? .86 : 1,
+    visitRate: night ? .58 : rainy ? .82 : 1,
+    busChance: night ? .04 : rainy ? .27 : (morningRush || eveningRush) ? .36 : .19,
+    seatChance: rainy ? .18 : night ? .28 : .42,
+    busWaitMin: rainy ? 18 : night ? 26 : 24,
+    busWaitMax: rainy ? 30 : night ? 38 : 42
+  };
+}
+
 function nextPersonalVisitDelay(person) {
   const profile = person.routineProfile || ROUTINE_PROFILES[0];
   return randomRange(person, profile.visitMin, profile.visitMax);
@@ -890,7 +910,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   return { walkers, drivers, airPilots, heliPilots, socialSeats, busStops, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
 }
 
-export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle }) {
+export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, hour = 14, weather = "clear" }) {
   const collider = useMemo(() => new Collider(world.boxes), [world]);
   const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider), [world, cars, helis, airVehicles, collider]);
   if (citizensRef) citizensRef.current = sim.walkers;
@@ -902,6 +922,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
     const dt = Math.min(simulationClock.current, .045);
     simulationClock.current = 0;
     const now = state.clock.elapsedTime;
+    const activity = getDailyActivityProfile(hour, weather);
     const walkers = sim.walkers, drivers = sim.drivers, socialSeats = sim.socialSeats, busStops = sim.busStops;
     const carEnv = {
       ground: (x, z, y) => collider.groundAt(x, z, y, .65, 1),
@@ -945,9 +966,9 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       }
       person.greetCooldown = Math.max(0, person.greetCooldown - dt);
       const routineProfile = person.routineProfile || ROUTINE_PROFILES[0];
-      person.socialCooldown = Math.max(0, person.socialCooldown - dt * routineProfile.socialRate);
-      person.socialPairCooldown = Math.max(0, (person.socialPairCooldown || 0) - dt);
-      person.routineCooldown = Math.max(0, (person.routineCooldown || 0) - dt);
+      person.socialCooldown = Math.max(0, person.socialCooldown - dt * routineProfile.socialRate * activity.socialRate);
+      person.socialPairCooldown = Math.max(0, (person.socialPairCooldown || 0) - dt * activity.socialRate);
+      person.routineCooldown = Math.max(0, (person.routineCooldown || 0) - dt * activity.routineRate);
       if (person.bubbleUntil <= now) person.bubbleText = "";
       if (person.ridingElevator && person.elevatorTrip) {
         const lift = elevatorCars[person.elevatorId];
@@ -1183,14 +1204,14 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleUntil = now + 2.8;
         }
       }
-      if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId) person.visitCountdown -= dt;
+      if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId) person.visitCountdown -= dt * activity.visitRate;
       if (!person.visiting && !person.followPlayer && !person.socialPairPartnerId && person.visitCountdown <= 0) {
-        const busStop = nextRandom(person) < .24 ? chooseBusStop(person, busStops) : null;
-        const seat = busStop ? null : (nextRandom(person) < .42 ? chooseSocialSeat(person, socialSeats) : null);
+        const busStop = nextRandom(person) < activity.busChance ? chooseBusStop(person, busStops) : null;
+        const seat = busStop ? null : (nextRandom(person) < activity.seatChance ? chooseSocialSeat(person, socialSeats) : null);
         if (busStop) {
           person.visitKind = "busStop";
           person.visitTarget = busStop.proxyBuilding;
-          person.busWaitTimer = randomRange(person, 24, 42);
+          person.busWaitTimer = randomRange(person, activity.busWaitMin, activity.busWaitMax);
           person.busQueueSlot = busStop.queueSlot;
           busStop.queueOwners[busStop.queueSlot] = person.id;
           person.visitRoute = [{ x: busStop.point.x, y: 0, z: busStop.point.z, action: "busWait", stopId: busStop.id }];
@@ -1365,8 +1386,12 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.wait = 0;
           const stop = busStops.find((item) => item.id === target.stopId);
           if (stop) person.yaw = Math.atan2(stop.roadX - stop.x, stop.roadZ - stop.z);
-          person.bubbleText = "מחכה לאוטובוס...";
-          person.bubbleUntil = now + 2.6;
+          person.bubbleText = activity.rainy
+            ? "מחכה לאוטובוס, טוב שיש כאן מחסה."
+            : activity.night ? "ממתין לקו הלילה."
+              : activity.rushHour ? "מחכה לאוטובוס לעבודה או הביתה."
+                : "מחכה לאוטובוס...";
+          person.bubbleUntil = now + 2.8;
           person.waypoint++;
         } else if (target.action === "pause") {
           person.waypoint++;
@@ -1413,7 +1438,8 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         }
         continue;
       }
-      const maxSpeed = following ? 2.9 : walkingPartner ? 2.1 : person.visiting ? 1.8 : person.speed;
+      const weatherPace = activity.rainy ? .9 : 1;
+      const maxSpeed = (following ? 2.9 : walkingPartner ? 2.1 : person.visiting ? 1.8 : person.speed) * weatherPace;
       const nx = dx / Math.max(distance, .001), nz = dz / Math.max(distance, .001);
       const brakingDistance = Math.max(0, distance - threshold);
       const targetSpeed = Math.min(maxSpeed, Math.sqrt(2 * 3.2 * brakingDistance));

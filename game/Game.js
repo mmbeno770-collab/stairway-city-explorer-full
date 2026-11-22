@@ -2823,6 +2823,7 @@ export default function Game() {
         h("span", { className: "multiplayer-live-dot" }),
         multiplayer.status === "connected" ? multiplayer.onlinePlayers.length + " שחקנים מחוברים" : "חיבור למשחק משותף"
       ),
+      multiplayer.status !== "connected" && h("button", { type: "button", className: "multiplayer-retry", onClick: multiplayer.retry }, "↻ נסה להתחבר שוב"),
       playersPanelOpen && h("div", { className: "multiplayer-player-list" },
         h("strong", null, "שחקנים במשחק"),
         multiplayer.status !== "connected"

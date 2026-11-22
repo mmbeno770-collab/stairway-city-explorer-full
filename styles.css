@@ -648,3 +648,17 @@ button { font: inherit; }
   .multiplayer-hud { top: 56px; left: 8px; width: min(218px, calc(100vw - 16px)); }
   .multiplayer-toggle { padding: 9px 10px; font-size: 11px; }
 }
+
+.multiplayer-retry {
+  display: block;
+  margin: 0 10px 10px auto;
+  padding: 6px 10px;
+  border: 1px solid rgba(135, 222, 190, .3);
+  border-radius: 8px;
+  color: #d8f3e4;
+  background: rgba(55, 120, 93, .24);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.multiplayer-retry:hover { background: rgba(55, 120, 93, .42); }

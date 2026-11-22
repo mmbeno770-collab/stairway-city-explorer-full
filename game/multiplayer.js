@@ -67,18 +67,29 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
   const [remotePlayers, setRemotePlayers] = useState([]);
   const [remoteIslandRows, setRemoteIslandRows] = useState([]);
   const [databaseReady, setDatabaseReady] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
   const channelRef = useRef(null);
+  const retry = () => {
+    setStatus("connecting");
+    setStatusMessage("מנסה להתחבר מחדש...");
+    setOnlinePlayers([]);
+    setRemotePlayers([]);
+    setRetryToken((value) => value + 1);
+  };
   const connectedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
     let channel = null;
+    let currentStage = "בדיקת חיבור קודם";
 
     const start = async () => {
+      currentStage = "בדיקת התחברות קודמת";
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       let user = sessionData.session?.user;
       if (!user) {
+        currentStage = "יצירת משתמש אורח ב־Supabase (כניסת Anonymous)";
         const { data, error } = await supabase.auth.signInAnonymously();
         if (error) throw error;
         user = data.user;
@@ -89,6 +100,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       setUserId(user.id);
       setNickname(playerName);
 
+      currentStage = "טעינת טבלת האיים game_islands";
       const { data: islandRows, error: islandError } = await supabase
         .from("game_islands")
         .select("player_id,nickname,island,updated_at")
@@ -166,6 +178,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       }
 
       channelRef.current = channel;
+      currentStage = "חיבור לערוץ Realtime של השחקנים";
       channel.subscribe((channelStatus) => {
         if (!active) return;
         if (channelStatus === "SUBSCRIBED") {
@@ -201,7 +214,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
         setStatusMessage("צריך להפעיל Anonymous Sign-ins בהגדרות Authentication של Supabase.");
       } else {
         setStatus("error");
-        setStatusMessage("שגיאת חיבור: " + message.slice(0, 150));
+        setStatusMessage("החיבור נכשל בשלב: " + currentStage + ". " + message.slice(0, 180));
       }
     });
 
@@ -211,7 +224,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       if (channel) supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, []);
+  }, [retryToken]);
 
   useEffect(() => {
     if (!userId || !island) return undefined;
@@ -274,7 +287,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     onlinePlayers,
     remotePlayers,
     remoteIslands,
-    databaseReady
+    databaseReady,
+    retry
   };
 }
 

@@ -293,10 +293,10 @@ function makeBusStopDestinations(world) {
       x0: stop.x - 5.7, x1: stop.x + 5.7,
       z0: stop.z - 5.3, z1: stop.z + 5.3
     };
-    const point = stop.axis === "x"
-      ? { x: stop.x + 3.45, z: stop.z - Math.sign(stop.roadZ - stop.z) * 1.55 }
-      : { x: stop.x - Math.sign(stop.roadX - stop.x) * 1.55, z: stop.z + 3.45 };
-    return { ...stop, gridX, gridZ, point, proxyBuilding };
+    const queuePoints = Array.from({ length: 4 }, (_, slot) => stop.axis === "x"
+      ? { x: stop.x + 3.45, z: stop.z - Math.sign(stop.roadZ - stop.z) * (1.55 + slot * .92) }
+      : { x: stop.x - Math.sign(stop.roadX - stop.x) * (1.55 + slot * .92), z: stop.z + 3.45 });
+    return { ...stop, gridX, gridZ, queuePoints, queueOwners: Array(4).fill(null), point: queuePoints[0], proxyBuilding };
   });
 }
 
@@ -305,10 +305,13 @@ function chooseBusStop(person, stops) {
   for (const stop of stops) {
     const gridDistance = Math.abs(stop.gridX - person.building.gridX) + Math.abs(stop.gridZ - person.building.gridZ);
     if (gridDistance > 1) continue;
-    const distance = Math.hypot(stop.point.x - person.x, stop.point.z - person.z);
+    const queueSlot = stop.queueOwners.findIndex((owner) => !owner);
+    if (queueSlot < 0) continue;
+    const point = stop.queuePoints[queueSlot];
+    const distance = Math.hypot(point.x - person.x, point.z - person.z);
     if (distance > 39) continue;
     const score = distance + nextRandom(person) * 2;
-    if (score < bestScore) { best = stop; bestScore = score; }
+    if (score < bestScore) { best = { ...stop, point, queueSlot }; bestScore = score; }
   }
   return best;
 }
@@ -576,7 +579,7 @@ function autonomousTrafficSignal(car, driver, world, now) {
   return { stop: shouldStop && nearestDistance > -1.5, distance: nearestDistance, phase: laneGreen ? "green" : laneYellow ? "yellow" : "red" };
 }
 
-function updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv) {
+function updateCityBus(car, driver, cars, walkers, world, busStops, now, dt, carEnv) {
   driver.passengerIds ||= [];
   const path = driver.busRoute;
   if (!path?.length) return;
@@ -599,7 +602,7 @@ function updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv) {
   }
   const distance = Math.hypot(target.x - car.x, target.z - car.z);
   if (target.stopId !== undefined && distance < 2.35 && Math.abs(car.speed || 0) < 1.25) {
-    const stop = (world.busStops || []).find((item) => item.id === target.stopId);
+    const stop = busStops.find((item) => item.id === target.stopId);
     const exitIds = driver.passengerIds.filter((id) =>
       walkers.some((person) => person.id === id && person.busDestinationStopId === target.stopId)
     );
@@ -637,6 +640,8 @@ function updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv) {
       .sort((a, b) => a.busQueueSlot - b.busQueueSlot || a.id.localeCompare(b.id));
     const boarding = waiting.slice(0, Math.max(0, capacity - driver.passengerIds.length));
     for (const person of boarding) {
+      const queuedStop = busStops.find((item) => item.id === person.waitingBusStopId);
+      if (queuedStop?.queueOwners[person.busQueueSlot] === person.id) queuedStop.queueOwners[person.busQueueSlot] = null;
       person.waitingForBus = false;
       person.onBus = true;
       person.busDriverId = driver.id;
@@ -1019,9 +1024,21 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         if (rig.root) rig.root.visible = false;
         continue;
       }
+      if (person.waitingForBus && conversationRef?.current?.personId === person.id) {
+        person.waitingForBus = false;
+        const queuedStop = busStops.find((item) => item.id === person.waitingBusStopId);
+        if (queuedStop?.queueOwners[person.busQueueSlot] === person.id) queuedStop.queueOwners[person.busQueueSlot] = null;
+        person.waitingBusStopId = null;
+        person.visiting = false;
+        person.visitKind = "";
+        person.route = person.sidewalkRoute;
+        person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
+      }
       if (person.waitingForBus) {
         person.busWaitTimer = Math.max(0, person.busWaitTimer - dt);
         if (person.busWaitTimer <= 0) {
+          const queuedStop = busStops.find((item) => item.id === person.waitingBusStopId);
+          if (queuedStop?.queueOwners[person.busQueueSlot] === person.id) queuedStop.queueOwners[person.busQueueSlot] = null;
           person.waitingForBus = false;
           person.waitingBusStopId = null;
           person.visiting = false;
@@ -1174,7 +1191,8 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.visitKind = "busStop";
           person.visitTarget = busStop.proxyBuilding;
           person.busWaitTimer = randomRange(person, 24, 42);
-          person.busQueueSlot = Math.abs(person.rngState) % 8;
+          person.busQueueSlot = busStop.queueSlot;
+          busStop.queueOwners[busStop.queueSlot] = person.id;
           person.visitRoute = [{ x: busStop.point.x, y: 0, z: busStop.point.z, action: "busWait", stopId: busStop.id }];
           person.visiting = true;
           person.route = routeToVisit(person, busStop.proxyBuilding, world);
@@ -1339,6 +1357,9 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         } else if (target.action === "busWait") {
           person.waitingForBus = true;
           person.waitingBusStopId = target.stopId;
+          person.x = target.x;
+          person.z = target.z;
+          person.y = collider.groundAt(target.x, target.z, person.y, .75);
           person.visiting = true;
           person.visitKind = "busStop";
           person.wait = 0;
@@ -1534,7 +1555,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         continue;
       }
       if (driver.busRoute) {
-        updateCityBus(car, driver, cars, walkers, world, now, dt, carEnv);
+        updateCityBus(car, driver, cars, walkers, world, busStops, now, dt, carEnv);
         const busSeat = localOffset(car.x, car.z, -.3, .18, car.yaw);
         if (rig.root) {
           rig.root.position.set(busSeat.x, car.y + .54, busSeat.z);

@@ -946,6 +946,16 @@ export function generateWorld(seed = 7) {
         add(signX - .08, .16, signZ - .08, signX + .08, 2.65, signZ + .08, "#46565b", "solid", false);
         add(signX - .42, 2.25, signZ - .1, signX + .42, 2.92, signZ + .1, "#2d7188", "solid", false);
         add(signX - .31, 2.42, signZ - .115, signX + .31, 2.73, signZ - .09, "#f3d78d", "glow", false);
+        // Four small pavement markers form a clear, single-file boarding queue.
+        for (let slot = 0; slot < 4; slot++) {
+            const qx = stop.axis === "x"
+                ? stop.x + 3.45
+                : stop.x - Math.sign(stop.roadX - stop.x) * (1.55 + slot * .92);
+            const qz = stop.axis === "x"
+                ? stop.z - Math.sign(stop.roadZ - stop.z) * (1.55 + slot * .92)
+                : stop.z + 3.45;
+            add(qx - .3, .026, qz - .3, qx + .3, .05, qz + .3, slot === 0 ? "#d8c18d" : "#a9b9b3", "roadMarking", false, true);
+        }
     }
 
     const busPath = [{ x: -70, z: -92.2 }];

@@ -46,13 +46,19 @@ drop policy if exists "Authenticated players can receive game realtime" on realt
 create policy "Authenticated players can receive game realtime"
   on realtime.messages for select
   to authenticated
-  using (true);
+  using (
+    realtime.topic() = 'stairway-city-world'
+    and extension in ('broadcast', 'presence')
+  );
 
 drop policy if exists "Authenticated players can send game realtime" on realtime.messages;
 create policy "Authenticated players can send game realtime"
   on realtime.messages for insert
   to authenticated
-  with check (true);
+  with check (
+    realtime.topic() = 'stairway-city-world'
+    and extension in ('broadcast', 'presence')
+  );
 
 -- Enable Postgres Changes for shared island updates, without failing on reruns.
 do $$

@@ -20,7 +20,7 @@ import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./env
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
 import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, mainlandCoastRadius, MarineWorld } from "./marine-world.js";
 import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
-import { useGameMultiplayer, RemotePlayerAvatars } from "./multiplayer.js";
+import { useGameMultiplayer, RemotePlayerAvatars, getPlayerIslandLocation } from "./multiplayer.js";
 
 const h = React.createElement;
 
@@ -35,9 +35,9 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
     const timer = window.setInterval(update, 350);
     return () => window.clearInterval(timer);
   }, [playerPositionRef]);
-  const size = 520, pad = 28, span = 1700, inner = size - pad * 2;
-  const px = (x) => pad + ((x + 850) / span) * inner;
-  const py = (z) => pad + ((z + 850) / span) * inner;
+  const size = 520, pad = 28, span = 2200, inner = size - pad * 2;
+  const px = (x) => pad + ((x + 1100) / span) * inner;
+  const py = (z) => pad + ((z + 1100) / span) * inner;
   const islands = marine?.islands || [];
   const reserve = world.wildlifeReserve || { x: 0, z: 0 };
   const missions = WILDLIFE_MISSIONS.map((mission, index) => ({
@@ -2537,11 +2537,24 @@ export default function Game() {
   const multiplayer = useGameMultiplayer({ playerPositionRef, island: shopSave.customIsland });
   const [playersPanelOpen, setPlayersPanelOpen] = useState(false);
   const baseMarine = useMemo(() => createMarineWorld(), []);
+  const localIsland = useMemo(() => {
+    if (!shopSave.customIsland) return null;
+    const position = getPlayerIslandLocation(multiplayer.userId || "guest");
+    return {
+      ...shopSave.customIsland,
+      id: "player-island-" + (multiplayer.userId || "guest"),
+      ownerId: multiplayer.userId || null,
+      ownerName: multiplayer.nickname || shopSave.customIsland.name,
+      isPlayerIsland: true,
+      x: position.x,
+      z: position.z
+    };
+  }, [shopSave.customIsland, multiplayer.userId, multiplayer.nickname]);
   const marine = useMemo(() => {
     const islands = [...baseMarine.islands, ...multiplayer.remoteIslands];
-    if (shopSave.customIsland) islands.push(shopSave.customIsland);
+    if (localIsland) islands.push(localIsland);
     return { ...baseMarine, islands };
-  }, [baseMarine, multiplayer.remoteIslands, shopSave.customIsland]);
+  }, [baseMarine, multiplayer.remoteIslands, localIsland]);
   const world = useMemo(() => {
     const city = generateWorld(7);
     city.islands = marine.islands;

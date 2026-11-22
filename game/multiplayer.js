@@ -30,9 +30,18 @@ function getNickname(userId) {
   }
 }
 
-function mapIslandRow(row, index, total) {
+export function getPlayerIslandLocation(userId) {
+  let hash = 2166136261;
+  for (const character of String(userId || "guest")) {
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  }
+  const angle = (hash >>> 0) / 4294967296 * Math.PI * 2;
+  return { x: Math.cos(angle) * 900, z: Math.sin(angle) * 900 };
+}
+
+function mapIslandRow(row) {
   if (!row?.island || typeof row.island !== "object") return null;
-  const angle = (index / Math.max(8, total)) * Math.PI * 2;
+  const position = getPlayerIslandLocation(row.player_id);
   return {
     ...row.island,
     id: "player-island-" + row.player_id,
@@ -40,14 +49,13 @@ function mapIslandRow(row, index, total) {
     ownerName: row.nickname || row.island.name || "שחקן",
     isPlayerIsland: true,
     isRemotePlayerIsland: true,
-    x: Math.cos(angle) * 900,
-    z: Math.sin(angle) * 900
+    x: position.x,
+    z: position.z
   };
 }
 
 function mapIslandRows(rows) {
-  const sorted = [...rows].sort((a, b) => String(a.player_id).localeCompare(String(b.player_id)));
-  return sorted.map((row, index) => mapIslandRow(row, index, sorted.length)).filter(Boolean);
+  return rows.map((row) => mapIslandRow(row)).filter(Boolean);
 }
 
 export function useGameMultiplayer({ playerPositionRef, island }) {
@@ -97,7 +105,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       channel = supabase.channel(CHANNEL_NAME, {
         config: {
           presence: { key: user.id },
-          broadcast: { self: false }
+          broadcast: { self: false },
+          private: true
         }
       });
 
@@ -207,12 +216,15 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
   useEffect(() => {
     if (!userId || !island) return undefined;
     const timer = window.setTimeout(async () => {
+      const position = getPlayerIslandLocation(userId);
       const islandToSave = {
         ...island,
         id: "player-island-" + userId,
         ownerId: userId,
         ownerName: nickname,
-        isPlayerIsland: true
+        isPlayerIsland: true,
+        x: position.x,
+        z: position.z
       };
       const { error } = await supabase.from("game_islands").upsert({
         player_id: userId,
@@ -281,9 +293,11 @@ function RemotePlayerAvatar({ player }) {
   useFrame((_, delta) => {
     if (!groupRef.current) return;
     groupRef.current.position.lerp(targetRef.current, 1 - Math.exp(-10 * delta));
-    groupRef.current.rotation.y += THREE.MathUtils.euclideanModulo(targetYawRef.current - groupRef.current.rotation.y + Math.PI, Math.PI * 2) - Math.PI
-      ? (targetYawRef.current - groupRef.current.rotation.y) * Math.min(1, delta * 8)
-      : 0;
+    const yawDifference = Math.atan2(
+      Math.sin(targetYawRef.current - groupRef.current.rotation.y),
+      Math.cos(targetYawRef.current - groupRef.current.rotation.y)
+    );
+    groupRef.current.rotation.y += yawDifference * Math.min(1, delta * 8);
   });
 
   return React.createElement("group", { ref: groupRef, position: [player.x, player.y, player.z] },

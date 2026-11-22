@@ -1339,7 +1339,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     const p = s.p, root = rig.root;
     divingRef.current = s.mode === "swim" || s.mode === "dolphin";
     if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? (s.waterSwimBlend || 0) * Math.PI / 2 : 0, s.face, 0); }
-    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode, sneaking: keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight") };
+    if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode, sneaking: !!inp.sneak || keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight") };
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       const elevatorCar = elevatorCars[s.elevatorId];

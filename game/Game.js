@@ -1301,12 +1301,12 @@ function isPortablePickup(item) {
     && (item.mass || 0) <= 2.5;
 }
 
-function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onTalk }) {
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const pickupItems = useMemo(() => world.interactables.filter((item) => item.type === "pickup"), [world]);
   const rig = useMemo(() => ({}), []);
   const { camera } = useThree();
-  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, nearParkRide: null, parkRide: null, parkRideStart: 0, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, heldItem: null, nearPickup: -1, nearWildlife: null, nearIslandClaim: false, deerRide: null, deerRideTime: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, climbVelocity: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "" });
+  const st = useRef({ p: new THREE.Vector3(...world.spawn), v: new THREE.Vector3(), yaw: Math.PI, face: Math.PI, pitch: .32, dist: 6, heliDist: 14, carDist: 9, airDist: 14, onGround: true, phase: 0, mode: "walk", target: -1, near: -1, nearPerson: -1, nearParkRide: null, parkRide: null, parkRideStart: 0, talkTarget: null, timer: 0, t: 0, lastLoc: "", liftElapsed: 0, actionCooldown: 0, sitY: 0, heldItem: null, nearPickup: -1, nearWildlife: null, nearIslandClaim: false, deerRide: null, deerRideTime: 0, elevatorTrip: null, elevatorFloor: 0, cableStation: -1, cableTrip: null, cableDescending: false, climbPhase: 0, climbVelocity: 0, elevatorId: -1, hudTimer: 0, cameraReady: false, lastPrompt: "", lastIslandVisit: "" });
   const terrainGround = (x, z, y, step = .6, radius = .6) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, step, Math.max(.2, radius));
   const heliEnv = useMemo(() => ({ ground: (x, z, y, radius = 1) => getIslandAt(x, z, marine.islands) ? .28 : col.groundAt(x, z, y, .6, Math.max(.2, radius)), resolve: (p, a, b, radius) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, cars, world, doorStatesRef, airVehicles, marine]);
   const carEnv = useMemo(() => ({ ground: heliEnv.ground, resolve: (p, a, b, radius, ignore) => { col.resolve(p, a, b, radius); resolveClosedDoors(p, a, b, radius, world, doorStatesRef.current); resolveCarObstacles(p, a, b, radius, cars, ignore); resolveHelicopterObstacles(p, a, b, radius, helis); resolveAirVehicleObstacles(p, a, b, radius, airVehicles); col.resolve(p, a, b, radius); } }), [col, heliEnv, cars, world, doorStatesRef, helis, airVehicles]);
@@ -1340,6 +1340,13 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     divingRef.current = s.mode === "swim" || s.mode === "dolphin";
     if (rig.diverSuit) { rig.diverSuit.visible = s.mode === "swim" || s.mode === "dolphin"; rig.diverSuit.position.copy(p); rig.diverSuit.rotation.set(s.mode === "swim" ? (s.waterSwimBlend || 0) * Math.PI / 2 : 0, s.face, 0); }
     if (playerPositionRef) playerPositionRef.current = { x: p.x, y: p.y, z: p.z, yaw: s.face, mode: s.mode, sneaking: !!inp.sneak || keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight") };
+    const islandAtFeet = s.mode === "walk" && p.y <= 1.35 ? getIslandAt(p.x, p.z, marine.islands) : null;
+    if (islandAtFeet) {
+      if (s.lastIslandVisit !== islandAtFeet.id) {
+        s.lastIslandVisit = islandAtFeet.id;
+        onIslandVisit?.(islandAtFeet);
+      }
+    } else s.lastIslandVisit = "";
     if (s.mode === "elevator" && inp.elevatorFloor !== null) {
       const chosen = inp.elevatorFloor; inp.elevatorFloor = null; onElevatorMenu(null);
       const elevatorCar = elevatorCars[s.elevatorId];
@@ -2286,6 +2293,7 @@ export default function Game() {
   const [wildlifeMission, setWildlifeMission] = useState({ completedIds: [], points: 0 });
   const [missionOpen, setMissionOpen] = useState(false);
   const wildlifeRef = useRef({ animals: [], completedIds: [], islandClaimed: false, reserveCenter: null });
+  const visitedIslandIdsRef = useRef(new Set());
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
@@ -2301,7 +2309,15 @@ export default function Game() {
       return { completedIds, points: current.points + mission.points };
     });
   }, []);
+  const awardIslandVisit = useCallback((island) => {
+    const islandId = island?.id;
+    if (!islandId || visitedIslandIdsRef.current.has(islandId)) return false;
+    visitedIslandIdsRef.current.add(islandId);
+    setWildlifeMission((current) => ({ ...current, points: current.points + 150 }));
+    return true;
+  }, []);
   const restartWildlifeMission = useCallback(() => {
+    visitedIslandIdsRef.current.clear();
     wildlifeRef.current.completedIds = [];
     wildlifeRef.current.islandClaimed = false;
     wildlifeRef.current.animals.forEach((animal) => {
@@ -2414,7 +2430,7 @@ export default function Game() {
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
         h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
-        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onTalk: beginConversation })
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -2426,6 +2442,7 @@ export default function Game() {
         h("span", { className: "wildlife-quest-count" }, wildlifeMission.completedIds.length + "/" + WILDLIFE_MISSIONS.length + (missionOpen ? " −" : " +"))
       ),
       missionOpen && h("div", { className: "wildlife-quest-list" },
+        h("small", { className: "wildlife-quest-island-bonus" }, "🏝️ הגעה לכל אי חדש: ‎+150 נקודות (פעם אחת לכל אי)"),
         ...WILDLIFE_MISSIONS.map((mission) => {
           const done = wildlifeMission.completedIds.includes(mission.id);
           return h("article", { key: mission.id, className: "wildlife-quest-item" + (done ? " is-complete" : "") },

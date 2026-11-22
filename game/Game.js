@@ -1244,6 +1244,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     s.t += dt; s.actionCooldown = Math.max(0, s.actionCooldown - dt);
     const act = inp.action && s.actionCooldown <= 0; if (act) s.actionCooldown = .28; inp.action = false;
     const pickupAction = !!inp.pickup; inp.pickup = false;
+    const throwAction = !!inp.throw; inp.throw = false;
     if (heldItemRef) heldItemRef.current = s.heldItem;
     if (inp.closeTalk) {
       inp.closeTalk = false;
@@ -1434,6 +1435,40 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         p.y = -2.7; s.v.set(0, 0, 0); s.waterSwimBlend = 0; s.mode = "swim"; s.onGround = false;
         s.lastPrompt = ""; onMode("swim"); onPrompt("נכנסתם למים · חליפת צלילה הופעלה"); onHud("");
       }
+      for (const item of pickupItems) {
+        if (!item.thrown || item.carried) continue;
+        const size = item.size || { width: .72, height: .58, depth: .64 };
+        item.vy = (item.vy || 0) - 17 * dt;
+        const next = { x: item.x + (item.vx || 0) * dt, z: item.z + (item.vz || 0) * dt };
+        const radius = Math.max(size.width, size.depth) * .5;
+        const floor = col.groundAt(next.x, next.z, item.y, STEP, radius) + .025;
+        col.resolve(next, item.y, item.y + size.height, radius);
+        resolvePickupObstacles(next, item.y, item.y + size.height, radius, pickupItems, item);
+        item.x = next.x; item.z = next.z; item.y += item.vy * dt;
+        if (item.y <= floor) {
+          item.y = floor;
+          if (Math.abs(item.vy) > 1.25) item.vy = Math.abs(item.vy) * .22;
+          else item.vy = 0;
+          item.vx = (item.vx || 0) * .78; item.vz = (item.vz || 0) * .78;
+          if (Math.hypot(item.vx, item.vz) < .18) { item.vx = 0; item.vz = 0; item.thrown = false; }
+        } else {
+          item.vx *= Math.pow(.985, dt * 60); item.vz *= Math.pow(.985, dt * 60);
+        }
+        item.face = Math.atan2(item.vx || 0, item.vz || 1);
+      }
+      if (throwAction && s.mode === "walk" && s.heldItem) {
+        const item = s.heldItem;
+        item.x = p.x + Math.sin(s.face) * 1.05;
+        item.z = p.z + Math.cos(s.face) * 1.05;
+        item.y = p.y + .18;
+        item.vx = Math.sin(s.face) * 5.2 + s.v.x * .28;
+        item.vz = Math.cos(s.face) * 5.2 + s.v.z * .28;
+        item.vy = 3.1; item.thrown = true; item.carried = false; item.face = s.face;
+        s.heldItem = null;
+        if (heldItemRef) heldItemRef.current = null;
+        onPrompt("זרקת את " + item.label + " · אפשר להרים שוב עם G");
+        s.lastPrompt = "";
+      }
       if (pickupAction && s.mode === "walk" && s.onGround) {
         if (s.heldItem) {
           const item = s.heldItem, size = item.size || { width: .72, height: .58, depth: .64 };
@@ -1452,7 +1487,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         } else {
           let nearest = null, nearestDistance = 1.75;
           for (const item of pickupItems) {
-            if (item.carried || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) continue;
+            if (item.carried || item.thrown || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) continue;
             const distance = Math.hypot(p.x - item.x, p.z - item.z);
             if (distance < nearestDistance) { nearest = item; nearestDistance = distance; }
           }
@@ -2007,7 +2042,7 @@ export default function Game() {
   }, [marine]);
   const boats = marine.boats;
   const cableCurve = useMemo(() => makeCableCurve(), []);
-  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false });
+  const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false, throw: false });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false), [help, setHelp] = useState(true);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
@@ -2085,6 +2120,7 @@ export default function Game() {
       input.current.keys.add(event.code);
       if ((event.code === "KeyF" || String(event.key).toLowerCase() === "f") && !event.repeat) input.current.action = true;
       if ((event.code === "KeyG" || String(event.key).toLowerCase() === "g") && !event.repeat) { input.current.pickup = true; event.preventDefault(); }
+      if ((event.code === "KeyH" || String(event.key).toLowerCase() === "h") && !event.repeat) { input.current.throw = true; event.preventDefault(); }
       if (event.code === "Space" || event.code.startsWith("Arrow")) event.preventDefault();
     };
     const up = (event) => input.current.keys.delete(event.code), blur = () => input.current.keys.clear();

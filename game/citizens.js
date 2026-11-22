@@ -345,6 +345,9 @@ function endWalkingPair(person, walkers) {
   person.socialPairRole = "";
   person.socialPairUntil = 0;
   person.socialPairSide = 0;
+  person.socialPairChatTimer = 0;
+  person.socialPairReplyTimer = 0;
+  person.socialPairReplyText = "";
   person.socialPairCooldown = 22;
   if (partner?.socialPairPartnerId === person.id) {
     const partnerWasFollower = partner.socialPairRole === "follower";
@@ -352,6 +355,9 @@ function endWalkingPair(person, walkers) {
     partner.socialPairRole = "";
     partner.socialPairUntil = 0;
     partner.socialPairSide = 0;
+    partner.socialPairChatTimer = 0;
+    partner.socialPairReplyTimer = 0;
+    partner.socialPairReplyText = "";
     partner.socialPairCooldown = 22;
     if (partnerWasFollower && partner.route === partner.sidewalkRoute) {
       partner.waypoint = nearestLoopIndex(partner.sidewalkRoute, partner.x, partner.z);
@@ -373,6 +379,10 @@ function startWalkingPair(leader, follower, now) {
   follower.socialPairRole = "follower";
   follower.socialPairUntil = until;
   follower.socialPairSide = side;
+  leader.socialPairChatTimer = randomRange(leader, 4.1, 5.2);
+  follower.socialPairChatTimer = 0;
+  follower.socialPairReplyTimer = 0;
+  follower.socialPairReplyText = "";
   leader.socialPairCooldown = 28;
   follower.socialPairCooldown = 28;
 }
@@ -737,6 +747,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       visitKind: "", seatTarget: null, seated: false, seatTimer: 0, seatYaw: 0,
       seatChatPartner: null, seatChatCooldown: .8 + (i % 5) * .32,
       socialPairPartnerId: null, socialPairRole: "", socialPairUntil: 0, socialPairSide: 0,
+      socialPairChatTimer: 0, socialPairReplyTimer: 0, socialPairReplyText: "",
       socialPairCooldown: 5 + (i % 4) * 2,
       seatReturnRoute: null, returningFromSeat: false,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
@@ -895,6 +906,33 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       if (person.socialPairPartnerId && (now >= person.socialPairUntil
         || person.followPlayer || conversationRef?.current?.personId === person.id)) {
         endWalkingPair(person, walkers);
+      }
+      if (person.socialPairRole === "leader") {
+        const partner = walkers.find((walker) => walker.id === person.socialPairPartnerId);
+        if (partner) {
+          person.socialPairChatTimer = Math.max(0, person.socialPairChatTimer - dt);
+          if (person.socialPairChatTimer <= 0 && person.bubbleUntil <= now + .35 && partner.bubbleUntil <= now + .35) {
+            const lines = [
+              ["איזה רחוב נעים לטייל בו.", "נכון, יש כאן הרבה מה לגלות."],
+              ["אולי נעצור בהמשך בכיכר?", "רעיון טוב, אפשר לנוח שם קצת."],
+              ["שמעת על הבניין החדש בשכונה?", "כן, ראיתי אותו בדרך לכאן."],
+              ["נמשיך דרך הרחוב הבא?", "בשמחה, נראה מה נמצא שם."]
+            ];
+            const exchange = lines[Math.floor(nextRandom(person) * lines.length)];
+            person.bubbleText = exchange[0];
+            person.bubbleUntil = now + 2.7;
+            partner.socialPairReplyText = exchange[1];
+            partner.socialPairReplyTimer = 1.05;
+            person.socialPairChatTimer = randomRange(person, 6.2, 8.8);
+          }
+        }
+      } else if (person.socialPairRole === "follower" && person.socialPairReplyTimer > 0) {
+        person.socialPairReplyTimer = Math.max(0, person.socialPairReplyTimer - dt);
+        if (person.socialPairReplyTimer <= 0 && person.socialPairReplyText && person.bubbleUntil <= now + .35) {
+          person.bubbleText = person.socialPairReplyText;
+          person.bubbleUntil = now + 2.7;
+          person.socialPairReplyText = "";
+        }
       }
       if (conversationRef?.current?.personId === person.id) {
         const player = playerPositionRef?.current;

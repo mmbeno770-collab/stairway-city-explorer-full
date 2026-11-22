@@ -20,7 +20,7 @@ import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./env
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
 import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, mainlandCoastRadius, MarineWorld } from "./marine-world.js";
 import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
-import { useGameMultiplayer, RemotePlayerAvatars, getPlayerIslandLocation } from "./multiplayer.js";
+import { useGameMultiplayer, MultiplayerAuthPanel, RemotePlayerAvatars, getPlayerIslandLocation } from "./multiplayer.js";
 
 const h = React.createElement;
 
@@ -2950,8 +2950,24 @@ export default function Game() {
     h("button", { type: "button", className: "sneak-touch-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.sneak = true; }, onPointerUp: () => { input.current.sneak = false; }, onPointerLeave: () => { input.current.sneak = false; }, onPointerCancel: () => { input.current.sneak = false; }, "aria-label": "להתגנב בשקט" }, "🤫 התגנבות"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
     !started && h("div", { className: "start-overlay" },
-      !shopOpen && h("div", { className: "start-card" },
-        h("div", { className: "start-kicker" }, "עולם פתוח · הרפתקה תלת־ממדית"),
+      (multiplayer.status === "needs-login" || multiplayer.status === "auth-error" || multiplayer.status === "awaiting-email-confirmation") &&
+        !shopOpen && h(MultiplayerAuthPanel, { multiplayer }),
+      (multiplayer.status === "checking" || multiplayer.status === "connecting") && !shopOpen &&
+        h("div", { className: "start-card multiplayer-connecting-card", dir: "rtl" },
+          h("div", { className: "start-kicker" }, "STAIRWAY CITY · ONLINE"),
+          h("h1", null, "מתחברים לעולם המשותף"),
+          h("p", null, multiplayer.statusMessage),
+          h("span", { className: "multiplayer-spinner", "aria-label": "מתחבר" })
+        ),
+      multiplayer.status === "error" && !shopOpen &&
+        h("div", { className: "start-card multiplayer-connecting-card", dir: "rtl" },
+          h("div", { className: "start-kicker" }, "STAIRWAY CITY · ONLINE"),
+          h("h1", null, "לא הצלחנו להתחבר"),
+          h("p", null, multiplayer.statusMessage),
+          h("button", { className: "start-btn", type: "button", onClick: multiplayer.retry }, "נסה להתחבר שוב")
+        ),
+      multiplayer.status === "connected" && !shopOpen && h("div", { className: "start-card" },
+        h("div", { className: "start-kicker" }, "מחובר בתור " + multiplayer.nickname),
         h("h1", null, "Stairway City Explorer"),
         h("p", null, "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות ומטבעות. ההרפתקה הבאה שלכם מתחילה כאן."),
         h("div", { className: "start-wallet" }, "🪙 בארנק: " + shopSave.coins + " מטבעות"),

@@ -13,7 +13,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false
+    detectSessionInUrl: true
   },
   realtime: { params: { eventsPerSecond: 12 } }
 });
@@ -34,15 +34,19 @@ async function awaitWithTimeout(promise, stage, milliseconds = 12000) {
   }
 }
 
-function getNickname(userId) {
+function getNickname(user) {
+  const id = user?.id || "player";
+  const metadataNickname = String(user?.user_metadata?.nickname || "").trim();
+  if (metadataNickname) return metadataNickname.slice(0, 18);
   try {
-    const stored = window.localStorage.getItem(NICKNAME_KEY);
+    const key = NICKNAME_KEY + ":" + id;
+    const stored = window.localStorage.getItem(key);
     if (stored) return stored;
-    const nickname = "שחקן-" + String(userId).slice(0, 4).toUpperCase();
-    window.localStorage.setItem(NICKNAME_KEY, nickname);
+    const nickname = "שחקן-" + String(id).slice(0, 4).toUpperCase();
+    window.localStorage.setItem(key, nickname);
     return nickname;
   } catch {
-    return "שחקן-" + String(userId).slice(0, 4).toUpperCase();
+    return "שחקן-" + String(id).slice(0, 4).toUpperCase();
   }
 }
 
@@ -74,9 +78,124 @@ function mapIslandRows(rows) {
   return rows.map((row) => mapIslandRow(row)).filter(Boolean);
 }
 
+export function MultiplayerAuthPanel({ multiplayer }) {
+  const [mode, setMode] = useState("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [message, setMessage] = useState("");
+
+  const chooseMode = (nextMode) => {
+    setMode(nextMode);
+    setMessage("");
+    multiplayer.clearAuthMessage();
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    if (mode === "signup" && nickname.trim().length < 2) {
+      setMessage("בחר כינוי באורך של לפחות שני תווים.");
+      return;
+    }
+    if (password.length < 8) {
+      setMessage("הסיסמה צריכה להכיל לפחות 8 תווים.");
+      return;
+    }
+    if (mode === "signup") {
+      await multiplayer.signUp(email.trim(), password, nickname.trim());
+    } else {
+      await multiplayer.signIn(email.trim(), password);
+    }
+  };
+
+  if (multiplayer.status === "awaiting-email-confirmation") {
+    return React.createElement("section", { className: "multiplayer-auth-card", dir: "rtl" },
+      React.createElement("div", { className: "multiplayer-auth-icon" }, "✉️"),
+      React.createElement("h2", null, "בדוק את תיבת הדואר"),
+      React.createElement("p", null, multiplayer.authMessage || "שלחנו קישור לאימות כתובת האימייל. פתח אותו באותו מכשיר וחזור למשחק."),
+      React.createElement("button", { type: "button", className: "multiplayer-auth-secondary", onClick: () => chooseMode("signin") }, "חזרה לכניסה")
+    );
+  }
+
+  return React.createElement("section", { className: "multiplayer-auth-card", dir: "rtl" },
+    React.createElement("div", { className: "multiplayer-auth-kicker" }, "STAIRWAY CITY · ONLINE"),
+    React.createElement("div", { className: "multiplayer-auth-icon" }, "🌐"),
+    React.createElement("h2", null, mode === "signup" ? "יצירת חשבון שחקן" : "כניסה לעולם המשותף"),
+    React.createElement("p", { className: "multiplayer-auth-intro" },
+      mode === "signup"
+        ? "יוצרים חשבון פעם אחת, ואז אפשר לחזור אליו מכל מכשיר."
+        : "התחבר עם החשבון שלך כדי לפגוש שחקנים אחרים."
+    ),
+    React.createElement("div", { className: "multiplayer-auth-tabs" },
+      React.createElement("button", {
+        type: "button",
+        className: mode === "signin" ? "active" : "",
+        onClick: () => chooseMode("signin")
+      }, "כניסה"),
+      React.createElement("button", {
+        type: "button",
+        className: mode === "signup" ? "active" : "",
+        onClick: () => chooseMode("signup")
+      }, "הרשמה")
+    ),
+    React.createElement("form", { onSubmit: submit, className: "multiplayer-auth-form" },
+      mode === "signup" && React.createElement("label", null,
+        "כינוי שיוצג במשחק",
+        React.createElement("input", {
+          type: "text",
+          value: nickname,
+          onChange: (event) => setNickname(event.target.value),
+          placeholder: "לדוגמה: חוקר_האיים",
+          autoComplete: "nickname",
+          maxLength: 18,
+          required: true
+        })
+      ),
+      React.createElement("label", null,
+        "כתובת אימייל",
+        React.createElement("input", {
+          type: "email",
+          value: email,
+          onChange: (event) => setEmail(event.target.value),
+          placeholder: "name@example.com",
+          autoComplete: "email",
+          maxLength: 254,
+          required: true,
+          dir: "ltr"
+        })
+      ),
+      React.createElement("label", null,
+        "סיסמה",
+        React.createElement("input", {
+          type: "password",
+          value: password,
+          onChange: (event) => setPassword(event.target.value),
+          placeholder: "לפחות 8 תווים",
+          autoComplete: mode === "signup" ? "new-password" : "current-password",
+          minLength: 8,
+          maxLength: 72,
+          required: true,
+          dir: "ltr"
+        })
+      ),
+      multiplayer.authMessage && React.createElement("p", { className: "multiplayer-auth-message", role: "status" }, multiplayer.authMessage),
+      message && React.createElement("p", { className: "multiplayer-auth-message", role: "alert" }, message),
+      React.createElement("button", {
+        type: "submit",
+        className: "multiplayer-auth-submit",
+        disabled: multiplayer.authBusy
+      }, multiplayer.authBusy ? "מתחבר..." : mode === "signup" ? "יצירת חשבון" : "כניסה למשחק")
+    ),
+    React.createElement("p", { className: "multiplayer-auth-privacy" },
+      "בחר כינוי שאינו מכיל שם מלא או פרטים אישיים. הסיסמה נשלחת ישירות לשירות ההתחברות המאובטח."
+    )
+  );
+}
+
 export function useGameMultiplayer({ playerPositionRef, island }) {
-  const [status, setStatus] = useState("connecting");
-  const [statusMessage, setStatusMessage] = useState("מתחבר לשרת המשחק...");
+  const [status, setStatus] = useState("checking");
+  const [statusMessage, setStatusMessage] = useState("בודק אם יש חשבון מחובר...");
   const [userId, setUserId] = useState(null);
   const [nickname, setNickname] = useState("שחקן");
   const [onlinePlayers, setOnlinePlayers] = useState([]);
@@ -84,7 +203,85 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
   const [remoteIslandRows, setRemoteIslandRows] = useState([]);
   const [databaseReady, setDatabaseReady] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
   const channelRef = useRef(null);
+  const connectedRef = useRef(false);
+
+  const clearAuthMessage = () => setAuthMessage("");
+
+  const formatAuthError = (error) => {
+    const message = String(error?.message || error || "");
+    if (/invalid login credentials/i.test(message)) return "האימייל או הסיסמה אינם נכונים.";
+    if (/email not confirmed/i.test(message)) return "צריך לאמת את כתובת האימייל דרך ההודעה שנשלחה אליך.";
+    if (/user already registered/i.test(message)) return "כבר קיים חשבון עם האימייל הזה. עבור ללשונית כניסה.";
+    if (/password.*(least|characters|short)/i.test(message)) return "הסיסמה קצרה מדי. השתמש בלפחות 8 תווים.";
+    if (/invalid email/i.test(message)) return "כתובת האימייל אינה תקינה.";
+    if (/rate limit|too many requests/i.test(message)) return "נשלחו יותר מדי בקשות. המתן מעט ונסה שוב.";
+    if (/failed to fetch|network|load failed/i.test(message)) return "לא ניתן להגיע לשירות ההתחברות. בדוק את החיבור לאינטרנט ונסה שוב.";
+    return message.slice(0, 180) || "ההתחברות נכשלה. נסה שוב.";
+  };
+
+  const signIn = async (email, password) => {
+    setAuthBusy(true);
+    setAuthMessage("");
+    try {
+      const response = await awaitWithTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        "כניסה עם אימייל",
+        15000
+      );
+      if (response.error) throw response.error;
+      if (!response.data?.user || !response.data?.session) throw new Error("לא התקבלה התחברות פעילה.");
+      setStatus("connecting");
+      setStatusMessage("החשבון אומת. מתחבר לעולם המשותף...");
+      setUserId(response.data.user.id);
+      setNickname(getNickname(response.data.user));
+      setRetryToken((value) => value + 1);
+    } catch (error) {
+      setStatus("auth-error");
+      setAuthMessage(formatAuthError(error));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const signUp = async (email, password, playerNickname) => {
+    setAuthBusy(true);
+    setAuthMessage("");
+    try {
+      const redirectTo = window.location.origin + window.location.pathname;
+      const response = await awaitWithTimeout(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { nickname: playerNickname },
+            emailRedirectTo: redirectTo
+          }
+        }),
+        "יצירת חשבון",
+        18000
+      );
+      if (response.error) throw response.error;
+      if (response.data?.session && response.data?.user) {
+        setStatus("connecting");
+        setStatusMessage("החשבון נוצר. מתחבר לעולם המשותף...");
+        setUserId(response.data.user.id);
+        setNickname(getNickname(response.data.user));
+        setRetryToken((value) => value + 1);
+      } else {
+        setStatus("awaiting-email-confirmation");
+        setAuthMessage("נשלח קישור אימות לכתובת האימייל. פתח את ההודעה ולחץ על קישור האימות כדי להפעיל את החשבון. לאחר מכן תחזור למשחק.");
+      }
+    } catch (error) {
+      setStatus("auth-error");
+      setAuthMessage(formatAuthError(error));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
   const retry = () => {
     setStatus("connecting");
     setStatusMessage("מנסה להתחבר מחדש...");
@@ -92,50 +289,45 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     setRemotePlayers([]);
     setRetryToken((value) => value + 1);
   };
-  const connectedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
     let channel = null;
-    let currentStage = "בדיקת חיבור קודם";
+    let currentStage = "בדיקת התחברות קודמת";
 
     const start = async () => {
-      currentStage = "בדיקת התחברות קודמת";
-      const { data: sessionData, error: sessionError } = await awaitWithTimeout(
+      const sessionResponse = await awaitWithTimeout(
         supabase.auth.getSession(),
         "בדיקת התחברות קודמת",
         12000
       );
-      if (sessionError) throw sessionError;
-      let user = sessionData.session?.user;
+      if (sessionResponse.error) throw sessionResponse.error;
+      const user = sessionResponse.data.session?.user;
       if (!user) {
-        currentStage = "יצירת משתמש אורח ב־Supabase (כניסת Anonymous)";
-        const { data, error } = await awaitWithTimeout(
-          supabase.auth.signInAnonymously(),
-          "יצירת משתמש אורח",
-          15000
-        );
-        if (error) throw error;
-        user = data.user;
+        if (!active) return;
+        setUserId(null);
+        setStatus("needs-login");
+        setStatusMessage("כדי להיכנס לעולם המשותף צריך להתחבר עם אימייל וסיסמה.");
+        return;
       }
-      if (!active || !user) return;
+      if (!active) return;
 
-      const playerName = getNickname(user.id);
+      const playerName = getNickname(user);
       setUserId(user.id);
       setNickname(playerName);
 
       currentStage = "טעינת טבלת האיים game_islands";
-      const { data: islandRows, error: islandError } = await supabase
+      const islandResponse = await supabase
         .from("game_islands")
         .select("player_id,nickname,island,updated_at")
         .neq("player_id", user.id);
       if (!active) return;
-      if (islandError) {
+      if (islandResponse.error) {
         setDatabaseReady(false);
-        setStatusMessage("חיבור השחקנים זמין אחרי הפעלת טבלת האיים בשרת.");
+        setStatusMessage("החיבור לשחקנים ימשיך, אך טעינת האיים נכשלה: " + islandResponse.error.message.slice(0, 110));
       } else {
         setDatabaseReady(true);
-        setRemoteIslandRows(islandRows || []);
+        setRemoteIslandRows(islandResponse.data || []);
       }
 
       channel = supabase.channel(CHANNEL_NAME, {
@@ -180,7 +372,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
           });
         });
 
-      if (!islandError) {
+      if (!islandResponse.error) {
         channel.on("postgres_changes", {
           event: "*",
           schema: "public",
@@ -229,7 +421,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
         } else if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
           connectedRef.current = false;
           setStatus("error");
-          setStatusMessage("לא ניתן להתחבר לערוץ השחקנים. בדוק את הרשאות Realtime בשרת.");
+          setStatusMessage("לא ניתן להתחבר לערוץ השחקנים. בדוק הרשאות Realtime בשרת.");
         } else if (channelStatus === "CLOSED") {
           connectedRef.current = false;
           setStatus("error");
@@ -241,13 +433,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     start().catch((error) => {
       if (!active) return;
       const message = String(error?.message || error || "");
-      if (/anonymous|disabled|sign.?ups/i.test(message)) {
-        setStatus("auth-disabled");
-        setStatusMessage("צריך להפעיל Anonymous Sign-ins בהגדרות Authentication של Supabase.");
-      } else {
-        setStatus("error");
-        setStatusMessage("החיבור נכשל בשלב: " + currentStage + ". " + message.slice(0, 180));
-      }
+      setStatus("error");
+      setStatusMessage("החיבור נכשל בשלב: " + currentStage + ". " + formatAuthError(error) + " " + message.slice(0, 80));
     });
 
     return () => {
@@ -320,10 +507,14 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     remotePlayers,
     remoteIslands,
     databaseReady,
+    authBusy,
+    authMessage,
+    signIn,
+    signUp,
+    clearAuthMessage,
     retry
   };
 }
-
 function RemotePlayerAvatar({ player }) {
   const groupRef = useRef(null);
   const targetRef = useRef(new THREE.Vector3(player.x, player.y, player.z));

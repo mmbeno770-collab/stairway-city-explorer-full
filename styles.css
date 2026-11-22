@@ -673,3 +673,40 @@ button { font: inherit; }
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+
+/* Email/password account screen for the shared world */
+.multiplayer-auth-card {
+  width: min(430px, calc(100vw - 30px));
+  max-height: min(90vh, 740px);
+  overflow-y: auto;
+  padding: 26px 24px 22px;
+  border: 1px solid rgba(220, 190, 132, .38);
+  border-radius: 22px;
+  color: #eff7f3;
+  background: linear-gradient(155deg, rgba(17, 40, 47, .98), rgba(8, 20, 30, .98));
+  box-shadow: 0 24px 90px rgba(0,0,0,.55);
+  text-align: center;
+}
+.multiplayer-auth-kicker { color: #d3b979; font-size: 10px; letter-spacing: 1.8px; font-weight: 900; }
+.multiplayer-auth-icon { margin: 15px 0 5px; font-size: 34px; }
+.multiplayer-auth-card h2 { margin: 6px 0 8px; color: #f4e7cb; font-size: 22px; }
+.multiplayer-auth-intro { margin: 0 auto 17px; max-width: 340px; color: #c3d1cb; font-size: 12px; line-height: 1.6; }
+.multiplayer-auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; margin-bottom: 15px; border-radius: 12px; background: rgba(255,255,255,.055); }
+.multiplayer-auth-tabs button { padding: 9px; border: 0; border-radius: 9px; color: #c4d0cb; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.multiplayer-auth-tabs button.active { color: #17231f; background: #e6c783; font-weight: 900; }
+.multiplayer-auth-form { display: grid; gap: 12px; text-align: right; }
+.multiplayer-auth-form label { display: grid; gap: 6px; color: #e8dfcb; font-size: 12px; font-weight: 700; }
+.multiplayer-auth-form input { width: 100%; min-height: 43px; box-sizing: border-box; padding: 10px 12px; border: 1px solid rgba(221,204,164,.22); border-radius: 10px; outline: none; color: #f7faf8; background: rgba(0,0,0,.22); font: inherit; font-size: 13px; }
+.multiplayer-auth-form input:focus { border-color: rgba(230,199,131,.8); box-shadow: 0 0 0 2px rgba(230,199,131,.13); }
+.multiplayer-auth-submit { min-height: 44px; margin-top: 4px; border: 0; border-radius: 11px; color: #1e261f; background: linear-gradient(135deg, #f1d99e, #d8b66d); font: inherit; font-size: 13px; font-weight: 900; cursor: pointer; }
+.multiplayer-auth-submit:disabled { opacity: .65; cursor: wait; }
+.multiplayer-auth-message { margin: 0; padding: 9px 10px; border-radius: 9px; color: #ffe1ad; background: rgba(208,146,65,.13); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.multiplayer-auth-privacy { margin: 13px 0 0; color: #a9bab2; font-size: 10px; line-height: 1.5; }
+.multiplayer-auth-secondary { padding: 10px 16px; border: 1px solid rgba(230,199,131,.4); border-radius: 10px; color: #f4e6c4; background: rgba(255,255,255,.06); font: inherit; cursor: pointer; }
+.multiplayer-connecting-card { display: grid; justify-items: center; gap: 12px; }
+.multiplayer-spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,.16); border-top-color: #e8c77e; border-radius: 50%; animation: multiplayer-spin .8s linear infinite; }
+@keyframes multiplayer-spin { to { transform: rotate(360deg); } }
+@media (max-width: 700px) {
+  .multiplayer-auth-card { padding: 21px 16px 18px; width: min(410px, calc(100vw - 24px)); }
+  .multiplayer-auth-card h2 { font-size: 20px; }
+}

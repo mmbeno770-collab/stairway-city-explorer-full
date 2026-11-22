@@ -70,8 +70,9 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
       h("ellipse", { cx: px(0), cy: py(0), rx: 57, ry: 48, fill: "#778d72", stroke: "#e1d1a6", strokeWidth: "2", opacity: ".82" }),
       ...islands.map((island) => h("g", { key: island.id },
         h("ellipse", { cx: px(island.x), cy: py(island.z), rx: Math.max(10, island.rx * inner / span * .86), ry: Math.max(9, island.rz * inner / span * .86), fill: island.color || "#568c62", stroke: "#e6d5a7", strokeWidth: "2", opacity: ".94" }),
-        h("ellipse", { cx: px(island.x), cy: py(island.z), rx: Math.max(5, island.rx * inner / span * .62), ry: Math.max(5, island.rz * inner / span * .62), fill: "none", stroke: "rgba(255,255,255,.22)", strokeWidth: "1", strokeDasharray: "3 4" }),
-        h("text", { x: px(island.x), y: py(island.z) + 3, textAnchor: "middle", className: "map-island-label" }, island.name)
+        h("ellipse", { cx: px(island.x), cy: py(island.z), rx: Math.max(5, island.rx * inner / span * .62), ry: Math.max(5, island.rz * inner / span * .62), fill: "none", stroke: island.isPlayerIsland ? island.flagColor : "rgba(255,255,255,.22)", strokeWidth: island.isPlayerIsland ? "3" : "1", strokeDasharray: island.isPlayerIsland ? "none" : "3 4" }),
+        island.isPlayerIsland && h("path", { d: "M " + (px(island.x)-6) + " " + (py(island.z)-18) + " l 12 0 0 9 -12 0 Z", fill: island.flagColor, stroke: "#fff5d9", strokeWidth: "1" }),
+        h("text", { x: px(island.x), y: py(island.z) + 3, textAnchor: "middle", className: "map-island-label" }, island.isPlayerIsland ? "האי שלך: " + island.name : island.name)
       )),
       routePoints && h("polyline", { points: routePoints, fill: "none", stroke: "#8de2e4", strokeWidth: "3", strokeDasharray: "7 5", strokeLinecap: "round", opacity: ".92" }),
       ...transitSpaces.map((place) => h("circle", { key: place.id, cx: px(place.x), cy: py(place.z), r: 5, fill: "#3e9eca", stroke: "#e9f9ff", strokeWidth: "1.5" })),
@@ -185,28 +186,151 @@ const SHOP_ITEMS = [
   { id: "camouflage", icon: "🧥", title: "חליפת הסוואה", price: 75, effect: "חיות מבחינות בכם מטווח קצר יותר", description: "מתקרבים לחיות הבר בלי להבריח אותן כל כך מהר." },
   { id: "spring-boots", icon: "🦘", title: "מגפי קפיצה", price: 90, effect: "עוצמת הקפיצה +22%", description: "קופצים גבוה יותר ומגיעים למקומות חדשים." }
 ];
+const ISLAND_STYLE_OPTIONS = [
+  { id: "tropical", title: "טרופי", biome: "tropical", color: "#39864e", sand: "#ead29a" },
+  { id: "forest", title: "יער ירוק", biome: "forest", color: "#477b42", sand: "#c7b27d" },
+  { id: "winter", title: "אי מושלג", biome: "winter", color: "#d9edf1", sand: "#dce8ed" },
+  { id: "desert", title: "מדברי", biome: "desert", color: "#c7a25e", sand: "#e4c78e" },
+  { id: "volcanic", title: "אי לבה", biome: "volcanic", color: "#765044", sand: "#a87959" }
+];
+const ISLAND_BUILD_ITEMS = [
+  { id: "gazelle", type: "animal", animalType: "gazelle", icon: "🦌", title: "צבי", price: 100, description: "צבי שמסתובב באי" },
+  { id: "deer", type: "animal", animalType: "deer", icon: "🫎", title: "אייל", price: 100, description: "אייל שמסתובב באי" },
+  { id: "squirrel", type: "animal", animalType: "squirrel", icon: "🐿️", title: "סנאי", price: 100, description: "סנאי חמוד באי" },
+  { id: "horse", type: "animal", animalType: "horse", icon: "🐎", title: "סוס", price: 100, description: "סוס שמסתובב באי" },
+  { id: "field", type: "field", icon: "🌾", title: "שדה", price: 50, description: "חלקת גידולים קטנה" },
+  { id: "house", type: "structure", icon: "🏠", title: "בית", price: 30, description: "בית קטן לתושבי האי" },
+  { id: "building", type: "structure", icon: "🏢", title: "בניין", price: 200, description: "מבנה גדול באי" },
+  { id: "signal-tower", type: "structure", icon: "📡", title: "מגדל איתות", price: 90, description: "מגדל סימון והגנה לאי" },
+  { id: "guard-camp", type: "structure", icon: "🛡️", title: "מחנה שומרים", price: 150, description: "מוסיף 5 שומרים לדירוג ההגנה" },
+  { id: "shield-kit", type: "shield", icon: "🛡️", title: "ציוד מגן לשומרים", price: 50, description: "מעלה את דירוג השמירה" }
+];
+function makeOwnedIsland(name, styleId, flagColor) {
+  const style = ISLAND_STYLE_OPTIONS.find((item) => item.id === styleId) || ISLAND_STYLE_OPTIONS[0];
+  const outline = Array.from({ length: 20 }, (_, index) => {
+    const angle = index / 20 * Math.PI * 2;
+    const wobble = .94 + Math.sin(angle * 3 + 1.4) * .035 + Math.cos(angle * 5 - .6) * .025;
+    return [Math.cos(angle) * wobble, Math.sin(angle) * wobble];
+  });
+  return {
+    id: "player-island-self", name, ownerName: name, isPlayerIsland: true,
+    x: 760, z: 760, rx: 58, rz: 46, biome: style.biome, color: style.color, sand: style.sand,
+    flagColor, outline, trees: [], rocks: [], animals: [], fields: [], structures: [],
+    guardCount: 0, guardShields: 0, expansionCount: 0
+  };
+}
+function normalizeOwnedIsland(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const style = ISLAND_STYLE_OPTIONS.find((item) => item.biome === raw.biome) || ISLAND_STYLE_OPTIONS[0];
+  const made = makeOwnedIsland(
+    String(raw.name || raw.ownerName || "האי שלי").slice(0, 24),
+    style.id,
+    /^#[0-9a-f]{6}$/i.test(raw.flagColor || "") ? raw.flagColor : "#d84b45"
+  );
+  const numberOr = (value, fallback, min, max) => Math.min(max, Math.max(min, Number.isFinite(Number(value)) ? Number(value) : fallback));
+  return {
+    ...made, x: 760, z: 760,
+    rx: numberOr(raw.rx, 58, 58, 118), rz: numberOr(raw.rz, 46, 46, 96),
+    trees: Array.isArray(raw.trees) ? raw.trees.slice(0, 50) : [],
+    rocks: Array.isArray(raw.rocks) ? raw.rocks.slice(0, 50) : [],
+    animals: Array.isArray(raw.animals) ? raw.animals.slice(0, 60) : [],
+    fields: Array.isArray(raw.fields) ? raw.fields.slice(0, 40) : [],
+    structures: Array.isArray(raw.structures) ? raw.structures.slice(0, 60) : [],
+    guardCount: numberOr(raw.guardCount, 0, 0, 100),
+    guardShields: numberOr(raw.guardShields, 0, 0, 100),
+    expansionCount: numberOr(raw.expansionCount, 0, 0, 5)
+  };
+}
 function readShopSave() {
-  const empty = { coins: 0, ownedItems: [], visitedIslandIds: [] };
+  const empty = { coins: 0, points: 0, ownedItems: [], visitedIslandIds: [], completedMissionIds: [], customIsland: null };
   try {
     const saved = JSON.parse(window.localStorage.getItem(SHOP_STORAGE_KEY) || "null");
     if (!saved || typeof saved !== "object") return empty;
     const knownIds = new Set(SHOP_ITEMS.map((item) => item.id));
     return {
       coins: Math.max(0, Math.floor(Number(saved.coins) || 0)),
+      points: Math.max(0, Math.floor(Number(saved.points) || 0)),
       ownedItems: Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter((id) => knownIds.has(id)))] : [],
-      visitedIslandIds: Array.isArray(saved.visitedIslandIds) ? [...new Set(saved.visitedIslandIds.filter((id) => typeof id === "string"))] : []
+      visitedIslandIds: Array.isArray(saved.visitedIslandIds) ? [...new Set(saved.visitedIslandIds.filter((id) => typeof id === "string"))] : [],
+      completedMissionIds: Array.isArray(saved.completedMissionIds) ? [...new Set(saved.completedMissionIds.filter((id) => WILDLIFE_MISSIONS.some((mission) => mission.id === id)))] : [],
+      customIsland: normalizeOwnedIsland(saved.customIsland)
     };
   } catch { return empty; }
 }
-function ShopPanel({ coins, ownedItems, notice, onBuy, onClose }) {
-  return h("div", { className: "shop-overlay", role: "dialog", "aria-modal": true, "aria-label": "חנות שדרוגים", dir: "rtl" },
-    h("section", { className: "shop-card" },
+function IslandCreationForm({ points, onCreate }) {
+  const [name, setName] = useState("");
+  const [style, setStyle] = useState("tropical");
+  const [flagColor, setFlagColor] = useState("#d84b45");
+  return h("div", { className: "island-create-form" },
+    h("div", { className: "island-form-heading" }, h("span", null, "🏝️"), h("div", null, h("strong", null, "האי הפרטי שלך"), h("small", null, "אי בינוני שמתחיל ריק ומחכה לעיצוב שלך"))),
+    h("label", { className: "island-form-field" }, "שם האי",
+      h("input", { value: name, maxLength: 24, onChange: (event) => setName(event.target.value), placeholder: "לדוגמה: אי התקווה" })
+    ),
+    h("label", { className: "island-form-field" }, "סגנון האי",
+      h("select", { value: style, onChange: (event) => setStyle(event.target.value) },
+        ...ISLAND_STYLE_OPTIONS.map((option) => h("option", { key: option.id, value: option.id }, option.title))
+      )
+    ),
+    h("label", { className: "island-form-field island-flag-picker" }, "צבע הדגל",
+      h("input", { type: "color", value: flagColor, onChange: (event) => setFlagColor(event.target.value), "aria-label": "בחירת צבע הדגל" }),
+      h("span", { className: "island-flag-preview", style: { background: flagColor } }, "⚑")
+    ),
+    h("div", { className: "island-purchase-row" },
+      h("strong", null, "5,000 נקודות"),
+      h("button", { type: "button", disabled: points < 5000 || !name.trim(), onClick: () => onCreate({ name: name.trim(), style, flagColor }) },
+        points >= 5000 ? "רכישה ויצירת האי" : "חסרות " + (5000 - points) + " נקודות"
+      )
+    )
+  );
+}
+function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateIsland, onExpandIsland, onBuildIslandItem, onClose }) {
+  const guardPower = island ? island.guardCount + island.guardShields * 2 + island.structures.filter((item) => item.type === "signal-tower").length * 4 : 0;
+  return h("div", { className: "shop-overlay", role: "dialog", "aria-modal": true, "aria-label": "חנות האיים והשדרוגים", dir: "rtl" },
+    h("section", { className: "shop-card shop-card-islands" },
       h("header", { className: "shop-header" },
-        h("div", null, h("div", { className: "shop-kicker" }, "STairway CITY · MARKET"), h("h2", null, "🛒 חנות ההרפתקנים")),
+        h("div", null, h("div", { className: "shop-kicker" }, "STAIRWAY CITY · ISLANDS"), h("h2", null, "🛒 חנות ההרפתקנים")),
         h("button", { type: "button", className: "shop-close", onClick: onClose, "aria-label": "סגירת החנות" }, "×")
       ),
-      h("div", { className: "shop-wallet" }, h("span", null, "הארנק שלך"), h("strong", null, "🪙 " + coins + " מטבעות")),
-      h("p", { className: "shop-howto" }, "מרוויחים מטבע אחד על כל 10 נקודות ממשימות ומגילוי איים. הקניות נשמרות גם כשיוצאים מהמשחק."),
+      h("div", { className: "shop-wallet shop-wallet-dual" },
+        h("span", null, "★ " + points.toLocaleString("he-IL") + " נקודות"),
+        h("strong", null, "🪙 " + coins + " מטבעות")
+      ),
+      !island
+        ? h(IslandCreationForm, { points, onCreate: onCreateIsland })
+        : h("section", { className: "owned-island-shop" },
+          h("div", { className: "owned-island-heading" },
+            h("span", { className: "owned-island-flag", style: { background: island.flagColor } }, "⚑"),
+            h("div", null, h("strong", null, island.name), h("small", null, ISLAND_STYLE_OPTIONS.find((style) => style.biome === island.biome)?.title || "אי אישי"))
+          ),
+          h("div", { className: "owned-island-stats" },
+            h("span", null, "גודל: " + island.rx + " × " + island.rz),
+            h("span", null, "הרחבות: " + island.expansionCount),
+            h("span", null, "כוח שמירה: " + guardPower)
+          ),
+          h("div", { className: "island-purchase-row" },
+            h("strong", null, "הרחבת האי · 80 נקודות"),
+            h("button", { type: "button", disabled: points < 80 || island.expansionCount >= 5, onClick: onExpandIsland },
+              island.expansionCount >= 5 ? "האי בגודל המרבי" : points >= 80 ? "הרחבה" : "חסרות נקודות"
+            )
+          ),
+          h("div", { className: "island-build-heading" }, "בנייה וקניית דברים לאי"),
+          h("div", { className: "island-build-grid" }, ...ISLAND_BUILD_ITEMS
+            .filter((item) => item.id !== "shield-kit" || island.guardCount > 0)
+            .map((item) => h("article", { className: "island-build-item", key: item.id },
+              h("span", { className: "island-build-icon" }, item.icon),
+              h("strong", null, item.title),
+              h("small", null, item.description),
+              h("div", { className: "island-build-buy" },
+                h("b", null, item.price + " נק׳"),
+                h("button", { type: "button", disabled: points < item.price, onClick: () => onBuildIslandItem(item) }, points >= item.price ? "הוספה" : "חסרות נקודות")
+              )
+            ))
+          ),
+          h("p", { className: "island-online-note" }, "האי והבנייה נשמרים בדפדפן הזה. תחרויות מול איים של שחקנים אחרים ידרשו שרת משותף.")
+        ),
+      h("div", { className: "shop-island-safety-note" }, "במקום מערכות טילים וכלי נשק, אפשר לבנות מגדל איתות ומחנה שומרים עם ציוד מגן. דירוג השמירה הוא ניקוד משחקי בלבד."),
+      h("div", { className: "shop-divider-title" }, "שדרוגים לדמות · מטבעות"),
+      h("p", { className: "shop-howto" }, "מרוויחים מטבע אחד על כל 10 נקודות ממשימות. מטבעות ושדרוגים נשמרים גם אחרי יציאה מהמשחק."),
       h("div", { className: "shop-grid" }, ...SHOP_ITEMS.map((item) => {
         const owned = ownedItems.includes(item.id);
         const enough = coins >= item.price;
@@ -217,10 +341,7 @@ function ShopPanel({ coins, ownedItems, notice, onBuy, onClose }) {
           h("div", { className: "shop-item-effect" }, item.effect),
           h("div", { className: "shop-item-buyrow" },
             h("strong", null, "🪙 " + item.price),
-            h("button", {
-              type: "button", disabled: owned || !enough,
-              onClick: () => onBuy(item)
-            }, owned ? "✓ נרכש" : enough ? "קנייה" : "חסרים " + (item.price - coins))
+            h("button", { type: "button", disabled: owned || !enough, onClick: () => onBuy(item) }, owned ? "✓ נרכש" : enough ? "קנייה" : "חסרים " + (item.price - coins))
           )
         );
       })),
@@ -229,7 +350,6 @@ function ShopPanel({ coins, ownedItems, notice, onBuy, onClose }) {
     )
   );
 }
-
 function getNpcTopic(message, previousTopic = "") {
   const text = String(message || "").toLocaleLowerCase("he");
   const topics = [

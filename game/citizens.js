@@ -88,8 +88,8 @@ function getDailyActivityProfile(hour, weather) {
     visitRate: night ? .58 : rainy ? .82 : 1,
     busChance: night ? .04 : rainy ? .27 : (morningRush || eveningRush) ? .36 : .19,
     seatChance: rainy ? .18 : night ? .28 : .42,
-    busWaitMin: rainy ? 18 : night ? 26 : 24,
-    busWaitMax: rainy ? 30 : night ? 38 : 42
+    busWaitMin: rainy ? 56 : night ? 62 : 54,
+    busWaitMax: rainy ? 76 : night ? 84 : 74
   };
 }
 
@@ -635,14 +635,35 @@ function updateCityBus(car, driver, cars, walkers, world, busStops, now, dt, car
       person.hidden = false;
       person.busDriverId = null;
       person.busDestinationStopId = null;
+      person.waitingBusStopId = null;
+      person.busQueueSlot = -1;
       person.visiting = false;
       person.visitKind = "";
       person.visitTarget = null;
-      person.route = person.sidewalkRoute;
       const side = person.rngState % 2 ? 1 : -1;
       person.x = stop ? stop.x + (stop.axis === "x" ? side * 3.55 : -Math.sign(stop.roadX - stop.x) * 1.5) : person.x;
       person.z = stop ? stop.z + (stop.axis === "x" ? -Math.sign(stop.roadZ - stop.z) * 1.5 : side * 3.55) : person.z;
       person.y = carEnv.ground(person.x, person.z, 0);
+      if (stop) {
+        const gridX = clamp(Math.floor((stop.x + CITY_HALF) / BLOCK), 0, 10);
+        const gridZ = clamp(Math.floor((stop.z + CITY_HALF) / BLOCK), 0, 10);
+        const localBuildings = (world.buildings || []).filter((building) =>
+          Math.abs(building.gridX - gridX) + Math.abs(building.gridZ - gridZ) <= 1
+        );
+        const destinationBuilding = localBuildings.reduce((best, building) => {
+          if (!best) return building;
+          const d = Math.hypot((building.x0 + building.x1) * .5 - person.x, (building.z0 + building.z1) * .5 - person.z);
+          const bestD = Math.hypot((best.x0 + best.x1) * .5 - person.x, (best.z0 + best.z1) * .5 - person.z);
+          return d < bestD ? building : best;
+        }, null);
+        if (destinationBuilding) {
+          person.building = destinationBuilding;
+          person.sidewalkRoute = makeWalkRoute(destinationBuilding);
+          person.visitRoute = makeBuildingVisitRoute(destinationBuilding, world, person.usesElevator);
+          person.doorIndex = findBuildingDoor(world, destinationBuilding);
+        }
+      }
+      person.route = person.sidewalkRoute;
       person.waypoint = nearestLoopIndex(person.sidewalkRoute, person.x, person.z);
       person.wait = 1.15;
       person.visitCountdown = nextPersonalVisitDelay(person);
@@ -665,6 +686,8 @@ function updateCityBus(car, driver, cars, walkers, world, busStops, now, dt, car
       person.waitingForBus = false;
       person.onBus = true;
       person.busDriverId = driver.id;
+      person.waitingBusStopId = null;
+      person.busQueueSlot = -1;
       const stopCount = Math.max(1, (world.busStops || []).length);
       const travelStops = 1 + Math.floor(nextRandom(person) * Math.min(2, stopCount - 1));
       person.busDestinationStopId = (target.stopId + travelStops) % stopCount;
@@ -869,11 +892,17 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
     if (!car.npcControlled) return;
     const start = localOffset(car.x, car.z, 3.25, -.15, car.yaw);
     const lane = getTrafficLane(car, world);
+    const busRoute = Number.isInteger(car.busRouteId)
+      ? (world.busRoutes || []).find((route) => route.id === car.busRouteId)?.path || null
+      : null;
+    const busRouteIndex = busRoute?.length
+      ? (nearestLoopIndex(busRoute, car.x, car.z) + 1) % busRoute.length
+      : 1;
     drivers.push({
       id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach",
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),
-      ...lane, busRoute: Number.isInteger(car.busRouteId) ? (world.busRoutes || []).find((route) => route.id === car.busRouteId)?.path || null : null,
-      busRouteIndex: 1, busStopTimer: 0, passengerCount: 0, passengerIds: [],
+      ...lane, busRoute,
+      busRouteIndex, busStopTimer: 0, passengerCount: 0, passengerIds: [],
       turnTimer: 0, turnElapsed: 0, turnDuration: 2.8,
       distanceLeft: 34 + drivers.length * 9,
       blocked: 0, routePause: 0, phase: 0, tOffset: 5 + drivers.length
@@ -1050,6 +1079,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         const queuedStop = busStops.find((item) => item.id === person.waitingBusStopId);
         if (queuedStop?.queueOwners[person.busQueueSlot] === person.id) queuedStop.queueOwners[person.busQueueSlot] = null;
         person.waitingBusStopId = null;
+        person.busQueueSlot = -1;
         person.visiting = false;
         person.visitKind = "";
         person.route = person.sidewalkRoute;
@@ -1062,6 +1092,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           if (queuedStop?.queueOwners[person.busQueueSlot] === person.id) queuedStop.queueOwners[person.busQueueSlot] = null;
           person.waitingForBus = false;
           person.waitingBusStopId = null;
+          person.busQueueSlot = -1;
           person.visiting = false;
           person.visitKind = "";
           person.visitTarget = null;

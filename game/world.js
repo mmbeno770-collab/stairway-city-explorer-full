@@ -989,11 +989,19 @@ export function generateWorld(seed = 7) {
     busArcTo(-80, -80, 12.2, Math.PI, Math.PI * 1.5);
     busLineTo(-70, -92.2);
     const busRoutes = [{ id: 0, name: "קו הטבעת העירוני", path: busPath, stopIds: busStopLayout.map((stop) => stop.id) }];
-    inter.push({
-        type: "car", x: -70, y: .12, z: -92.2, face: Math.PI / 2,
-        color: "#277c98", kind: "bus", vehicleId: "city-loop-bus",
-        npcControlled: true, busRouteId: 0, passengerCount: 0
-    });
+    inter.push(
+        {
+            type: "car", x: -70, y: .12, z: -92.2, face: Math.PI / 2,
+            color: "#277c98", kind: "bus", vehicleId: "city-loop-bus",
+            npcControlled: true, busRouteId: 0, passengerCount: 0, fleetPosition: 0
+        },
+        {
+            // The second vehicle starts on the southern leg, already spaced around the loop.
+            type: "car", x: 43, y: .12, z: 92.2, face: -Math.PI / 2,
+            color: "#3b91a7", kind: "bus", vehicleId: "city-loop-bus-2",
+            npcControlled: true, busRouteId: 0, passengerCount: 0, fleetPosition: 1
+        }
+    );
 
     // Painted zebra crossings align with the sidewalk-to-sidewalk routes used by pedestrians.
     const addZebraCrossing = (axis, cx, cz) => {

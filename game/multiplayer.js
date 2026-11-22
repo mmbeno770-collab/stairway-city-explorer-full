@@ -18,6 +18,22 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   realtime: { params: { eventsPerSecond: 12 } }
 });
 
+async function awaitWithTimeout(promise, stage, milliseconds = 12000) {
+  let timeoutId;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(new Error(stage + " לא הגיב תוך " + Math.round(milliseconds / 1000) + " שניות"));
+        }, milliseconds);
+      })
+    ]);
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  }
+}
+
 function getNickname(userId) {
   try {
     const stored = window.localStorage.getItem(NICKNAME_KEY);
@@ -85,12 +101,20 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
 
     const start = async () => {
       currentStage = "בדיקת התחברות קודמת";
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await awaitWithTimeout(
+        supabase.auth.getSession(),
+        "בדיקת התחברות קודמת",
+        12000
+      );
       if (sessionError) throw sessionError;
       let user = sessionData.session?.user;
       if (!user) {
         currentStage = "יצירת משתמש אורח ב־Supabase (כניסת Anonymous)";
-        const { data, error } = await supabase.auth.signInAnonymously();
+        const { data, error } = await awaitWithTimeout(
+          supabase.auth.signInAnonymously(),
+          "יצירת משתמש אורח",
+          15000
+        );
         if (error) throw error;
         user = data.user;
       }
@@ -179,7 +203,15 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
 
       channelRef.current = channel;
       currentStage = "חיבור לערוץ Realtime של השחקנים";
+      const subscribeTimeout = window.setTimeout(() => {
+        if (!active || connectedRef.current) return;
+        setStatus("error");
+        setStatusMessage("שרת האימות ענה, אבל ערוץ Realtime לא התחבר תוך 15 שניות. בדוק הרשאות ערוצים פרטיים.");
+      }, 15000);
       channel.subscribe((channelStatus) => {
+        if (channelStatus === "SUBSCRIBED" || channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT" || channelStatus === "CLOSED") {
+          window.clearTimeout(subscribeTimeout);
+        }
         if (!active) return;
         if (channelStatus === "SUBSCRIBED") {
           connectedRef.current = true;

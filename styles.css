@@ -662,3 +662,14 @@ button { font: inherit; }
   cursor: pointer;
 }
 .multiplayer-retry:hover { background: rgba(55, 120, 93, .42); }
+
+.multiplayer-status-message {
+  margin: 0 10px 10px !important;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.07);
+  color: #ffe0ab !important;
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}

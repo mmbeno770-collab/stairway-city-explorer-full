@@ -253,6 +253,56 @@ function routeToVisit(person, destination, world) {
   return [...toCrosswalk, sourceEdge, crossA, crossB, targetEdge, ...alongDestinationSidewalk.slice(1), ...visitRoute];
 }
 
+function makeSocialSeatDestinations(world) {
+  const buildings = world.buildings || [];
+  const spaces = world.publicSpaces || [];
+  return (world.interactables || [])
+    .filter((item) => item.type === "sofa" && (item.y ?? 0) <= .3)
+    .filter((seat) => !buildings.some((building) =>
+      seat.x > building.x0 + .55 && seat.x < building.x1 - .55 &&
+      seat.z > building.z0 + .55 && seat.z < building.z1 - .55
+    ))
+    .map((seat, index) => {
+      const gridX = clamp(Math.floor((seat.x + CITY_HALF) / BLOCK), 0, 10);
+      const gridZ = clamp(Math.floor((seat.z + CITY_HALF) / BLOCK), 0, 10);
+      const cellX = -CITY_HALF + gridX * BLOCK;
+      const cellZ = -CITY_HALF + gridZ * BLOCK;
+      const proxyBuilding = {
+        gridX, gridZ,
+        x0: cellX + 6, x1: cellX + 30,
+        z0: cellZ + 6, z1: cellZ + 30
+      };
+      const plaza = spaces.find((space) => Math.hypot(space.x - seat.x, space.z - seat.z) < 15);
+      return {
+        ...seat,
+        id: "social-seat-" + index,
+        gridX, gridZ,
+        proxyBuilding,
+        kind: plaza ? "plaza" : "cafe",
+        occupiedBy: null
+      };
+    });
+}
+
+function chooseSocialSeat(person, seats) {
+  let best = null, bestScore = Infinity;
+  for (const seat of seats) {
+    if (seat.occupiedBy && seat.occupiedBy !== person.id) continue;
+    const gridDistance = Math.abs(seat.gridX - person.building.gridX) + Math.abs(seat.gridZ - person.building.gridZ);
+    if (gridDistance > 1) continue;
+    const distance = Math.hypot(seat.x - person.x, seat.z - person.z);
+    if (distance > (gridDistance === 0 ? 25 : 39)) continue;
+    const score = distance + (seat.kind === "plaza" ? -1.2 : 0) + nextRandom(person) * 2.4;
+    if (score < bestScore) { best = seat; bestScore = score; }
+  }
+  return best;
+}
+
+function releaseSocialSeat(person) {
+  if (person.seatTarget?.occupiedBy === person.id) person.seatTarget.occupiedBy = null;
+  person.seatTarget = null;
+}
+
 function pedestrianCrossingStatus(from, to, cars) {
   if (!from || !to) return { safe: false, car: null };
   const dx = to.x - from.x, dz = to.z - from.z, length = Math.hypot(dx, dz);
@@ -610,11 +660,15 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       yaw: i * .71, speed: (1.05 + (i % 9) * .2) * routineProfile.pace, moveSpeed: 0, phase: i * 1.2,
       wait: (i % 4) * .55, actionWait: 0, stuck: 0, stuckSideChanged: false, hidden: false,
       visiting: false, visitCountdown: routineProfile.visitMin + (i % 5) * 1.8,
+      visitKind: "", seatTarget: null, seated: false, seatTimer: 0, seatYaw: 0,
+      seatReturnRoute: null, returningFromSeat: false,
       greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
       tOffset: i * .83
     });
   }
+
+  const socialSeats = makeSocialSeatDestinations(world);
 
   const drivers = [];
   cars.forEach((car, carIndex) => {
@@ -659,7 +713,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       waypoint: 0, phase: 0, tOffset: 18
     });
   });
-  return { walkers, drivers, airPilots, heliPilots, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
+  return { walkers, drivers, airPilots, heliPilots, socialSeats, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
 }
 
 export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle }) {
@@ -674,7 +728,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
     const dt = Math.min(simulationClock.current, .045);
     simulationClock.current = 0;
     const now = state.clock.elapsedTime;
-    const walkers = sim.walkers, drivers = sim.drivers;
+    const walkers = sim.walkers, drivers = sim.drivers, socialSeats = sim.socialSeats;
     const carEnv = {
       ground: (x, z, y) => collider.groundAt(x, z, y, .65, 1),
       resolve: (point, yLo, yHi, radius, ignore) => {
@@ -784,6 +838,43 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         person.bubbleText = "התרחקת מאוד, אז אחזור לסיור שלי.";
         person.bubbleUntil = now + 3.2;
       }
+      if (person.followPlayer && person.visitKind === "seat") {
+        releaseSocialSeat(person);
+        person.seated = false;
+        person.visiting = false;
+        person.visitTarget = null;
+        person.visitKind = "";
+        person.seatReturnRoute = null;
+        person.returningFromSeat = false;
+        person.route = person.sidewalkRoute;
+        person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
+        person.visitCountdown = 4;
+      }
+      if (person.seated) {
+        person.seatTimer = Math.max(0, person.seatTimer - dt);
+        if (person.seatTimer <= 0) {
+          releaseSocialSeat(person);
+          person.seated = false;
+          person.visiting = false;
+          person.visitTarget = null;
+          person.visitKind = "";
+          person.route = person.seatReturnRoute?.length ? person.seatReturnRoute : person.sidewalkRoute;
+          person.returningFromSeat = person.route !== person.sidewalkRoute;
+          person.waypoint = 0;
+          person.seatReturnRoute = null;
+          person.visitCountdown = nextPersonalVisitDelay(person);
+          person.wait = .16;
+        } else {
+          if (rig.root) {
+            rig.root.position.set(person.x, person.y, person.z);
+            rig.root.rotation.y = person.seatYaw;
+            rig.root.visible = true;
+          }
+          person.phase += dt * .28;
+          poseHuman(rig, { mode: "sit", phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
+          continue;
+        }
+      }
       if (person.routineTimer > 0) {
         person.routineTimer = Math.max(0, person.routineTimer - dt);
         const progress = 1 - person.routineTimer / Math.max(person.routineDuration, .001);
@@ -812,13 +903,26 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       }
       if (!person.visiting && !person.followPlayer) person.visitCountdown -= dt;
       if (!person.visiting && !person.followPlayer && person.visitCountdown <= 0) {
-        const destination = chooseAdjacentBuilding(person, world);
-        person.visitTarget = destination;
-        person.usesElevator = nextRandom(person) < .42;
-        person.visitRoute = makeBuildingVisitRoute(destination, world, person.usesElevator);
-        person.doorIndex = findBuildingDoor(world, destination);
-        person.visiting = true;
-        person.route = routeToVisit(person, destination, world);
+        const seat = nextRandom(person) < .42 ? chooseSocialSeat(person, socialSeats) : null;
+        if (seat) {
+          seat.occupiedBy = person.id;
+          person.visitKind = "seat";
+          person.seatTarget = seat;
+          person.visitTarget = seat.proxyBuilding;
+          person.visitRoute = [{ x: seat.x, y: seat.y, z: seat.z, face: seat.face, action: "seat" }];
+          person.route = routeToVisit(person, seat.proxyBuilding, world);
+          person.seatReturnRoute = person.route.slice(0, -1).reverse();
+          person.visiting = true;
+        } else {
+          const destination = chooseAdjacentBuilding(person, world);
+          person.visitKind = "building";
+          person.visitTarget = destination;
+          person.usesElevator = nextRandom(person) < .42;
+          person.visitRoute = makeBuildingVisitRoute(destination, world, person.usesElevator);
+          person.doorIndex = findBuildingDoor(world, destination);
+          person.visiting = true;
+          person.route = routeToVisit(person, destination, world);
+        }
         person.waypoint = person.route.length > 1 ? 1 : 0;
         person.stuck = 0;
       }
@@ -921,6 +1025,21 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
               person.waypoint++;
             }
           }
+        } else if (target.action === "seat") {
+          person.waypoint++;
+          person.seated = true;
+          person.seatTimer = randomRange(person, 8.5, 14.5);
+          person.seatYaw = target.face ?? person.yaw;
+          person.yaw = person.seatYaw;
+          person.x = target.x;
+          person.y = target.y ?? collider.groundAt(target.x, target.z, 0, .8);
+          person.z = target.z;
+          person.moveSpeed = 0;
+          const lines = person.seatTarget?.kind === "plaza"
+            ? ["נעים לעצור קצת בכיכר.", "איזו פינה שקטה ונעימה.", "אפשר לנוח כאן ולהביט סביב."]
+            : ["הפסקת קפה קצרה, ואז ממשיכים.", "כיף לשבת קצת ליד הרחוב.", "המקום הזה מתאים בדיוק לעצירה."];
+          person.bubbleText = lines[Math.floor(nextRandom(person) * lines.length)];
+          person.bubbleUntil = now + 3.2;
         } else if (target.action === "pause") {
           person.waypoint++;
           person.wait = Math.max(person.wait, 1.35);
@@ -935,15 +1054,20 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           if (walkingLoop) {
             person.waypoint = (person.waypoint + person.route.length) % person.route.length;
           } else if (person.waypoint >= person.route.length) {
-            if (person.visiting) {
+            if (person.returningFromSeat) {
+              person.returningFromSeat = false;
+              person.route = person.sidewalkRoute;
+              person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
+            } else if (person.visiting) {
               person.visiting = false;
-              if (person.visitTarget) {
+              if (person.visitKind !== "seat" && person.visitTarget) {
                 person.building = person.visitTarget;
                 person.sidewalkRoute = makeWalkRoute(person.building);
                 person.visitRoute = makeBuildingVisitRoute(person.building, world, person.usesElevator);
                 person.doorIndex = findBuildingDoor(world, person.building);
               }
               person.visitTarget = null;
+              person.visitKind = "";
               person.route = person.sidewalkRoute;
               person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
               person.visitCountdown = nextPersonalVisitDelay(person);
@@ -1045,6 +1169,17 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           person.bubbleText = "יש כאן מכשול, אמשיך מכאן בסיור שלי.";
           person.bubbleUntil = now + 2.8;
           person.visitCountdown = 4;
+        } else if (person.visitKind === "seat") {
+          releaseSocialSeat(person);
+          person.seated = false;
+          person.visiting = false;
+          person.visitTarget = null;
+          person.visitKind = "";
+          person.seatReturnRoute = null;
+          person.route = person.sidewalkRoute;
+          person.waypoint = nearestLoopIndex(person.route, person.x, person.z);
+          person.visitCountdown = 4;
+          person.stuckSideChanged = false;
         } else {
           person.crossingActive = false;
           const sidewalkLoop = !person.visiting && person.route === person.sidewalkRoute;

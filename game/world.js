@@ -113,6 +113,38 @@ export function generateWorld(seed = 7) {
         landmarks.push({ type: "amusement", x: cx, z: cz, name: "לונה פארק" });
         for (let i = 0; i < 6; i++) lamps.push({ x: cx - 9.5 + i * 3.8, z: cz - 11.4 });
     };
+    const addCableStationPlaza = (station, cx, cz, gx, gz) => {
+        // Reserve this whole block as an outdoor transit plaza so no tower or house
+        // can grow through the elevated cable station above it.
+        publicSpaces.push({
+            id: `cable-plaza-${station.id}`, gridX: gx, gridZ: gz,
+            x: cx, z: cz, style: "transit", radiusX: 12.8, radiusZ: 12.4
+        });
+        add(cx - 13.2, .035, cz - 13.2, cx + 13.2, .075, cz + 13.2, "#a8a69b", "solid", false);
+        // Clear, direct approach to the ladder on the west side of the station.
+        add(cx - 14, .08, cz - 1.15, cx - 4.35, .115, cz + 1.15, "#d0c7b5", "solid", false);
+        add(cx - 1.05, .08, cz - 12.8, cx + 1.05, .11, cz + 12.8, "#d0c7b5", "solid", false);
+        add(cx - 12.8, .08, cz - 1.05, cx + 12.8, .11, cz + 1.05, "#d0c7b5", "solid", false);
+        // Two shaded waiting benches sit outside the station support footprint.
+        for (const dz of [-8.1, 8.1]) {
+            const bx = cx + 9.1, bz = cz + dz;
+            add(bx - 1.12, .22, bz - .17, bx + 1.12, .43, bz + .17, "#72553e", "solid", false);
+            add(bx - 1.12, .43, bz + .08, bx + 1.12, 1.02, bz + .28, "#72553e", "solid", false);
+            add(bx - .96, 1.02, bz + .12, bx + .96, 1.08, bz + .2, "#c6a56b", "solid", false);
+            inter.push({ type: "sofa", x: bx, y: .22, z: bz, face: Math.PI });
+        }
+        // A freestanding timetable totem makes the station entrance legible at street level.
+        add(cx + 9.35, .08, cz - 1.18, cx + 10.45, .32, cz - .18, "#42545b", "solid", false);
+        add(cx + 9.48, .32, cz - 1.17, cx + 10.32, 2.75, cz - 1.02, "#536d75", "solid", false);
+        add(cx + 9.56, 1.78, cz - 1.005, cx + 10.24, 2.43, cz - .97, "#8ed5dc", "glow", false);
+        add(cx + 9.62, 1.86, cz - .96, cx + 10.18, 1.93, cz - .94, "#f3e3b8", "glow", false);
+        for (let row = 0; row < 3; row++) {
+            add(cx + 9.62, 1.6 - row * .16, cz - .96, cx + 10.16, 1.635 - row * .16, cz - .94, "#d4e5e0", "glow", false);
+        }
+        for (const [dx, dz] of [[-11.6, -10.6], [11.6, -10.6], [-11.6, 10.6], [11.6, 10.6]]) {
+            lamps.push({ x: cx + dx, z: cz + dz });
+        }
+    };
     for (const station of CABLE_STATIONS) {
         // Elevated station decks are real walkable collision surfaces.
         add(station.x - 7, station.y - .35, station.z - 4.2, station.x + 7, station.y, station.z + 4.2, "#8d9698", "solid", true);
@@ -239,6 +271,13 @@ export function generateWorld(seed = 7) {
             inter.push({ type: "car", kind: "tank", x: tank.x, y: tank.y, z: tank.z, face: tank.yaw, color: "#526347", parking: true });
             inter.push({ type: "airVehicle", id: "tesla", x: tesla.x, y: tesla.y, z: tesla.z, face: tesla.yaw });
             inter.push({ type: "heli", x: cx + 7.5, y: .12, z: cz + 8.8, face: 0, parking: true });
+            continue;
+        }
+        const cableStation = CABLE_STATIONS.find((station) =>
+            Math.abs(station.x - cx) < .01 && Math.abs(station.z - cz) < .01
+        );
+        if (cableStation) {
+            addCableStationPlaza(cableStation, cx, cz, gx, gz);
             continue;
         }
         if (gx === GRID - 2 && gz === GRID - 2) {

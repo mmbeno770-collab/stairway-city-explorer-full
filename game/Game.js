@@ -749,9 +749,9 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
       ctx.save();
       ctx.beginPath();
       ctx.ellipse(px, pz, rx, rz, -.12, 0, Math.PI * 2);
-      ctx.fillStyle = plaza.style === "garden" ? "#9aa98b" : "#b7a58c";
+      ctx.fillStyle = plaza.style === "garden" ? "#9aa98b" : plaza.style === "transit" ? "#a3aaa7" : "#b7a58c";
       ctx.fill();
-      ctx.strokeStyle = plaza.style === "garden" ? "#d5c8a6" : "#8c775f";
+      ctx.strokeStyle = plaza.style === "garden" ? "#d5c8a6" : plaza.style === "transit" ? "#d8e1dc" : "#8c775f";
       ctx.lineWidth = Math.max(1.4, p * .34);
       ctx.stroke();
       ctx.beginPath();
@@ -771,6 +771,21 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
           ctx.lineTo(px + Math.cos(angle) * rx * .74, pz + Math.sin(angle) * rz * .7);
           ctx.stroke();
         }
+      } else if (plaza.style === "transit") {
+        ctx.strokeStyle = "#e5dfcf";
+        ctx.lineWidth = Math.max(2, p * .72);
+        ctx.lineCap = "round";
+        for (const offset of [-.24, .24]) {
+          ctx.beginPath();
+          ctx.moveTo(to(plaza.x - 11.5), to(plaza.z + offset * 4));
+          ctx.lineTo(to(plaza.x - 4.4), to(plaza.z + offset * 4));
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(px, pz, Math.min(rx, rz) * .22, 0, Math.PI * 2);
+        ctx.strokeStyle = "#d2ba85";
+        ctx.lineWidth = Math.max(1.5, p * .42);
+        ctx.stroke();
       } else {
         ctx.beginPath();
         ctx.moveTo(to(plaza.x - 7.5), to(plaza.z + 6.8));

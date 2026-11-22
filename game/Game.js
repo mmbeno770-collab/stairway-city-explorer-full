@@ -1523,6 +1523,26 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           item.impactAt = clock.elapsedTime + .0001;
           item.impactStrength = Math.min(1, .45 + Math.hypot(item.vx || 0, item.vz || 0) * .075);
           item.lastImpactAt = clock.elapsedTime;
+          const struckPickup = pickupItems.find((other) => {
+            if (other === item || other.carried || other.thrown) return false;
+            const otherSize = other.size || { width: .72, height: .58, depth: .64 };
+            const verticalOverlap = item.y < other.y + otherSize.height && item.y + size.height > other.y;
+            return verticalOverlap
+              && Math.abs(proposed.x - other.x) < (size.width + otherSize.width) * .5
+              && Math.abs(proposed.z - other.z) < (size.depth + otherSize.depth) * .5;
+          });
+          if (struckPickup) {
+            const speed = Math.hypot(item.vx || 0, item.vz || 0);
+            const directionX = speed > .15 ? item.vx / speed : Math.sign(struckPickup.x - item.x);
+            const directionZ = speed > .15 ? item.vz / speed : Math.sign(struckPickup.z - item.z);
+            struckPickup.vx = directionX * Math.max(.8, speed * .2);
+            struckPickup.vz = directionZ * Math.max(.8, speed * .2);
+            struckPickup.vy = .72;
+            struckPickup.thrown = true;
+            struckPickup.impactAt = clock.elapsedTime + .0002;
+            struckPickup.impactStrength = .48;
+            struckPickup.lastImpactAt = clock.elapsedTime;
+          }
           item.vx *= -.18; item.vz *= -.18;
         }
         if (item.y <= floor) {

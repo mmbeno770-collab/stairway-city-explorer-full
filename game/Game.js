@@ -1193,6 +1193,25 @@ function resolvePickupObstacles(point, yLo, yHi, radius, items, heldItem) {
   }
 }
 
+function pickupSupportHeight(x, z, movingItem, items, groundY, maxHeight, currentBottom) {
+  const movingSize = movingItem.size || { width: .72, height: .58, depth: .64 };
+  let supportY = groundY;
+  for (const other of items) {
+    if (other === movingItem || other.carried || other.thrown) continue;
+    const size = other.size || { width: .72, height: .58, depth: .64 };
+    const overlapX = Math.min(x + movingSize.width * .5, other.x + size.width * .5)
+      - Math.max(x - movingSize.width * .5, other.x - size.width * .5);
+    const overlapZ = Math.min(z + movingSize.depth * .5, other.z + size.depth * .5)
+      - Math.max(z - movingSize.depth * .5, other.z - size.depth * .5);
+    if (overlapX < Math.min(movingSize.width, size.width) * .42
+      || overlapZ < Math.min(movingSize.depth, size.depth) * .42) continue;
+    const top = other.y + size.height;
+    if (top < groundY - .08 || top > maxHeight || top > currentBottom) continue;
+    supportY = Math.max(supportY, top);
+  }
+  return supportY;
+}
+
 function resolveCitizenObstacles(point, yLo, yHi, radius, citizens) {
   for (const person of citizens || []) {
     if (person.hidden || person.onBus || Math.abs(person.y - yLo) > 2.2) continue;
@@ -1441,9 +1460,10 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         item.vy = (item.vy || 0) - 17 * dt;
         const next = { x: item.x + (item.vx || 0) * dt, z: item.z + (item.vz || 0) * dt };
         const radius = Math.max(size.width, size.depth) * .5;
-        const floor = col.groundAt(next.x, next.z, item.y, STEP, radius) + .025;
+        const ground = col.groundAt(next.x, next.z, item.y, STEP, radius) + .025;
         col.resolve(next, item.y, item.y + size.height, radius);
         resolvePickupObstacles(next, item.y, item.y + size.height, radius, pickupItems, item);
+        const floor = pickupSupportHeight(next.x, next.z, item, pickupItems, ground, ground + 2.35, item.y + .12);
         item.x = next.x; item.z = next.z; item.y += item.vy * dt;
         if (item.y <= floor) {
           item.y = floor;
@@ -1476,11 +1496,14 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
             x: p.x + Math.sin(s.face) * (.86 + size.depth * .5),
             z: p.z + Math.cos(s.face) * (.86 + size.depth * .5)
           };
-          const ground = col.groundAt(drop.x, drop.z, p.y, STEP, Math.max(size.width, size.depth) * .5);
-          col.resolve(drop, ground + .03, ground + size.height + .03, Math.max(size.width, size.depth) * .5);
-          resolvePickupObstacles(drop, ground + .03, ground + size.height + .03, Math.max(size.width, size.depth) * .5, pickupItems, item);
-          resolveCitizenObstacles(drop, ground + .03, ground + size.height + .03, Math.max(size.width, size.depth) * .5, citizensRef?.current || []);
-          item.x = drop.x; item.z = drop.z; item.y = ground + .025; item.face = s.face; item.carried = false;
+          const radius = Math.max(size.width, size.depth) * .5;
+          const ground = col.groundAt(drop.x, drop.z, p.y, STEP, radius);
+          col.resolve(drop, ground + .03, ground + size.height + .03, radius);
+          const support = pickupSupportHeight(drop.x, drop.z, item, pickupItems, ground, ground + 2.35, p.y + .95);
+          col.resolve(drop, support + .03, support + size.height + .03, radius);
+          resolvePickupObstacles(drop, support + .03, support + size.height + .03, radius, pickupItems, item);
+          resolveCitizenObstacles(drop, support + .03, support + size.height + .03, radius, citizensRef?.current || []);
+          item.x = drop.x; item.z = drop.z; item.y = support + .025; item.face = s.face; item.carried = false;
           s.heldItem = null;
           if (heldItemRef) heldItemRef.current = null;
           onPrompt("הנחת את " + item.label);

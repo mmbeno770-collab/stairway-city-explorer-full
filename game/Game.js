@@ -20,6 +20,7 @@ import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./env
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
 import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, mainlandCoastRadius, MarineWorld } from "./marine-world.js";
 import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
+import { useGameMultiplayer, RemotePlayerAvatars } from "./multiplayer.js";
 
 const h = React.createElement;
 
@@ -2530,12 +2531,17 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
 }
 
 export default function Game() {
+  const playerPositionRef = useRef({ x: 0, y: 0, z: 0 });
   const [shopSave, setShopSave] = useState(readShopSave);
   const shopSaveRef = useRef(shopSave);
+  const multiplayer = useGameMultiplayer({ playerPositionRef, island: shopSave.customIsland });
+  const [playersPanelOpen, setPlayersPanelOpen] = useState(false);
   const baseMarine = useMemo(() => createMarineWorld(), []);
-  const marine = useMemo(() => shopSave.customIsland
-    ? { ...baseMarine, islands: [...baseMarine.islands, shopSave.customIsland] }
-    : baseMarine, [baseMarine, shopSave.customIsland]);
+  const marine = useMemo(() => {
+    const islands = [...baseMarine.islands, ...multiplayer.remoteIslands];
+    if (shopSave.customIsland) islands.push(shopSave.customIsland);
+    return { ...baseMarine, islands };
+  }, [baseMarine, multiplayer.remoteIslands, shopSave.customIsland]);
   const world = useMemo(() => {
     const city = generateWorld(7);
     city.islands = marine.islands;
@@ -2571,7 +2577,7 @@ export default function Game() {
   const wildlifeRef = useRef({ animals: [], completedIds: shopSave.completedMissionIds, islandClaimed: shopSave.completedMissionIds.includes("island"), reserveCenter: null });
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
-  const citizensRef = useRef([]), conversationRef = useRef(null), playerPositionRef = useRef({ x: world.spawn[0], y: world.spawn[1], z: world.spawn[2] });
+  const citizensRef = useRef([]), conversationRef = useRef(null);
   const busInfoRef = useRef({ activeBuses: 0, stops: [] });
   useEffect(() => {
     shopSaveRef.current = shopSave;
@@ -2782,6 +2788,7 @@ export default function Game() {
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
         h(MarineWorld, { marine, boats, divingRef, quality }),
+        h(RemotePlayerAvatars, { players: multiplayer.remotePlayers }),
          h(WildlifeReserve, { reserve: world.wildlifeReserve, playerPositionRef, wildlifeRef, completedIds: wildlifeMission.completedIds, onMissionComplete: completeWildlifeMission }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
@@ -2798,6 +2805,25 @@ export default function Game() {
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
+    started && h("section", { className: "multiplayer-hud hud-panel", dir: "rtl" },
+      h("button", { type: "button", className: "multiplayer-toggle", onClick: () => setPlayersPanelOpen((open) => !open) },
+        h("span", { className: "multiplayer-live-dot" }),
+        multiplayer.status === "connected" ? multiplayer.onlinePlayers.length + " שחקנים מחוברים" : "חיבור למשחק משותף"
+      ),
+      playersPanelOpen && h("div", { className: "multiplayer-player-list" },
+        h("strong", null, "שחקנים במשחק"),
+        multiplayer.status !== "connected"
+          ? h("p", null, multiplayer.statusMessage)
+          : multiplayer.onlinePlayers.map((player) => h("div", { className: "multiplayer-player-row", key: player.id },
+            h("span", { className: "multiplayer-live-dot" }),
+            h("span", null, player.nickname),
+            player.id === multiplayer.userId ? h("small", null, "אתה") : null
+          )),
+        multiplayer.status === "connected" && !multiplayer.databaseReady
+          ? h("p", { className: "multiplayer-warning" }, "החיבור לשחקנים פעיל. יש להשלים את הגדרת טבלת האיים כדי לסנכרן בנייה.")
+          : null
+      )
+    ),
     started && h(React.Fragment, null,
       activeDockPanel && h("section", { className: "game-tool-panel hud-panel", dir: "rtl", role: "region", "aria-label": "לוח מידע" },
         h("header", { className: "game-tool-panel-header" },

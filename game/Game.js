@@ -2650,6 +2650,7 @@ export default function Game() {
     const next = { ...current, points: current.points - 5000, customIsland: island };
     shopSaveRef.current = next;
     setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: next.points }));
     setShopNotice("האי " + name + " נוצר! הוא מופיע עכשיו בעולם ובמפה.");
   }, []);
   const expandPlayerIsland = useCallback(() => {
@@ -2659,6 +2660,7 @@ export default function Game() {
     const next = { ...current, points: current.points - 80, customIsland: expanded };
     shopSaveRef.current = next;
     setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: next.points }));
     setShopNotice("האי הורחב! השטח החדש כבר מופיע בעולם.");
   }, []);
   const buildOnPlayerIsland = useCallback((item) => {
@@ -2683,6 +2685,7 @@ export default function Game() {
     const next = { ...current, points: current.points - item.price, customIsland: updated };
     shopSaveRef.current = next;
     setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: next.points }));
     setShopNotice("נוסף לאי: " + item.title + " · " + item.price + " נקודות");
   }, []);
   useEffect(() => { if (!shopOpen) setShopNotice(""); }, [shopOpen]);

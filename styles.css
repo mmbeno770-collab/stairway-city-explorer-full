@@ -535,3 +535,60 @@ button { font: inherit; }
   .map-mission-row { grid-template-columns: 20px 1fr; }
   .map-mission-row small { grid-column: 2; }
 }
+
+/* Personal island shop */
+.shop-card-islands { width: min(820px, 100%); }
+.shop-wallet-dual { gap: 12px; }
+.shop-wallet-dual span { color: #f4d994; font-weight: 800; }
+.island-create-form, .owned-island-shop {
+  margin: 15px 0; padding: 15px; border-radius: 16px;
+  border: 1px solid rgba(225,194,128,.28); background: rgba(255,255,255,.045);
+}
+.island-form-heading, .owned-island-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 13px; }
+.island-form-heading > span { font-size: 32px; }
+.island-form-heading strong, .owned-island-heading strong { display: block; color: #f3e3bf; font-size: 16px; }
+.island-form-heading small, .owned-island-heading small { display: block; margin-top: 3px; color: #bac8c0; font-size: 11px; }
+.island-form-field { display: grid; gap: 6px; margin-top: 11px; color: #e7dfcc; font-size: 12px; font-weight: 700; }
+.island-form-field input:not([type="color"]), .island-form-field select {
+  width: 100%; min-height: 40px; padding: 9px 11px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.15); color: #f3f5ef;
+  background: rgba(255,255,255,.08); outline: none;
+}
+.island-form-field option { color: #15232b; background: #f4f2e9; }
+.island-flag-picker { display: flex; align-items: center; }
+.island-flag-picker input { width: 48px; height: 38px; border: 0; padding: 0; background: transparent; cursor: pointer; }
+.island-flag-preview, .owned-island-flag {
+  width: 38px; height: 30px; display: grid; place-items: center; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.4); color: white; text-shadow: 0 1px 4px #111;
+}
+.island-purchase-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 15px; color: #f1d28e; font-size: 13px; }
+.island-purchase-row button, .island-build-buy button {
+  padding: 9px 13px; border-radius: 10px; border: 1px solid rgba(238,205,139,.42);
+  color: #211b11; background: #e7c77e; font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.island-purchase-row button:disabled, .island-build-buy button:disabled { color: #c4c8c2; background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.1); cursor: default; }
+.owned-island-heading { margin-bottom: 8px; }
+.owned-island-flag { width: 42px; height: 32px; flex: 0 0 42px; font-size: 19px; }
+.owned-island-stats { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+.owned-island-stats span { padding: 6px 9px; border-radius: 8px; color: #dce5d9; background: rgba(255,255,255,.06); font-size: 10px; }
+.island-build-heading, .shop-divider-title { margin: 15px 0 9px; color: #f1dcae; font-size: 14px; font-weight: 900; }
+.island-build-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.island-build-item { min-width: 0; padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,.11); background: rgba(255,255,255,.045); }
+.island-build-icon { display: block; margin-bottom: 4px; font-size: 23px; }
+.island-build-item strong { display: block; color: #f0e5cf; font-size: 12px; }
+.island-build-item small { display: block; min-height: 28px; margin-top: 3px; color: #b9c4bd; font-size: 10px; line-height: 1.4; }
+.island-build-buy { display: flex; justify-content: space-between; align-items: center; gap: 7px; margin-top: 9px; }
+.island-build-buy b { color: #f3d18b; font-size: 11px; }
+.island-build-buy button { padding: 7px 10px; font-size: 10px; }
+.island-online-note, .shop-island-safety-note { margin: 11px 0 0; color: #b8c6c0; font-size: 10px; line-height: 1.55; }
+.shop-island-safety-note { padding: 9px 11px; border-radius: 10px; background: rgba(118,151,183,.09); color: #c1d0d8; }
+.shop-divider-title { padding-top: 12px; border-top: 1px solid rgba(255,255,255,.1); }
+@media (max-width: 700px) {
+  .shop-card-islands { max-height: 91vh; padding: 15px 12px; }
+  .island-create-form, .owned-island-shop { padding: 11px; }
+  .island-build-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .island-build-item { padding: 8px; }
+  .island-build-item small { min-height: 36px; }
+  .island-build-buy { flex-direction: column; align-items: stretch; }
+  .island-build-buy button { width: 100%; }
+}

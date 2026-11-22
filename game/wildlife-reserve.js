@@ -217,7 +217,7 @@ export function WildlifeReserve({ reserve, playerPositionRef, missionStep, compl
 
   return h(React.Fragment, null,
     h("group", null,
-      h("mesh", { position: [cx, -.025, cz], rotation: [-Math.PI / 2, 0, 0], material: GRASS, receiveShadow: true },
+      h("mesh", { position: [cx, .012, cz], rotation: [-Math.PI / 2, 0, 0], material: GRASS, receiveShadow: true },
         h("planeGeometry", { args: [27.5, 27.5] })
       ),
       ...[[-4, 8, 7.5, .3], [1, 5, 6, -.3], [5, -1, 5.2, .42], [7, 4.5, 4.8, -.5], [-1, 10, 4.2, .15]].map(([dx, dz, len, yaw], i) =>

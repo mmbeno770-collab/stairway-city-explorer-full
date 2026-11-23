@@ -12,9 +12,9 @@ export const CABLE_STATIONS = [
 ];
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const THEMES = [
-    { theme: "cafe", label: "בית קפה", floor: "#76523d" }, { theme: "library", label: "ספרייה", floor: "#584638" }, { theme: "gym", label: "חדר כושר", floor: "#343d49" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#d7d0c2" }, { theme: "office", label: "משרדים", floor: "#8d9b9d" }, { theme: "apartment", label: "דירת מגורים", floor: "#b99a72" }, { theme: "arcade", label: "אולם משחקים", floor: "#25283b" }, { theme: "garden", label: "גן פנימי", floor: "#637a4d" }, { theme: "music", label: "אולפן מוזיקה", floor: "#56383a" }, { theme: "kids", label: "חדר ילדים", floor: "#c3d0ce" }, { theme: "researchLab", label: "מעבדת מחקר", floor: "#c6d6d5" }, { theme: "dataCenter", label: "מרכז נתונים", floor: "#344955" }, { theme: "smartFactory", label: "ייצור מתקדם", floor: "#66747a" },
+    { theme: "cafe", label: "בית קפה", floor: "#e9b887" }, { theme: "library", label: "ספרייה", floor: "#8fa9b8" }, { theme: "gym", label: "חדר כושר", floor: "#8c9db8" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#f0dfc6" }, { theme: "office", label: "משרדים", floor: "#b6d8d7" }, { theme: "apartment", label: "דירת מגורים", floor: "#e6c69f" }, { theme: "arcade", label: "אולם משחקים", floor: "#a9a2d4" }, { theme: "garden", label: "גן פנימי", floor: "#a9c98b" }, { theme: "music", label: "אולפן מוזיקה", floor: "#d49bb0" }, { theme: "kids", label: "חדר ילדים", floor: "#d3e9df" }, { theme: "researchLab", label: "מעבדת מחקר", floor: "#b9dce5" }, { theme: "dataCenter", label: "מרכז נתונים", floor: "#9db8c8" }, { theme: "smartFactory", label: "ייצור מתקדם", floor: "#c6d0c8" },
 ];
-const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
+const FACADES = ["#f1c27d", "#f5a9a0", "#93cadb", "#a8cfb0", "#c4b1e5", "#eddc9d", "#8ec9c5", "#e7b5d1", "#d5c8a8", "#9db7da"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [], busStops = [], alleyways = [], publicSpaces = [];
@@ -30,8 +30,8 @@ export function generateWorld(seed = 7) {
         const width = style === "villa" ? 9.1 : 8.15, depth = style === "villa" ? 9.8 : 9.1;
         const floors = style === "villa" ? 2 : 1, wallHeight = floors === 2 ? 6.35 : 3.45;
         const x0 = homeX - width / 2, x1 = homeX + width / 2, z0 = homeZ - depth / 2, z1 = homeZ + depth / 2;
-        const wall = style === "villa" ? "#d5c4a8" : style === "cottage" ? "#d9c7ad" : "#c9c9bf";
-        const roof = style === "villa" ? "#465965" : style === "cottage" ? "#9a5543" : "#58636a";
+        const wall = style === "villa" ? "#f1d8b7" : style === "cottage" ? "#f4d4b3" : "#e7e6d7";
+        const roof = style === "villa" ? "#5b8790" : style === "cottage" ? "#d77861" : "#638b78";
         homes.push({ id, cx: homeX, cz: homeZ, style, width, depth, floors, wallHeight, wallColor: wall, roofColor: roof });
         add(x0 - .25, 0, z0 - .25, x1 + .25, .24, z1 + .25, "#b8b4a9", "solid", true);
         add(x0, .24, z0, x1, .34, z1, "#9a9386", "solid", true);
@@ -493,16 +493,16 @@ export function generateWorld(seed = 7) {
                         : cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
         const x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2;
         const facadePalettes = {
-            heritage: ["#c9ad90", "#b77b62", "#d6c1a2", "#a9826d", "#c8b18d"],
-            garden: ["#c4c9b0", "#a8b8a7", "#d0c8ad", "#9eafa4", "#c6b99d"],
-            creative: ["#9aafb0", "#bd8c70", "#d0c5ae", "#879da3", "#b5a1a0"],
-            innovation: ["#31444f", "#4b6069", "#61747c", "#293d49", "#708087"]
+            heritage: ["#f2c99f", "#e5a18b", "#f4ddb5", "#d58f79", "#ecc49b"],
+            garden: ["#d5e7bf", "#a9d5b6", "#f0e5b7", "#98c6a5", "#c7dca5"],
+            creative: ["#a8d9e8", "#efb0a2", "#f3d78d", "#b7a8e4", "#97d5c4"],
+            innovation: ["#8bc6d8", "#75a9c5", "#a2d9cf", "#829ed0", "#b1c8e8"]
         };
         const glassPalettes = {
-            heritage: ["#92a7a4", "#a5aaa0"],
-            garden: ["#a2c0b2", "#b5c9bc"],
-            creative: ["#79a8b2", "#9bbdb6"],
-            innovation: ["#5b9eaa", "#77b6c1", "#80aebc", "#4b8798"]
+            heritage: ["#a4d3d2", "#c1e0d7"],
+            garden: ["#9ed9c1", "#c0e4cf"],
+            creative: ["#8ccddd", "#b4dcd4"],
+            innovation: ["#7ebed4", "#95d4d8", "#a5c6e8", "#72b2c8"]
         };
         const facadePalette = facadePalettes[district] || FACADES;
         const glassPalette = glassPalettes[district] || ["#83aab9", "#9bbdb6"];

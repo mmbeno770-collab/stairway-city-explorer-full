@@ -16,8 +16,8 @@ function addWindowFrames(b, building, axis, fixed, reverse, floor, lengthStart, 
     for (let i = 0; i < count; i++) {
         if (skipDoor && floor === 0 && i === doorCell) continue;
         const start = lengthStart + i * cell, width = 2, w0 = start + (cell - width) / 2, w1 = w0 + width, center = (w0 + w1) / 2;
-        const depth = 0.105, out = reverse ? 1 : -1, face = fixed + out * 0.09, dark = "#1d3038", trim = "#c7ad77";
-        const glassTints = ["#5d7884", "#78929b", "#405c68", "#a6c2c8", "#526f7c"];
+        const depth = 0.105, out = reverse ? 1 : -1, face = fixed + out * 0.09, dark = "#49616b", trim = "#edc36f";
+        const glassTints = ["#83c7d3", "#a9d6d1", "#9eb9e6", "#c5e1ea", "#77b6c9"];
         const glassTint = glassTints[(building.id + floor * 2 + i) % glassTints.length];
         if (axis === "x") {
             put(b.glass, center, y + 1.9, face + out * 0.012, width - 0.2, 1.72, 0.016, glassTint);
@@ -77,7 +77,7 @@ function buildBatches(buildings) {
     const b = makeBatches();
     for (const building of buildings) {
         const { x0, x1, z0, z1, id } = building, width = x1 - x0, depth = z1 - z0, cx = (x0 + x1) / 2;
-        const roofY = building.floors.length * FLOOR_H, facadeAccent = id % 2 === 0 ? "#d9c39c" : "#94a8a9";
+        const roofY = building.floors.length * FLOOR_H, facadeAccent = id % 2 === 0 ? "#f0c98e" : "#91c7c8";
         for (const x of [x0 + 0.12, x1 - 0.12]) for (const z of [z0 + 0.12, z1 - 0.12]) put(b.stone, x, roofY / 2, z, 0.18, roofY, 0.18, facadeAccent);
         for (const z of [z0 + 0.12, z1 - 0.12]) put(b.gold, (x0 + x1) / 2, roofY + 0.06, z, width + 0.28, 0.075, 0.24, "#c8a96b");
         for (const x of [x0 + 0.12, x1 - 0.12]) put(b.gold, x, roofY + 0.06, (z0 + z1) / 2, 0.24, 0.075, depth + 0.28, "#c8a96b");
@@ -351,7 +351,7 @@ function BoxBatch({ items, material }) {
     return _jsx("instancedMesh", { ref, args: [undefined, material, items.length], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", {}) });
 }
 const foliageTime = { value: 0 }, foliageWindStrength = { value: 1 };
-const foliageMaterial = new THREE.MeshStandardMaterial({ roughness: 0.88, metalness: 0 });
+const foliageMaterial = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, flatShading: true });
 foliageMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.uFoliageTime = foliageTime; shader.uniforms.uFoliageWindStrength = foliageWindStrength;
     shader.vertexShader = "uniform float uFoliageTime;\nuniform float uFoliageWindStrength;\n" + shader.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
@@ -399,15 +399,15 @@ export function CityDetails({ buildings, trees, windStrength = 1, nightFactor = 
         windowLight.dispose();
     }, [surfaceTexture, windowLight]);
     const materials = useMemo(() => ({
-        stone: new THREE.MeshPhysicalMaterial({ roughness: 0.7, metalness: 0.035, clearcoat: 0.16, clearcoatRoughness: 0.58, envMapIntensity: 1.35, roughnessMap: surfaceTexture || null, bumpMap: surfaceTexture || null, bumpScale: 0.026 }),
-        metal: new THREE.MeshStandardMaterial({ roughness: 0.34, metalness: 0.72, envMapIntensity: 1.8, roughnessMap: surfaceTexture || null, bumpMap: surfaceTexture || null, bumpScale: 0.006 }),
-        gold: new THREE.MeshPhysicalMaterial({ color: "#d0ad70", roughness: 0.25, metalness: 0.88, clearcoat: 0.78, clearcoatRoughness: 0.16, envMapIntensity: 2.1 }),
-        wood: new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0.015, envMapIntensity: 1.05, roughnessMap: surfaceTexture || null, bumpMap: surfaceTexture || null, bumpScale: 0.02 }),
-        glass: new THREE.MeshPhysicalMaterial({ roughness: 0.055, metalness: 0.24, transparent: true, opacity: 0.78, clearcoat: 1, clearcoatRoughness: 0.045, envMapIntensity: 2.6, depthWrite: false }),
-        solar: new THREE.MeshPhysicalMaterial({ roughness: 0.13, metalness: 0.68, clearcoat: 0.94, clearcoatRoughness: 0.08, envMapIntensity: 2.2 }),
+        stone: new THREE.MeshPhysicalMaterial({ roughness: 0.94, metalness: 0, clearcoat: 0.04, clearcoatRoughness: 0.96, envMapIntensity: 0.72, flatShading: true }),
+        metal: new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0.18, envMapIntensity: 0.9, flatShading: true }),
+        gold: new THREE.MeshPhysicalMaterial({ color: "#f1c56f", roughness: 0.58, metalness: 0.24, clearcoat: 0.16, clearcoatRoughness: 0.62, envMapIntensity: 1, flatShading: true }),
+        wood: new THREE.MeshStandardMaterial({ roughness: 0.96, metalness: 0, envMapIntensity: 0.82, flatShading: true }),
+        glass: new THREE.MeshPhysicalMaterial({ roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.72, clearcoat: 0.35, clearcoatRoughness: 0.42, envMapIntensity: 1.25, depthWrite: false, flatShading: true }),
+        solar: new THREE.MeshPhysicalMaterial({ roughness: 0.32, metalness: 0.26, clearcoat: 0.28, clearcoatRoughness: 0.4, envMapIntensity: 1.2, flatShading: true }),
         glow: new THREE.MeshBasicMaterial({ toneMapped: false }),
-        foliage: new THREE.MeshStandardMaterial({ roughness: 0.94, metalness: 0 }),
-        hardware: new THREE.MeshPhysicalMaterial({ color: "#9ca9a8", roughness: 0.38, metalness: 0.66, clearcoat: 0.42, envMapIntensity: 1.7 }),
+        foliage: new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, flatShading: true }),
+        hardware: new THREE.MeshPhysicalMaterial({ color: "#9dbbc0", roughness: 0.78, metalness: 0.14, clearcoat: 0.12, envMapIntensity: 0.9, flatShading: true }),
     }), [surfaceTexture]);
     return _jsxs(_Fragment, { children: [
         _jsx(BoxBatch, { items: batches.stone, material: materials.stone }),

@@ -175,12 +175,15 @@ export function MultiplayerAuthPanel({ multiplayer }) {
 }
 
 export function useGameMultiplayer({ island }) {
-  const [status, setStatus] = useState("checking");
-  const [statusMessage, setStatusMessage] = useState("מכין שחקן אורח...");
+  // Open the game locally immediately. Supabase is checked in the background
+  // and must never hold the player at the loading screen.
+  const [localProfile] = useState(() => getLocalProfile());
+  const [status, setStatus] = useState("offline");
+  const [statusMessage, setStatusMessage] = useState("המשחק מוכן במצב מקומי. בודק חיבור לשרת ברקע...");
   const [userId, setUserId] = useState(null);
-  const [nickname, setNickname] = useState("שחקן");
-  const [avatarColor, setAvatarColor] = useState(DEFAULT_AVATAR_COLOR);
-  const [avatarIcon, setAvatarIcon] = useState(DEFAULT_AVATAR_ICON);
+  const [nickname, setNickname] = useState(localProfile.nickname);
+  const [avatarColor, setAvatarColor] = useState(localProfile.avatarColor);
+  const [avatarIcon, setAvatarIcon] = useState(localProfile.avatarIcon);
   const [remoteIslandRows, setRemoteIslandRows] = useState([]);
   const [databaseReady, setDatabaseReady] = useState(false);
   const [retryToken, setRetryToken] = useState(0);

@@ -728,3 +728,35 @@ button { font: inherit; }
 }
 .multiplayer-symbol-choice.selected { background: rgba(230,199,131,.2); border-color: #e6c783; box-shadow: 0 0 0 2px rgba(230,199,131,.16); }
 .multiplayer-color-choice:focus-visible, .multiplayer-symbol-choice:focus-visible { outline: 3px solid #f3dfb2; outline-offset: 3px; }
+
+
+/* Soft storybook-city color palette */
+:root {
+  --hud-bg: rgba(24, 54, 67, .78);
+  --hud-border: rgba(210, 238, 230, .26);
+  --hud-fg: #f5fbf5;
+  --hud-accent: #91dfc0;
+  --hud-accent-fg: #183b41;
+}
+body { background: #b7e8ff; }
+.hud-panel, .climate-panel {
+  border-color: rgba(175, 224, 213, .4);
+  box-shadow: 0 12px 32px rgba(43, 76, 86, .22), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.start-overlay {
+  background: linear-gradient(150deg, rgba(116, 198, 195, .24), rgba(28, 57, 78, .72));
+}
+.start-card {
+  border-color: rgba(190, 231, 214, .42);
+  background: linear-gradient(145deg, rgba(39, 82, 94, .94), rgba(24, 51, 73, .95));
+}
+.start-card h1 { color: #fff1d2; text-shadow: 0 4px 22px rgba(255, 222, 161, .18); }
+.start-btn {
+  background: linear-gradient(135deg, #92e2c3, #f1d08b);
+  color: #23444b;
+  box-shadow: 0 8px 22px rgba(73, 177, 157, .18);
+}
+.interaction-prompt {
+  background: rgba(25, 66, 76, .94);
+  border-color: rgba(145, 223, 192, .58);
+}

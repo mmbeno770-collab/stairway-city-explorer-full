@@ -11,11 +11,11 @@ function mixHex(day, night, amount) {
     return `#${[channel(16), channel(8), channel(0)].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 const WEATHER = {
-    clear: { sun: 1, clouds: 0.12, rain: 0, wind: 0.42, fogFar: 270, fogNear: 62, daySky: "#9bcfeb", nightSky: "#101b32", dayFog: "#b5d9e8", nightFog: "#17243a", turbidity: 3.2 },
-    cloudy: { sun: 0.68, clouds: 0.72, rain: 0, wind: 0.82, fogFar: 205, fogNear: 42, daySky: "#91a9b8", nightSky: "#111c2b", dayFog: "#a9bcc6", nightFog: "#192633", turbidity: 7.5 },
-    rain: { sun: 0.42, clouds: 0.94, rain: 720, wind: 1.32, fogFar: 158, fogNear: 25, daySky: "#718c9b", nightSky: "#101c2a", dayFog: "#879eaa", nightFog: "#162533", turbidity: 9.5 },
-    storm: { sun: 0.22, clouds: 1, rain: 1250, wind: 2.05, fogFar: 126, fogNear: 16, daySky: "#526979", nightSky: "#0b1421", dayFog: "#70818b", nightFog: "#101a27", turbidity: 11 },
-    fog: { sun: 0.58, clouds: 0.38, rain: 0, wind: 0.28, fogFar: 78, fogNear: 5, daySky: "#a9bdc1", nightSky: "#152328", dayFog: "#b9c9c8", nightFog: "#1a2a2d", turbidity: 8.5 },
+    clear: { sun: 1, clouds: 0.12, rain: 0, wind: 0.42, fogFar: 300, fogNear: 68, daySky: "#b7e8ff", nightSky: "#1a2850", dayFog: "#d5eff0", nightFog: "#263957", turbidity: 2.3 },
+    cloudy: { sun: 0.72, clouds: 0.72, rain: 0, wind: 0.82, fogFar: 225, fogNear: 42, daySky: "#bdd5e7", nightSky: "#202e49", dayFog: "#d7e6e8", nightFog: "#2b3b52", turbidity: 4.8 },
+    rain: { sun: 0.46, clouds: 0.94, rain: 720, wind: 1.32, fogFar: 175, fogNear: 25, daySky: "#91b6c9", nightSky: "#1b2b43", dayFog: "#b8d2d7", nightFog: "#263a50", turbidity: 7.2 },
+    storm: { sun: 0.28, clouds: 1, rain: 1250, wind: 2.05, fogFar: 140, fogNear: 16, daySky: "#7894a8", nightSky: "#17243a", dayFog: "#a3bac5", nightFog: "#202f47", turbidity: 8.8 },
+    fog: { sun: 0.62, clouds: 0.38, rain: 0, wind: 0.28, fogFar: 92, fogNear: 5, daySky: "#c5dcd9", nightSky: "#243947", dayFog: "#dcebe2", nightFog: "#2b4048", turbidity: 6.2 },
 };
 export function getEnvironmentProfile(weather, hour, quality = "high") {
     const safeHour = ((hour % 24) + 24) % 24;
@@ -26,13 +26,13 @@ export function getEnvironmentProfile(weather, hour, quality = "high") {
     const azimuth = ((safeHour - 12) / 24) * Math.PI * 2, sunY = solarElevation * 88;
     return {
         daylight, nightFactor, sunPosition: [Math.sin(azimuth) * 72, sunY, Math.cos(azimuth) * 38],
-        sunColor: mixHex(weather === "storm" ? "#c5d6e7" : "#fff0d1", "#8298c8", nightFactor),
+        sunColor: mixHex(weather === "storm" ? "#d3e5f2" : "#fff5d9", "#9aabd4", nightFactor),
         sunIntensity: (0.035 + daylight * 2.35) * settings.sun,
         skyColor: mixHex(settings.daySky, settings.nightSky, nightFactor),
         fogColor: mixHex(settings.dayFog, settings.nightFog, nightFactor),
         fogNear: settings.fogNear, fogFar: Math.max(48, settings.fogFar * (0.78 + daylight * 0.22)),
-        hemisphereSky: mixHex("#d9edff", "#506383", nightFactor), hemisphereGround: mixHex("#786d5c", "#202938", nightFactor),
-        hemisphereIntensity: 0.24 + daylight * 0.82, ambientIntensity: 0.12 + daylight * 0.34,
+        hemisphereSky: mixHex("#e5f5ff", "#687da0", nightFactor), hemisphereGround: mixHex("#a7ba91", "#29384b", nightFactor),
+        hemisphereIntensity: 0.34 + daylight * 0.9, ambientIntensity: 0.18 + daylight * 0.4,
         turbidity: settings.turbidity, cloudCover: settings.clouds,
         cloudOpacity: weather === "clear" ? 0.22 : 0.48 + settings.clouds * 0.24,
         rainCount: Math.round(settings.rain * resolutionScale), rainSpeed: weather === "storm" ? 28 : 21, windStrength: settings.wind,

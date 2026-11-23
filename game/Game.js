@@ -2831,7 +2831,7 @@ export default function Game() {
           ? h("p", null, multiplayer.statusMessage)
           : multiplayer.onlinePlayers.map((player) => h("div", { className: "multiplayer-player-row", key: player.id },
             h("span", { className: "multiplayer-live-dot" }),
-            h("span", null, player.nickname),
+            h("span", null, (player.avatarIcon || "⭐") + " " + player.nickname),
             player.id === multiplayer.userId ? h("small", null, "אתה") : null
           )),
         multiplayer.status === "connected" && !multiplayer.databaseReady
@@ -2967,7 +2967,7 @@ export default function Game() {
           h("button", { className: "start-btn", type: "button", onClick: multiplayer.retry }, "נסה להתחבר שוב")
         ),
       multiplayer.status === "connected" && !shopOpen && h("div", { className: "start-card" },
-        h("div", { className: "start-kicker" }, "מחובר בתור " + multiplayer.nickname),
+        h("div", { className: "start-kicker" }, "מחובר בתור " + (multiplayer.avatarIcon || "⭐") + " " + multiplayer.nickname),
         h("h1", null, "Stairway City Explorer"),
         h("p", null, "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות ומטבעות. ההרפתקה הבאה שלכם מתחילה כאן."),
         h("div", { className: "start-wallet" }, "🪙 בארנק: " + shopSave.coins + " מטבעות"),

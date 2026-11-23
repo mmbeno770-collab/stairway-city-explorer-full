@@ -2821,12 +2821,12 @@ export default function Game() {
     started && h("section", { className: "multiplayer-hud hud-panel", dir: "rtl" },
       h("button", { type: "button", className: "multiplayer-toggle", onClick: () => setPlayersPanelOpen((open) => !open) },
         h("span", { className: "multiplayer-live-dot" }),
-        multiplayer.status === "connected" ? multiplayer.onlinePlayers.length + " שחקנים מחוברים" : "חיבור למשחק משותף"
+        multiplayer.status === "connected" ? multiplayer.remoteIslands.length + " איים משותפים" : "חיבור לעולם המשותף"
       ),
       multiplayer.status !== "connected" && h("button", { type: "button", className: "multiplayer-retry", onClick: multiplayer.retry }, multiplayer.status === "connecting" ? "↻ מנסה להתחבר (לחץ לניסיון חדש)" : "↻ נסה להתחבר שוב"),
       multiplayer.status !== "connected" && h("p", { className: "multiplayer-status-message", role: "status" }, multiplayer.statusMessage),
       playersPanelOpen && h("div", { className: "multiplayer-player-list" },
-        h("strong", null, "שחקנים במשחק"),
+        h("strong", null, "איים ששחקנים אחרים בנו"),
         multiplayer.status !== "connected"
           ? h("p", null, multiplayer.statusMessage)
           : multiplayer.onlinePlayers.map((player) => h("div", { className: "multiplayer-player-row", key: player.id },
@@ -2835,7 +2835,7 @@ export default function Game() {
             player.id === multiplayer.userId ? h("small", null, "אתה") : null
           )),
         multiplayer.status === "connected" && !multiplayer.databaseReady
-          ? h("p", { className: "multiplayer-warning" }, "החיבור לשחקנים פעיל. יש להשלים את הגדרת טבלת האיים כדי לסנכרן בנייה.")
+          ? h("p", { className: "multiplayer-warning" }, "אין כרגע גישה לטבלת האיים המשותפת. פרטי התקלה מופיעים בהודעת החיבור.")
           : null
       )
     ),

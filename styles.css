@@ -710,3 +710,21 @@ button { font: inherit; }
   .multiplayer-auth-card { padding: 21px 16px 18px; width: min(410px, calc(100vw - 24px)); }
   .multiplayer-auth-card h2 { font-size: 20px; }
 }
+
+
+/* Guest profile: nickname, avatar color and symbol selection */
+.multiplayer-avatar-picker { display: grid; gap: 8px; text-align: right; }
+.multiplayer-picker-label { color: #e8dfcb; font-size: 12px; font-weight: 800; }
+.multiplayer-color-options, .multiplayer-symbol-options { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.multiplayer-color-choice {
+  width: 34px; height: 34px; padding: 0; border: 2px solid rgba(255,255,255,.38);
+  border-radius: 50%; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.22);
+}
+.multiplayer-color-choice.selected { outline: 3px solid #f3dfb2; outline-offset: 3px; }
+.multiplayer-symbol-choice {
+  width: 40px; height: 40px; padding: 0; border-radius: 10px; cursor: pointer;
+  color: #fff; font-size: 21px; background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.multiplayer-symbol-choice.selected { background: rgba(230,199,131,.2); border-color: #e6c783; box-shadow: 0 0 0 2px rgba(230,199,131,.16); }
+.multiplayer-color-choice:focus-visible, .multiplayer-symbol-choice:focus-visible { outline: 3px solid #f3dfb2; outline-offset: 3px; }

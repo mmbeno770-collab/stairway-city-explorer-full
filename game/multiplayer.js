@@ -169,6 +169,7 @@ export function useGameMultiplayer({ island }) {
   const [retryToken, setRetryToken] = useState(0);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
+  const remotePlayers = useMemo(() => [], []);
 
   const formatAuthError = (error) => {
     const message = String(error?.message || error || "");

@@ -370,7 +370,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
         setStatus("error");
         setStatusMessage("שרת האימות ענה, אבל ערוץ Realtime לא התחבר תוך 15 שניות. בדוק הרשאות ערוצים פרטיים.");
       }, 15000);
-      channel.subscribe((channelStatus) => {
+      channel.subscribe((channelStatus, channelError) => {
         if (channelStatus === "SUBSCRIBED" || channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT" || channelStatus === "CLOSED") {
           window.clearTimeout(subscribeTimeout);
         }
@@ -386,18 +386,27 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
             avatarIcon: playerIcon,
             joined_at: new Date().toISOString()
           }).then(({ error }) => {
-            if (error && active) setStatusMessage("מחובר, אך מצב הנוכחות לא עודכן.");
-          }).catch(() => {
-            if (active) setStatusMessage("מחובר, אך מצב הנוכחות לא עודכן.");
+            if (error && active) setStatusMessage("מחובר, אך מצב הנוכחות לא עודכן: " + String(error.message || "שגיאה לא מזוהה").slice(0, 120));
+          }).catch((error) => {
+            if (active) setStatusMessage("מחובר, אך מצב הנוכחות לא עודכן: " + String(error?.message || error || "שגיאה לא מזוהה").slice(0, 120));
           });
         } else if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
           connectedRef.current = false;
           setStatus("error");
-          setStatusMessage("לא ניתן להתחבר לערוץ השחקנים. בדוק הרשאות Realtime בשרת.");
+          const detail = [
+            channelError?.message || (typeof channelError === "string" ? channelError : ""),
+            channelError?.code || "",
+            channelError?.reason || ""
+          ].filter(Boolean).join(" · ").slice(0, 180);
+          setStatusMessage(
+            "לא ניתן להתחבר לערוץ השחקנים (" + channelStatus + "). " +
+            (detail || "Supabase לא החזיר פירוט. בדוק הרשאות Realtime בשרת.")
+          );
         } else if (channelStatus === "CLOSED") {
           connectedRef.current = false;
           setStatus("error");
-          setStatusMessage("החיבור לשרת המשחק נסגר.");
+          const detail = String(channelError?.message || (typeof channelError === "string" ? channelError : "")).slice(0, 140);
+          setStatusMessage("החיבור לשרת המשחק נסגר." + (detail ? " פרטים: " + detail : ""));
         }
       });
     };

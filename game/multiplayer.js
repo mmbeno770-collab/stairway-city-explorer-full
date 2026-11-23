@@ -233,6 +233,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     let currentStage = "בדיקת התחברות קודמת";
 
     const start = async () => {
+      setStatusMessage("בודק אם כבר קיים שחקן שמור...");
       const sessionResponse = await awaitWithTimeout(
         supabase.auth.getSession(),
         "בדיקת התחברות קודמת",
@@ -243,6 +244,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
 
       if (!user) {
         currentStage = "יצירת שחקן אורח";
+        setStatusMessage("יוצר שחקן אורח...");
         const guestResponse = await awaitWithTimeout(
           supabase.auth.signInAnonymously(),
           "יצירת שחקן אורח",
@@ -274,17 +276,24 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       setAvatarIcon(playerIcon);
 
       currentStage = "טעינת טבלת האיים game_islands";
-      const islandResponse = await supabase
-        .from("game_islands")
-        .select("player_id,nickname,island,updated_at")
-        .neq("player_id", user.id);
+      setStatusMessage("טוען איים משותפים...");
+      // Keep slow island reads from blocking the realtime player connection.
+      const islandResponse = await awaitWithTimeout(
+        supabase
+          .from("game_islands")
+          .select("player_id,nickname,island,updated_at")
+          .neq("player_id", user.id),
+        "טעינת איים משותפים",
+        5000
+      ).catch((error) => ({ data: [], error }));
       if (!active) return;
       if (islandResponse.error) {
         setDatabaseReady(false);
-        setStatusMessage("החיבור לשחקנים ימשיך, אך טעינת האיים נכשלה: " + islandResponse.error.message.slice(0, 110));
+        setStatusMessage("טעינת האיים מתעכבת או נכשלה. ממשיך להתחבר לשחקנים...");
       } else {
         setDatabaseReady(true);
         setRemoteIslandRows(islandResponse.data || []);
+        setStatusMessage("האיים נטענו. מתחבר לעולם המשותף...");
       }
 
       channel = supabase.channel(CHANNEL_NAME, {

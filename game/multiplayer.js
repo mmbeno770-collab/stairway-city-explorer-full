@@ -6,7 +6,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://cecgegnskbhuswlyptus.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1wfB5eP9gElxaMtSjeBRgw_hofPr3dg";
-const CHANNEL_NAME = "stairway-city-world";
 const NICKNAME_KEY = "stairway-city-multiplayer-nickname";
 const GUEST_COLORS = ["#e05b54", "#4f9fd0", "#55ad78", "#a17ade", "#e3a84f", "#e879b4", "#55b8b1", "#8b98a7"];
 const GUEST_SYMBOLS = ["⭐", "🧭", "🚀", "🐬", "🦊", "🌟", "🛸", "🏝️"];
@@ -158,22 +157,18 @@ export function MultiplayerAuthPanel({ multiplayer }) {
   );
 }
 
-export function useGameMultiplayer({ playerPositionRef, island }) {
+export function useGameMultiplayer({ island }) {
   const [status, setStatus] = useState("checking");
   const [statusMessage, setStatusMessage] = useState("מכין שחקן אורח...");
   const [userId, setUserId] = useState(null);
   const [nickname, setNickname] = useState("שחקן");
   const [avatarColor, setAvatarColor] = useState(DEFAULT_AVATAR_COLOR);
   const [avatarIcon, setAvatarIcon] = useState(DEFAULT_AVATAR_ICON);
-  const [onlinePlayers, setOnlinePlayers] = useState([]);
-  const [remotePlayers, setRemotePlayers] = useState([]);
   const [remoteIslandRows, setRemoteIslandRows] = useState([]);
   const [databaseReady, setDatabaseReady] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
-  const channelRef = useRef(null);
-  const connectedRef = useRef(false);
 
   const formatAuthError = (error) => {
     const message = String(error?.message || error || "");
@@ -207,7 +202,6 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       setNickname(cleanNickname);
       setAvatarColor(selectedColor);
       setAvatarIcon(selectedIcon);
-      connectedRef.current = false;
       setStatus("connecting");
       setStatusMessage("הפרופיל נשמר. מתחבר לעולם המשותף...");
       setRetryToken((value) => value + 1);
@@ -222,14 +216,11 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
   const retry = () => {
     setStatus("connecting");
     setStatusMessage("מנסה להתחבר מחדש...");
-    setOnlinePlayers([]);
-    setRemotePlayers([]);
     setRetryToken((value) => value + 1);
   };
 
   useEffect(() => {
     let active = true;
-    let channel = null;
     let currentStage = "בדיקת התחברות קודמת";
 
     const start = async () => {
@@ -296,119 +287,14 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
         setStatusMessage("האיים נטענו. מתחבר לעולם המשותף...");
       }
 
-      channel = supabase.channel(CHANNEL_NAME, {
-        config: {
-          presence: { key: user.id },
-          broadcast: { self: false },
-          private: true
-        }
-      });
-
-      channel
-        .on("presence", { event: "sync" }, () => {
-          if (!active || !channel) return;
-          const presence = channel.presenceState();
-          const players = Object.entries(presence).flatMap(([key, entries]) =>
-            entries.map((entry) => ({
-              id: entry.user_id || key,
-              nickname: entry.nickname || "שחקן",
-              avatarColor: GUEST_COLORS.includes(entry.avatarColor) ? entry.avatarColor : DEFAULT_AVATAR_COLOR,
-              avatarIcon: GUEST_SYMBOLS.includes(entry.avatarIcon) ? entry.avatarIcon : DEFAULT_AVATAR_ICON,
-              joinedAt: entry.joined_at || null
-            }))
-          );
-          setOnlinePlayers(players);
-          const activeIds = new Set(players.map((player) => player.id));
-          setRemotePlayers((current) => current.filter((player) => activeIds.has(player.id)));
-        })
-        .on("broadcast", { event: "player-move" }, ({ payload }) => {
-          if (!active || !payload?.user_id || payload.user_id === user.id) return;
-          const nextPlayer = {
-            id: payload.user_id,
-            nickname: payload.nickname || "שחקן",
-            avatarColor: GUEST_COLORS.includes(payload.avatarColor) ? payload.avatarColor : DEFAULT_AVATAR_COLOR,
-            avatarIcon: GUEST_SYMBOLS.includes(payload.avatarIcon) ? payload.avatarIcon : DEFAULT_AVATAR_ICON,
-            x: Number(payload.x) || 0,
-            y: Number(payload.y) || 0,
-            z: Number(payload.z) || 0,
-            yaw: Number(payload.yaw) || 0
-          };
-          setRemotePlayers((current) => {
-            const index = current.findIndex((player) => player.id === nextPlayer.id);
-            if (index < 0) return [...current, nextPlayer].slice(-16);
-            const updated = [...current];
-            updated[index] = nextPlayer;
-            return updated;
-          });
-        });
-
-      if (!islandResponse.error) {
-        channel.on("postgres_changes", {
-          event: "*",
-          schema: "public",
-          table: "game_islands"
-        }, (change) => {
-          if (!active) return;
-          if (change.eventType === "DELETE") {
-            const deletedId = change.old?.player_id;
-            if (deletedId) setRemoteIslandRows((current) => current.filter((row) => row.player_id !== deletedId));
-            return;
-          }
-          const row = change.new;
-          if (!row?.player_id || row.player_id === user.id || !row.island) return;
-          setRemoteIslandRows((current) => {
-            const next = current.filter((item) => item.player_id !== row.player_id);
-            return [...next, row];
-          });
-        });
+      if (islandResponse.error) {
+        throw new Error(
+          "טעינת האיים המשותפים נכשלה. " +
+          String(islandResponse.error.message || islandResponse.error).slice(0, 180)
+        );
       }
-
-      channelRef.current = channel;
-      currentStage = "חיבור לערוץ Realtime של השחקנים";
-      const subscribeTimeout = window.setTimeout(() => {
-        if (!active || connectedRef.current) return;
-        setStatus("error");
-        setStatusMessage("שרת האימות ענה, אבל ערוץ Realtime לא התחבר תוך 15 שניות. בדוק הרשאות ערוצים פרטיים.");
-      }, 15000);
-      channel.subscribe((channelStatus, channelError) => {
-        if (channelStatus === "SUBSCRIBED" || channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT" || channelStatus === "CLOSED") {
-          window.clearTimeout(subscribeTimeout);
-        }
-        if (!active) return;
-        if (channelStatus === "SUBSCRIBED") {
-          connectedRef.current = true;
-          setStatus("connected");
-          setStatusMessage("מחובר למשחק המשותף");
-          channel.track({
-            user_id: user.id,
-            nickname: playerName,
-            avatarColor: playerColor,
-            avatarIcon: playerIcon,
-            joined_at: new Date().toISOString()
-          }).then(({ error }) => {
-            if (error && active) setStatusMessage("מחובר, אך מצב הנוכחות לא עודכן: " + String(error.message || "שגיאה לא מזוהה").slice(0, 120));
-          }).catch((error) => {
-            if (active) setStatusMessage("מחובר, אך מצב הנוכחות לא עודכן: " + String(error?.message || error || "שגיאה לא מזוהה").slice(0, 120));
-          });
-        } else if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
-          connectedRef.current = false;
-          setStatus("error");
-          const detail = [
-            channelError?.message || (typeof channelError === "string" ? channelError : ""),
-            channelError?.code || "",
-            channelError?.reason || ""
-          ].filter(Boolean).join(" · ").slice(0, 180);
-          setStatusMessage(
-            "לא ניתן להתחבר לערוץ השחקנים (" + channelStatus + "). " +
-            (detail || "Supabase לא החזיר פירוט. בדוק הרשאות Realtime בשרת.")
-          );
-        } else if (channelStatus === "CLOSED") {
-          connectedRef.current = false;
-          setStatus("error");
-          const detail = String(channelError?.message || (typeof channelError === "string" ? channelError : "")).slice(0, 140);
-          setStatusMessage("החיבור לשרת המשחק נסגר." + (detail ? " פרטים: " + detail : ""));
-        }
-      });
+      setStatus("connected");
+      setStatusMessage("מחובר לעולם המשותף · האיים מתעדכנים אוטומטית כל 3 שניות");
     };
 
     start().catch((error) => {
@@ -420,9 +306,6 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
 
     return () => {
       active = false;
-      connectedRef.current = false;
-      if (channel) supabase.removeChannel(channel);
-      channelRef.current = null;
     };
   }, [retryToken]);
 
@@ -447,7 +330,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       }, { onConflict: "player_id" });
       if (error) {
         setDatabaseReady(false);
-        setStatusMessage("השחקנים מחוברים, אבל שמירת האי נכשלה. בדוק את טבלת game_islands והרשאותיה.");
+        setStatusMessage("שמירת האי נכשלה: " + String(error.message || error).slice(0, 160));
       } else {
         setDatabaseReady(true);
       }
@@ -455,32 +338,74 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     return () => window.clearTimeout(timer);
   }, [userId, nickname, island]);
 
+
+
+  // Poll the shared table over ordinary HTTPS. This does not depend on Supabase Realtime.
   useEffect(() => {
     if (!userId || status !== "connected") return undefined;
-    const timer = window.setInterval(() => {
-      const channel = channelRef.current;
-      if (!channel || !connectedRef.current) return;
-      const position = playerPositionRef?.current;
-      if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.z)) return;
-      channel.send({
-        type: "broadcast",
-        event: "player-move",
-        payload: {
-          user_id: userId,
-          nickname,
-          avatarColor,
-          avatarIcon,
-          x: position.x,
-          y: Number(position.y) || 0,
-          z: position.z,
-          yaw: Number(position.yaw) || 0
+    let active = true;
+    let inFlight = false;
+
+    const syncSharedIslands = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const { data, error } = await supabase
+          .from("game_islands")
+          .select("player_id,nickname,island,updated_at")
+          .neq("player_id", userId)
+          .order("updated_at", { ascending: false })
+          .limit(100);
+
+        if (!active) return;
+        if (error) {
+          setDatabaseReady(false);
+          setStatusMessage(
+            "החיבור קיים, אך טעינת שינויים של שחקנים אחרים נכשלה: " +
+            String(error.message || error).slice(0, 160)
+          );
+          return;
         }
-      }).catch(() => {});
-    }, 160);
-    return () => window.clearInterval(timer);
-  }, [userId, nickname, avatarColor, avatarIcon, status, playerPositionRef]);
+
+        const rows = Array.isArray(data) ? data : [];
+        setRemoteIslandRows((current) => {
+          const unchanged = current.length === rows.length && current.every((row, index) =>
+            row.player_id === rows[index]?.player_id &&
+            row.updated_at === rows[index]?.updated_at &&
+            JSON.stringify(row.island) === JSON.stringify(rows[index]?.island)
+          );
+          return unchanged ? current : rows;
+        });
+        setDatabaseReady(true);
+        setStatusMessage("מחובר לעולם המשותף · האיים מתעדכנים אוטומטית כל 3 שניות");
+      } catch (error) {
+        if (active) {
+          setDatabaseReady(false);
+          setStatusMessage(
+            "הסנכרון הזמני נכשל: " +
+            String(error?.message || error).slice(0, 160)
+          );
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    syncSharedIslands();
+    const timer = window.setInterval(syncSharedIslands, 3000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [userId, status]);
 
   const remoteIslands = useMemo(() => mapIslandRows(remoteIslandRows), [remoteIslandRows]);
+  const onlinePlayers = useMemo(() => remoteIslandRows.map((row) => ({
+    id: row.player_id,
+    nickname: row.nickname || row.island?.name || "שחקן",
+    avatarColor: DEFAULT_AVATAR_COLOR,
+    avatarIcon: "🏝️"
+  })), [remoteIslandRows]);
   return {
     status,
     statusMessage,

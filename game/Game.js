@@ -932,7 +932,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
     ctx.save(); traceCoast(-9); ctx.clip();
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
-      const parkLot = (i === 1 && k === 1) || (i === GRID - 2 && k === GRID - 2);
+      const parkLot = (i === 1 && k === 1) || (i >= GRID - 3 && k >= GRID - 3);
       const recreationLot = (i === 8 && k === 2) || (i === 7 && k === 8);
       const residentialLot = (i === 0 || i === GRID - 1 || k === 0 || k === GRID - 1) && (i + k) % 2 === 0;
       const civicLot = (i === 4 && k === 3) || (i === 7 && k === 6);

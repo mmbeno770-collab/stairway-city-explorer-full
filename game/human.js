@@ -4,9 +4,9 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // This is a higher-detail procedural fallback; a licensed skinned GLB can replace it later.
 // @ts-nocheck -- rig refs are populated by React ref callbacks before the first animation frame.
 import * as THREE from "three";
-const downCapsule = (radius, length, radial = 18) => { const g = new THREE.CapsuleGeometry(radius, length, 4, Math.min(10, radial)); g.translate(0, -length / 2, 0); return g; };
-const lathe = (pts, seg = 36) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), Math.min(18, seg));
-const sphere = (w, h, d, detail = 24) => { const sides = Math.min(14, detail); const g = new THREE.SphereGeometry(1, sides, Math.max(8, Math.floor(sides * 0.62))); g.scale(w, h, d); return g; };
+const downCapsule = (radius, length, radial = 18) => { const g = new THREE.CapsuleGeometry(radius, length, 6, radial); g.translate(0, -length / 2, 0); return g; };
+const lathe = (pts, seg = 36) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+const sphere = (w, h, d, detail = 24) => { const g = new THREE.SphereGeometry(1, detail, Math.max(12, Math.floor(detail * 0.7))); g.scale(w, h, d); return g; };
 const G = {
     torso: lathe([[0.001, 0], [0.125, 0.005], [0.145, 0.045], [0.14, 0.12], [0.15, 0.22], [0.17, 0.32], [0.188, 0.39], [0.18, 0.45], [0.145, 0.49], [0.085, 0.515], [0.001, 0.52]]),
     pelvis: sphere(0.155, 0.118, 0.112, 28), belt: new THREE.CylinderGeometry(0.151, 0.151, 0.038, 32),
@@ -24,17 +24,13 @@ const G = {
 };
 const M = {
     skin: new THREE.MeshPhysicalMaterial({ color: "#bd8063", roughness: 0.68, metalness: 0, envMapIntensity: 0.72, clearcoat: 0.08, clearcoatRoughness: 0.5 }), skinLight: new THREE.MeshStandardMaterial({ color: "#d39a7d", roughness: 0.66 }), skinShadow: new THREE.MeshStandardMaterial({ color: "#8f5847", roughness: 0.8 }),
-    shirt: new THREE.MeshPhysicalMaterial({ color: "#3f9eb3", roughness: 0.94, metalness: 0, sheen: 0.08, sheenColor: "#b7e4df", sheenRoughness: 0.96 }), shirtLight: new THREE.MeshStandardMaterial({ color: "#78c5c8", roughness: 0.96 }), shirtSeam: new THREE.MeshStandardMaterial({ color: "#d7eee0", roughness: 1 }),
-    pants: new THREE.MeshStandardMaterial({ color: "#35465f", roughness: 0.98 }), pantsLight: new THREE.MeshStandardMaterial({ color: "#617590", roughness: 0.98 }), belt: new THREE.MeshStandardMaterial({ color: "#566477", roughness: 0.92 }), buckle: new THREE.MeshStandardMaterial({ color: "#d6c18a", metalness: 0.12, roughness: 0.78 }),
+    shirt: new THREE.MeshPhysicalMaterial({ color: "#294c62", roughness: 0.82, metalness: 0.015, sheen: 0.24, sheenColor: "#8aa8b6", sheenRoughness: 0.92 }), shirtLight: new THREE.MeshStandardMaterial({ color: "#52788b", roughness: 0.82 }), shirtSeam: new THREE.MeshStandardMaterial({ color: "#a9c0c7", roughness: 0.88 }),
+    pants: new THREE.MeshStandardMaterial({ color: "#242b35", roughness: 0.92 }), pantsLight: new THREE.MeshStandardMaterial({ color: "#394451", roughness: 0.92 }), belt: new THREE.MeshStandardMaterial({ color: "#35271f", roughness: 0.65 }), buckle: new THREE.MeshStandardMaterial({ color: "#9da7ae", metalness: 0.72, roughness: 0.35 }),
     shoe: new THREE.MeshStandardMaterial({ color: "#303944", roughness: 0.76 }), sole: new THREE.MeshStandardMaterial({ color: "#171c22", roughness: 0.94 }), lace: new THREE.MeshStandardMaterial({ color: "#c2c8ca", roughness: 0.85 }),
     hair: new THREE.MeshStandardMaterial({ color: "#241a16", roughness: 0.92 }), hairLight: new THREE.MeshStandardMaterial({ color: "#503326", roughness: 0.86 }), kippah: new THREE.MeshPhysicalMaterial({ color: "#172b50", roughness: 0.96, metalness: 0, sheen: 0.24, sheenColor: "#60769a", sheenRoughness: 0.92, side: THREE.DoubleSide }), kippahTrim: new THREE.MeshStandardMaterial({ color: "#9aa8b9", roughness: 0.82 }), tzitzit: new THREE.MeshStandardMaterial({ color: "#f2f0e8", roughness: 0.94 }),
-    eyeWhite: new THREE.MeshStandardMaterial({ color: "#f5f0e5", roughness: 0.72 }), iris: new THREE.MeshStandardMaterial({ color: "#79563b", roughness: 0.78 }), pupil: new THREE.MeshBasicMaterial({ color: "#171310" }), glint: new THREE.MeshBasicMaterial({ color: "#ffffff" }),
-    lip: new THREE.MeshStandardMaterial({ color: "#985d51", roughness: 0.9 }), nail: new THREE.MeshStandardMaterial({ color: "#d9b6a3", roughness: 0.9 }), mouth: new THREE.MeshStandardMaterial({ color: "#653b35", roughness: 0.92 }), backpack: new THREE.MeshStandardMaterial({ color: "#e4a55e", roughness: 0.96 }), backpackLight: new THREE.MeshStandardMaterial({ color: "#f3cb83", roughness: 0.96 }), zipper: new THREE.MeshStandardMaterial({ color: "#f1d99c", metalness: 0.08, roughness: 0.86 }), strap: new THREE.MeshStandardMaterial({ color: "#456b78", roughness: 0.96 }), strapClip: new THREE.MeshStandardMaterial({ color: "#e7c27b", metalness: 0.12, roughness: 0.82 }), shoeAccent: new THREE.MeshStandardMaterial({ color: "#8fc8c5", roughness: 0.92 }), steel: new THREE.MeshStandardMaterial({ color: "#a9c4c9", metalness: 0.16, roughness: 0.82 }), plate: new THREE.MeshStandardMaterial({ color: "#657b8a", roughness: 0.9 }),
+    eyeWhite: new THREE.MeshStandardMaterial({ color: "#eee9df", roughness: 0.28 }), iris: new THREE.MeshStandardMaterial({ color: "#68462e", roughness: 0.28 }), pupil: new THREE.MeshBasicMaterial({ color: "#171310" }), glint: new THREE.MeshBasicMaterial({ color: "#ffffff" }),
+    lip: new THREE.MeshStandardMaterial({ color: "#985d51", roughness: 0.65 }), nail: new THREE.MeshStandardMaterial({ color: "#d9b6a3", roughness: 0.62 }), mouth: new THREE.MeshStandardMaterial({ color: "#653b35", roughness: 0.78 }), backpack: new THREE.MeshStandardMaterial({ color: "#b18a58", roughness: 0.9 }), backpackLight: new THREE.MeshStandardMaterial({ color: "#d1ae73", roughness: 0.86 }), zipper: new THREE.MeshStandardMaterial({ color: "#d5c8a4", metalness: 0.72, roughness: 0.32 }), strap: new THREE.MeshStandardMaterial({ color: "#172c38", roughness: 0.9 }), strapClip: new THREE.MeshStandardMaterial({ color: "#c3a66c", metalness: 0.78, roughness: 0.3 }), shoeAccent: new THREE.MeshStandardMaterial({ color: "#92b9c2", roughness: 0.68 }), steel: new THREE.MeshStandardMaterial({ color: "#c9ccd1", metalness: 0.9, roughness: 0.3 }), plate: new THREE.MeshStandardMaterial({ color: "#1d1d1f", roughness: 0.6 }),
 };
-Object.values(M).forEach((material) => {
-    material.flatShading = true;
-    material.needsUpdate = true;
-});
 export const BARBELL = { bar: G.bar, plate: G.plate, steel: M.steel, plateMat: M.plate };
 function Face({ r, S }) {
     return _jsxs("group", { ref: r("head"), "position-y": 0.21, children: [

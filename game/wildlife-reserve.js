@@ -264,17 +264,17 @@ function MissionBeacon({ x, z }) {
 
 export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, completedIds = [], onMissionComplete }) {
   const notified = useRef(new Set(completedIds));
-  const cx = reserve?.x || 0, cz = reserve?.z || 0;
+  const cx = reserve?.x || 0, cz = reserve?.z || 0, reserveScale = 2.05;
   const perches = useMemo(() => [
-    [-11, -9, 2.2], [-2.5, -10.6, 2.55], [10.7, -8.8, 2.35], [11, -1.2, 2.65],
-    [-11, 4.4, 2.45], [-3.8, 11, 2.25], [4.7, 10.8, 2.65], [10.6, 9.2, 2.35],
-    [-9.2, 10.2, 2.7], [.8, -11.2, 2.4], [4.8, -10.8, 2.25], [-8.8, -11, 2.55]
-  ].map(([x, z, y]) => ({ x: cx + x, z: cz + z, y })), [cx, cz]);
+    [-25, -23, 2.7], [-7, -25, 2.9], [23, -22, 2.7], [26, -5, 2.9],
+    [-25, 17, 2.8], [-9, 25, 2.7], [10, 25, 2.9], [24, 19, 2.8],
+    [-20, 24, 2.9], [2, -27, 2.8], [14, -24, 2.7], [-22, -25, 2.9]
+  ].map(([x, z, y]) => ({ x: cx + x * reserveScale, z: cz + z * reserveScale, y })), [cx, cz]);
   const animals = useMemo(() => {
     if (!reserve) return [];
     const make = (id, type, dx, dz, phase, speed, scale, color, extra = {}) => ({
-      id, type, x: cx + dx, z: cz + dz, y: type === "squirrel" ? 2.4 : .02,
-      homeX: cx + dx, homeZ: cz + dz, homeY: type === "squirrel" ? 2.4 : .02,
+      id, type, x: cx + dx * reserveScale, z: cz + dz * reserveScale, y: type === "squirrel" ? 2.9 : .02,
+      homeX: cx + dx * reserveScale, homeZ: cz + dz * reserveScale, homeY: type === "squirrel" ? 2.9 : .02,
       phase, speed, scale, color, yaw: phase, fleeing: false, fleeTimer: 0, caught: false, mounted: false, ...extra
     });
     const squirrels = perches.map((perch, i) => make(
@@ -283,19 +283,25 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
       { x: perch.x, y: perch.y, z: perch.z, homeX: perch.x, homeY: perch.y, homeZ: perch.z, perches, perchIndex: i }
     ));
     return [
-      make("deer-a", "deer", 3.2, -7.5, .2, .22, 1.08, "#986d49", { belly: "#decdb0", dark: "#504034", wanderX: .85, wanderZ: .58 }),
-      make("deer-b", "deer", 5.8, -6.2, 2.4, .19, .96, "#aa7a50", { belly: "#e1cfb1", dark: "#51402f", wanderX: .72, wanderZ: .6 }),
-      make("deer-c", "deer", .3, -8.4, 4.1, .2, 1.02, "#8e6442", { belly: "#d9c7aa", dark: "#49382b", wanderX: .7, wanderZ: .55 }),
-      make("duck-a", "duck", -7.8, -2.8, 1.4, .18, .88, "#596e48"),
-      make("duck-b", "duck", -6.5, -3.4, 3.4, .16, .82, "#70593e"),
-      make("duck-c", "duck", -8.4, -.6, 5.4, .19, .86, "#66734f"),
-      make("rabbit-a", "rabbit", 1.5, 1.5, 2.1, .5, .8, "#b9a58e", { belly: "#e0d4c2" }),
-      make("rabbit-b", "rabbit", 4.2, 2.5, 4.3, .46, .72, "#857768", { belly: "#d8cabb" }),
-      make("fox-a", "fox", -9.4, 6.5, 1.8, .31, .88, "#b96c38", { belly: "#ead8c0", dark: "#5b3a28" }),
-      make("cat-a", "cat", -1.5, 9, 4.8, .29, .78, "#6c6660", { belly: "#c6c0b5" }),
-      make("dog-a", "dog", 8.6, 8.6, .8, .34, .88, "#b88d60", { belly: "#e1d1b5" }),
-      make("pigeon-a", "pigeon", -1.5, 4, 1.1, .72, .68, "#7b8587", { dark: "#59666b" }),
-      make("pigeon-b", "pigeon", 1, 4.8, 4.1, .68, .62, "#8a9290", { dark: "#687477" }),
+      make("deer-a", "deer", 7, -19, .2, .22, 1.22, "#986d49", { belly: "#decdb0", dark: "#504034", wanderX: 2.2, wanderZ: 1.6 }),
+      make("deer-b", "deer", 12, -16, 2.4, .19, 1.14, "#aa7a50", { belly: "#e1cfb1", dark: "#51402f", wanderX: 1.8, wanderZ: 1.5 }),
+      make("deer-c", "deer", 2, -22, 4.1, .2, 1.18, "#8e6442", { belly: "#d9c7aa", dark: "#49382b", wanderX: 1.9, wanderZ: 1.4 }),
+      make("deer-d", "deer", 17, -12, 5.3, .18, 1.12, "#b98558", { belly: "#e6d5b8", dark: "#5a4634", wanderX: 1.7, wanderZ: 1.4 }),
+      make("duck-a", "duck", -18, -6, 1.4, .18, 1.0, "#596e48"),
+      make("duck-b", "duck", -15, -7, 3.4, .16, .96, "#70593e"),
+      make("duck-c", "duck", -20, -2, 5.4, .19, 1.0, "#66734f"),
+      make("duck-d", "duck", -13, -3, 6.2, .17, .94, "#9a8a54"),
+      make("rabbit-a", "rabbit", 5, 8, 2.1, .5, .94, "#b9a58e", { belly: "#e0d4c2" }),
+      make("rabbit-b", "rabbit", 11, 13, 4.3, .46, .9, "#857768", { belly: "#d8cabb" }),
+      make("rabbit-c", "rabbit", -2, 14, 3.2, .42, .92, "#d0c5b4", { belly: "#ece2d2" }),
+      make("rabbit-d", "rabbit", 18, 5, 5.1, .44, .9, "#a99783", { belly: "#e4d9c9" }),
+      make("fox-a", "fox", -19, 13, 1.8, .31, 1.0, "#b96c38", { belly: "#ead8c0", dark: "#5b3a28" }),
+      make("fox-b", "fox", 22, 14, 3.8, .28, .96, "#c57b45", { belly: "#f0dfc9", dark: "#5b3a28" }),
+      make("cat-a", "cat", -3, 21, 4.8, .29, .9, "#6c6660", { belly: "#c6c0b5" }),
+      make("dog-a", "dog", 17, 21, .8, .34, .98, "#b88d60", { belly: "#e1d1b5" }),
+      make("pigeon-a", "pigeon", -3, 8, 1.1, .72, .8, "#7b8587", { dark: "#59666b" }),
+      make("pigeon-b", "pigeon", 2, 10, 4.1, .68, .76, "#8a9290", { dark: "#687477" }),
+      make("pigeon-c", "pigeon", 8, -14, 2.7, .7, .78, "#8c9897", { dark: "#687477" }),
       ...squirrels
     ];
   }, [reserve, cx, cz, perches]);
@@ -314,7 +320,7 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
     if (!player || player.mode !== "walk") return;
     for (const mission of WILDLIFE_MISSIONS) {
       if (mission.type !== "visit" || completedIds.includes(mission.id) || notified.current.has(mission.id)) continue;
-      const dx = player.x - (cx + mission.dx), dz = player.z - (cz + mission.dz);
+      const dx = player.x - (cx + mission.dx * reserveScale), dz = player.z - (cz + mission.dz * reserveScale);
       if (dx * dx + dz * dz <= mission.radius * mission.radius) {
         notified.current.add(mission.id);
         onMissionComplete(mission.id);
@@ -324,19 +330,24 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
 
   if (!reserve) return null;
   return h(React.Fragment, null,
-    h("group", null,
+    h("group", { scale: [reserveScale, 1, reserveScale], position: [cx * (1 - reserveScale), 0, cz * (1 - reserveScale)] },
       h("mesh", { position: [cx, .012, cz], rotation: [-Math.PI / 2, 0, 0], material: GRASS, receiveShadow: true },
         h("planeGeometry", { args: [27.5, 27.5] })
       ),
-      ...[[-4, 8, 7.5, .3], [1, 5, 6, -.3], [5, -1, 5.2, .42], [7, 4.5, 4.8, -.5], [-1, 10, 4.2, .15]].map(([dx, dz, len, yaw], i) =>
-        h("mesh", { key: "trail-" + i, position: [cx + dx, .018, cz + dz], rotation: [-Math.PI / 2, 0, yaw], material: PATH },
-          h("planeGeometry", { args: [1.25, len] })
+      ...[[-17, -14, 7.2, 1.25, 5.5], [18, -17, 8.4, 1.55, 6.5], [-20, 17, 9.5, 1.7, 7.2], [18, 18, 7.8, 1.35, 6.2]].map(([dx, dz, sx, sy, sz], i) =>
+        h("mesh", { key: "meadow-hill-" + i, position: [cx + dx, -1.35, cz + dz], scale: [sx, sy, sz], material: fur(i % 2 ? "#91b873" : "#a0c17b"), castShadow: true, receiveShadow: true },
+          h("icosahedronGeometry", { args: [1, 2] })
         )
       ),
-      h("mesh", { position: [cx - 5, .035, cz - 2], rotation: [-Math.PI / 2, 0, 0], scale: [3.9, 3.15, 1], material: STONE },
+      ...[[-4, 8, 7.5, .3], [1, 5, 6, -.3], [5, -1, 5.2, .42], [7, 4.5, 4.8, -.5], [-1, 10, 4.2, .15]].map(([dx, dz, len, yaw], i) =>
+        h("mesh", { key: "trail-" + i, position: [cx + dx, .018, cz + dz], rotation: [-Math.PI / 2, 0, yaw], material: PATH },
+          h("planeGeometry", { args: [1.55, len * 1.55] })
+        )
+      ),
+      h("mesh", { position: [cx - 10, .035, cz - 4], rotation: [-Math.PI / 2, 0, 0], scale: [7.8, 6.3, 1], material: STONE },
         h("circleGeometry", { args: [1, 48] })
       ),
-      h("mesh", { position: [cx - 5, .07, cz - 2], rotation: [-Math.PI / 2, 0, 0], scale: [3.54, 2.82, 1], material: WATER },
+      h("mesh", { position: [cx - 10, .07, cz - 4], rotation: [-Math.PI / 2, 0, 0], scale: [7.1, 5.7, 1], material: WATER },
         h("circleGeometry", { args: [1, 48] })
       ),
       ...[[-6.8, -4.2], [-3.4, -4.5], [-7.9, -.5]].map(([dx, dz], i) =>
@@ -355,7 +366,7 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
           )
         );
       }),
-      h("group", { position: [cx + 8, .04, cz + 6], rotation: [0, -.25, 0] },
+      h("group", { position: [cx + 16, .04, cz + 12], scale: [1.5, 1.35, 1.5], rotation: [0, -.25, 0] },
         h("mesh", { position: [0, .22, 0], material: WOOD }, h("boxGeometry", { args: [4.8, .22, 3.3] })),
         ...[-1, 1].flatMap((side) => [-1, 1].map((back) =>
           h("mesh", { key: "post-" + side + "-" + back, position: [side * 2.05, -.12, back * 1.3], material: WOOD },
@@ -384,7 +395,7 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
     ),
     ...animals.map((animal) => h(CityAnimal, { key: animal.id, animal, playerPositionRef, reserveCenter: { x: cx, z: cz } })),
     ...WILDLIFE_MISSIONS.filter((mission) => mission.type === "visit" && !completedIds.includes(mission.id)).map((mission) =>
-      h(MissionBeacon, { key: mission.id, x: cx + mission.dx, z: cz + mission.dz })
+      h(MissionBeacon, { key: mission.id, x: cx + mission.dx * reserveScale, z: cz + mission.dz * reserveScale })
     ),
     h("group", { position: [0, .3, -470] },
       h("mesh", { position: [0, 1.45, 0], material: WOOD }, h("cylinderGeometry", { args: [.075, .11, 2.9, 10] })),

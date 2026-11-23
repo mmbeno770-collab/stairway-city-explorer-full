@@ -213,6 +213,7 @@ export function generateWorld(seed = 7) {
         );
     };
     for (let gx = 0; gx < GRID; gx++) for (let gz = 0; gz < GRID; gz++) {
+        if (gx >= GRID - 3 && gz >= GRID - 3 && !(gx === GRID - 3 && gz === GRID - 3)) continue;
         let cx = -CITY_HALF + gx * BLOCK + BLOCK / 2;
         let cz = -CITY_HALF + gz * BLOCK + BLOCK / 2;
         const lotX0 = -CITY_HALF + gx * BLOCK + 4, lotX1 = lotX0 + BLOCK - 8;
@@ -281,23 +282,23 @@ export function generateWorld(seed = 7) {
             addCableStationPlaza(cableStation, cx, cz, gx, gz);
             continue;
         }
-        if (gx === GRID - 2 && gz === GRID - 2) {
-            // A dedicated wildlife reserve with a natural pond, meadow clearings and shaded paths.
-            wildlifeReserve = { x: cx, z: cz, pond: { x: cx - 5, z: cz - 2, radius: 3.6 } };
+        if (gx === GRID - 3 && gz === GRID - 3) {
+            // Expanded 2x2-block nature reserve: a pond, broad meadows, wooded slopes and quiet paths.
+            wildlifeReserve = { x: cx, z: cz, width: BLOCK * 2 - 8, depth: BLOCK * 2 - 8, pond: { x: cx - 10, z: cz - 4, radius: 7.4 } };
             const grove = [
-                [-11.0, -9.0, .96], [-8.8, -11.0, .82], [-2.5, -10.6, .88],
-                [4.8, -10.8, .9], [10.7, -8.8, .84], [11.0, -1.2, .78],
-                [-11.0, 4.4, .9], [-9.2, 10.2, .84], [-3.8, 11.0, .82],
-                [4.7, 10.8, .92], [10.6, 9.2, .88], [0.8, -11.2, .72]
+                [-27, -23, 1.02], [-21, -27, .92], [-9, -25, .94], [7, -26, 1.0], [23, -22, .98],
+                [27, -7, .92], [25, 16, .96], [19, 27, 1.02], [4, 25, .94], [-12, 27, .92],
+                [-27, 18, .98], [-26, -1, .88], [0, -29, .9], [11, 12, .94], [-16, 10, .9],
+                [28, 3, .9], [-4, 4, .92], [14, -10, .94]
             ];
-            for (const [dx, dz, size] of grove) trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .14, turn: r() * .7 });
-            // Hidden collider keeps visitors on the pond's curved shoreline.
-            add(cx - 8.8, 0, cz - 5.1, cx - 1.2, .62, cz + 1.1, "#527f82", "collisionOnly", true, true);
-            for (const bx of [-9.1, 9.1]) {
-                add(cx + bx - 1.2, .48, cz + 1.2, cx + bx + 1.2, .68, cz + 1.48, "#76583d", "solid", false);
-                add(cx + bx - 1.2, .68, cz + 1.2, cx + bx + 1.2, 1.25, cz + 1.38, "#76583d", "solid", false);
+            for (const [dx, dz, size] of grove) trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .16, turn: r() * .7 });
+            // Pond shoreline and small footbridge.
+            add(cx - 18.2, 0, cz - 10.4, cx - 2.0, .62, cz + 2.4, "#527f82", "collisionOnly", true, true);
+            for (const bx of [-18.5, 18.5]) {
+                add(cx + bx - 1.8, .48, cz + 2.4, cx + bx + 1.8, .68, cz + 2.7, "#76583d", "solid", false);
+                add(cx + bx - 1.8, .68, cz + 2.4, cx + bx + 1.8, 1.25, cz + 2.58, "#76583d", "solid", false);
             }
-            lamps.push({ x: cx - 10.8, z: cz - 10.5 }, { x: cx + 10.8, z: cz + 10.5 });
+            lamps.push({ x: cx - 25, z: cz - 24 }, { x: cx + 25, z: cz + 24 }, { x: cx - 25, z: cz + 24 }, { x: cx + 25, z: cz - 24 });
             continue;
         }
         if (gx === 1 && gz === 1) {

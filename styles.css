@@ -728,35 +728,3 @@ button { font: inherit; }
 }
 .multiplayer-symbol-choice.selected { background: rgba(230,199,131,.2); border-color: #e6c783; box-shadow: 0 0 0 2px rgba(230,199,131,.16); }
 .multiplayer-color-choice:focus-visible, .multiplayer-symbol-choice:focus-visible { outline: 3px solid #f3dfb2; outline-offset: 3px; }
-
-
-/* Colorful low-poly art direction */
-:root {
-  --hud-bg: rgba(18, 42, 58, .78);
-  --hud-border: rgba(198, 235, 236, .24);
-  --hud-fg: #f3fbf7;
-  --hud-accent: #82e0c2;
-  --hud-accent-fg: #173b43;
-}
-body { background: #17364b; }
-.hud-panel, .climate-panel {
-  border-color: rgba(151, 222, 215, .34);
-  box-shadow: 0 12px 32px rgba(18, 48, 62, .24), inset 0 1px 0 rgba(255,255,255,.08);
-}
-.start-overlay {
-  background: linear-gradient(145deg, rgba(91, 171, 178, .25), rgba(17, 39, 64, .76));
-}
-.start-card {
-  border-color: rgba(165, 229, 218, .4);
-  background: linear-gradient(145deg, rgba(29, 68, 83, .94), rgba(19, 42, 64, .94));
-}
-.start-card h1 { color: #f5f8e9; text-shadow: 0 4px 22px rgba(130,224,194,.18); }
-.start-btn {
-  background: linear-gradient(135deg, #8be0c2, #f2c779);
-  color: #173b43;
-  box-shadow: 0 8px 22px rgba(73, 177, 157, .2);
-}
-.interaction-prompt {
-  background: rgba(22, 61, 72, .94);
-  border-color: rgba(130,224,194,.62);
-}

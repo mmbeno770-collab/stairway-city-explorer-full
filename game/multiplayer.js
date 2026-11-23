@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = "https://cecgegnskbhuswlyptus.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1wfB5eP9gElxaMtSjeBRgw_hofPr3dg";
 const NICKNAME_KEY = "stairway-city-multiplayer-nickname";
+const LOCAL_PROFILE_KEY = "stairway-city-local-profile";
 const GUEST_COLORS = ["#e05b54", "#4f9fd0", "#55ad78", "#a17ade", "#e3a84f", "#e879b4", "#55b8b1", "#8b98a7"];
 const GUEST_SYMBOLS = ["⭐", "🧭", "🚀", "🐬", "🦊", "🌟", "🛸", "🏝️"];
 const DEFAULT_AVATAR_COLOR = "#4f9fd0";
@@ -35,6 +36,22 @@ async function awaitWithTimeout(promise, stage, milliseconds = 12000) {
   } finally {
     if (timeoutId) window.clearTimeout(timeoutId);
   }
+}
+
+function getLocalProfile() {
+  const fallback = { nickname: "חוקר העיר", avatarColor: DEFAULT_AVATAR_COLOR, avatarIcon: DEFAULT_AVATAR_ICON };
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(LOCAL_PROFILE_KEY) || "null");
+    if (saved && typeof saved === "object") {
+      return {
+        nickname: String(saved.nickname || fallback.nickname).replace(/[<>]/g, "").slice(0, 18) || fallback.nickname,
+        avatarColor: GUEST_COLORS.includes(saved.avatarColor) ? saved.avatarColor : fallback.avatarColor,
+        avatarIcon: GUEST_SYMBOLS.includes(saved.avatarIcon) ? saved.avatarIcon : fallback.avatarIcon
+      };
+    }
+    window.localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(fallback));
+  } catch {}
+  return fallback;
 }
 
 function getNickname(user) {
@@ -301,6 +318,17 @@ export function useGameMultiplayer({ island }) {
     start().catch((error) => {
       if (!active) return;
       const message = String(error?.message || error || "");
+      if (/failed to fetch|networkerror|network request failed|load failed|fetch failed|network/i.test(message)) {
+        const localProfile = getLocalProfile();
+        setUserId(null);
+        setNickname(localProfile.nickname);
+        setAvatarColor(localProfile.avatarColor);
+        setAvatarIcon(localProfile.avatarIcon);
+        setDatabaseReady(false);
+        setStatus("offline");
+        setStatusMessage("אין כרגע חיבור לשרת. המשחק נפתח במצב מקומי; ההתקדמות תישמר בדפדפן במכשיר הזה בלבד.");
+        return;
+      }
       setStatus("error");
       setStatusMessage("החיבור נכשל בשלב: " + currentStage + ". " + formatAuthError(error) + " " + message.slice(0, 80));
     });

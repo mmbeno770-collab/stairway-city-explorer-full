@@ -2821,7 +2821,7 @@ export default function Game() {
     started && h("section", { className: "multiplayer-hud hud-panel", dir: "rtl" },
       h("button", { type: "button", className: "multiplayer-toggle", onClick: () => setPlayersPanelOpen((open) => !open) },
         h("span", { className: "multiplayer-live-dot" }),
-        multiplayer.status === "connected" ? multiplayer.remoteIslands.length + " איים משותפים" : "חיבור לעולם המשותף"
+        multiplayer.status === "connected" ? multiplayer.remoteIslands.length + " איים משותפים" : multiplayer.status === "offline" ? "משחק במצב מקומי" : "חיבור לעולם המשותף"
       ),
       multiplayer.status !== "connected" && h("button", { type: "button", className: "multiplayer-retry", onClick: multiplayer.retry }, multiplayer.status === "connecting" ? "↻ מנסה להתחבר (לחץ לניסיון חדש)" : "↻ נסה להתחבר שוב"),
       multiplayer.status !== "connected" && h("p", { className: "multiplayer-status-message", role: "status" }, multiplayer.statusMessage),
@@ -2966,10 +2966,10 @@ export default function Game() {
           h("p", null, multiplayer.statusMessage),
           h("button", { className: "start-btn", type: "button", onClick: multiplayer.retry }, "נסה להתחבר שוב")
         ),
-      multiplayer.status === "connected" && !shopOpen && h("div", { className: "start-card" },
-        h("div", { className: "start-kicker" }, "מחובר בתור " + (multiplayer.avatarIcon || "⭐") + " " + multiplayer.nickname),
+      (multiplayer.status === "connected" || multiplayer.status === "offline") && !shopOpen && h("div", { className: "start-card" },
+        h("div", { className: "start-kicker" }, multiplayer.status === "offline" ? "מצב מקומי · " + (multiplayer.avatarIcon || "⭐") + " " + multiplayer.nickname : "מחובר בתור " + (multiplayer.avatarIcon || "⭐") + " " + multiplayer.nickname),
         h("h1", null, "Stairway City Explorer"),
-        h("p", null, "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות ומטבעות. ההרפתקה הבאה שלכם מתחילה כאן."),
+        h("p", null, multiplayer.status === "offline" ? "המשחק זמין במצב מקומי. אפשר לטייל בעיר, לגלות את שמורת הטבע ולשמור את ההתקדמות במכשיר הזה. חיבור בין שחקנים יתווסף בהמשך." : "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות ומטבעות. ההרפתקה הבאה שלכם מתחילה כאן."),
         h("div", { className: "start-wallet" }, "🪙 בארנק: " + shopSave.coins + " מטבעות"),
         h("div", { className: "start-features" }, h("span", null, "🌲 טבע וחיות"), h("span", null, "🏝️ איים"), h("span", null, "🏆 משימות")),
         h("div", { className: "start-actions" },

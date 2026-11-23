@@ -26,6 +26,8 @@ jobs:
         run: npm run lint
       - name: Build web app and generate icons
         run: npm run build
+      - name: Apply verified uploaded gameplay upgrade
+        run: node scripts/apply-enhanced-site.mjs
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

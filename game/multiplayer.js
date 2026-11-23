@@ -8,6 +8,10 @@ const SUPABASE_URL = "https://cecgegnskbhuswlyptus.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1wfB5eP9gElxaMtSjeBRgw_hofPr3dg";
 const CHANNEL_NAME = "stairway-city-world";
 const NICKNAME_KEY = "stairway-city-multiplayer-nickname";
+const GUEST_COLORS = ["#e05b54", "#4f9fd0", "#55ad78", "#a17ade", "#e3a84f", "#e879b4", "#55b8b1", "#8b98a7"];
+const GUEST_SYMBOLS = ["⭐", "🧭", "🚀", "🐬", "🦊", "🌟", "🛸", "🏝️"];
+const DEFAULT_AVATAR_COLOR = "#4f9fd0";
+const DEFAULT_AVATAR_ICON = "⭐";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -79,69 +83,30 @@ function mapIslandRows(rows) {
 }
 
 export function MultiplayerAuthPanel({ multiplayer }) {
-  const [mode, setMode] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nickname, setNickname] = useState("");
+  const [nickname, setNickname] = useState(multiplayer.nickname || "");
+  const [avatarColor, setAvatarColor] = useState(multiplayer.avatarColor || DEFAULT_AVATAR_COLOR);
+  const [avatarIcon, setAvatarIcon] = useState(multiplayer.avatarIcon || DEFAULT_AVATAR_ICON);
   const [message, setMessage] = useState("");
-
-  const chooseMode = (nextMode) => {
-    setMode(nextMode);
-    setMessage("");
-    multiplayer.clearAuthMessage();
-  };
 
   const submit = async (event) => {
     event.preventDefault();
     setMessage("");
-    if (mode === "signup" && nickname.trim().length < 2) {
+    const cleanNickname = nickname.trim().replace(/[<>]/g, "").slice(0, 18);
+    if (cleanNickname.length < 2) {
       setMessage("בחר כינוי באורך של לפחות שני תווים.");
       return;
     }
-    if (password.length < 8) {
-      setMessage("הסיסמה צריכה להכיל לפחות 8 תווים.");
-      return;
-    }
-    if (mode === "signup") {
-      await multiplayer.signUp(email.trim(), password, nickname.trim());
-    } else {
-      await multiplayer.signIn(email.trim(), password);
-    }
+    await multiplayer.finishGuestSetup(cleanNickname, avatarColor, avatarIcon);
   };
-
-  if (multiplayer.status === "awaiting-email-confirmation") {
-    return React.createElement("section", { className: "multiplayer-auth-card", dir: "rtl" },
-      React.createElement("div", { className: "multiplayer-auth-icon" }, "✉️"),
-      React.createElement("h2", null, "בדוק את תיבת הדואר"),
-      React.createElement("p", null, multiplayer.authMessage || "שלחנו קישור לאימות כתובת האימייל. פתח אותו באותו מכשיר וחזור למשחק."),
-      React.createElement("button", { type: "button", className: "multiplayer-auth-secondary", onClick: () => { chooseMode("signin"); multiplayer.showLogin(); } }, "חזרה לכניסה")
-    );
-  }
 
   return React.createElement("section", { className: "multiplayer-auth-card", dir: "rtl" },
     React.createElement("div", { className: "multiplayer-auth-kicker" }, "STAIRWAY CITY · ONLINE"),
-    React.createElement("div", { className: "multiplayer-auth-icon" }, "🌐"),
-    React.createElement("h2", null, mode === "signup" ? "יצירת חשבון שחקן" : "כניסה לעולם המשותף"),
-    React.createElement("p", { className: "multiplayer-auth-intro" },
-      mode === "signup"
-        ? "יוצרים חשבון פעם אחת, ואז אפשר לחזור אליו מכל מכשיר."
-        : "התחבר עם החשבון שלך כדי לפגוש שחקנים אחרים."
-    ),
-    React.createElement("div", { className: "multiplayer-auth-tabs" },
-      React.createElement("button", {
-        type: "button",
-        className: mode === "signin" ? "active" : "",
-        onClick: () => chooseMode("signin")
-      }, "כניסה"),
-      React.createElement("button", {
-        type: "button",
-        className: mode === "signup" ? "active" : "",
-        onClick: () => chooseMode("signup")
-      }, "הרשמה")
-    ),
+    React.createElement("div", { className: "multiplayer-auth-icon" }, avatarIcon),
+    React.createElement("h2", null, "בחירת הדמות שלך"),
+    React.createElement("p", { className: "multiplayer-auth-intro" }, "בחר כינוי, צבע וסמל. אין צורך באימייל או בסיסמה."),
     React.createElement("form", { onSubmit: submit, className: "multiplayer-auth-form" },
-      mode === "signup" && React.createElement("label", null,
-        "כינוי שיוצג במשחק",
+      React.createElement("label", null,
+        "כינוי שיוצג לשחקנים אחרים",
         React.createElement("input", {
           type: "text",
           value: nickname,
@@ -152,32 +117,32 @@ export function MultiplayerAuthPanel({ multiplayer }) {
           required: true
         })
       ),
-      React.createElement("label", null,
-        "כתובת אימייל",
-        React.createElement("input", {
-          type: "email",
-          value: email,
-          onChange: (event) => setEmail(event.target.value),
-          placeholder: "name@example.com",
-          autoComplete: "email",
-          maxLength: 254,
-          required: true,
-          dir: "ltr"
-        })
+      React.createElement("div", { className: "multiplayer-avatar-picker" },
+        React.createElement("span", { className: "multiplayer-picker-label" }, "בחר צבע לדמות"),
+        React.createElement("div", { className: "multiplayer-color-options" },
+          ...GUEST_COLORS.map((color) => React.createElement("button", {
+            key: color,
+            type: "button",
+            className: "multiplayer-color-choice" + (avatarColor === color ? " selected" : ""),
+            style: { background: color },
+            "aria-label": "צבע " + color,
+            "aria-pressed": avatarColor === color,
+            onClick: () => setAvatarColor(color)
+          }))
+        )
       ),
-      React.createElement("label", null,
-        "סיסמה",
-        React.createElement("input", {
-          type: "password",
-          value: password,
-          onChange: (event) => setPassword(event.target.value),
-          placeholder: "לפחות 8 תווים",
-          autoComplete: mode === "signup" ? "new-password" : "current-password",
-          minLength: 8,
-          maxLength: 72,
-          required: true,
-          dir: "ltr"
-        })
+      React.createElement("div", { className: "multiplayer-avatar-picker" },
+        React.createElement("span", { className: "multiplayer-picker-label" }, "בחר סמל"),
+        React.createElement("div", { className: "multiplayer-symbol-options" },
+          ...GUEST_SYMBOLS.map((symbol) => React.createElement("button", {
+            key: symbol,
+            type: "button",
+            className: "multiplayer-symbol-choice" + (avatarIcon === symbol ? " selected" : ""),
+            "aria-label": "סמל " + symbol,
+            "aria-pressed": avatarIcon === symbol,
+            onClick: () => setAvatarIcon(symbol)
+          }, symbol))
+        )
       ),
       multiplayer.authMessage && React.createElement("p", { className: "multiplayer-auth-message", role: "status" }, multiplayer.authMessage),
       message && React.createElement("p", { className: "multiplayer-auth-message", role: "alert" }, message),
@@ -185,19 +150,21 @@ export function MultiplayerAuthPanel({ multiplayer }) {
         type: "submit",
         className: "multiplayer-auth-submit",
         disabled: multiplayer.authBusy
-      }, multiplayer.authBusy ? "מתחבר..." : mode === "signup" ? "יצירת חשבון" : "כניסה למשחק")
+      }, multiplayer.authBusy ? "שומר ומתחבר..." : "כניסה למשחק")
     ),
     React.createElement("p", { className: "multiplayer-auth-privacy" },
-      "בחר כינוי שאינו מכיל שם מלא או פרטים אישיים. הסיסמה נשלחת ישירות לשירות ההתחברות המאובטח."
+      "בחר כינוי שאינו כולל שם מלא או פרטים אישיים. פרופיל האורח נשמר בדפדפן הזה; אם מנקים את נתוני האתר, ייתכן שלא ניתן יהיה לשחזר אותו."
     )
   );
 }
 
 export function useGameMultiplayer({ playerPositionRef, island }) {
   const [status, setStatus] = useState("checking");
-  const [statusMessage, setStatusMessage] = useState("בודק אם יש חשבון מחובר...");
+  const [statusMessage, setStatusMessage] = useState("מכין שחקן אורח...");
   const [userId, setUserId] = useState(null);
   const [nickname, setNickname] = useState("שחקן");
+  const [avatarColor, setAvatarColor] = useState(DEFAULT_AVATAR_COLOR);
+  const [avatarIcon, setAvatarIcon] = useState(DEFAULT_AVATAR_ICON);
   const [onlinePlayers, setOnlinePlayers] = useState([]);
   const [remotePlayers, setRemotePlayers] = useState([]);
   const [remoteIslandRows, setRemoteIslandRows] = useState([]);
@@ -208,79 +175,44 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
   const channelRef = useRef(null);
   const connectedRef = useRef(false);
 
-  const clearAuthMessage = () => setAuthMessage("");
-  const showLogin = () => {
-    setAuthMessage("");
-    setStatus("needs-login");
-    setStatusMessage("התחבר עם כתובת אימייל וסיסמה כדי לשחק.");
-  };
-
   const formatAuthError = (error) => {
     const message = String(error?.message || error || "");
-    if (/invalid login credentials/i.test(message)) return "האימייל או הסיסמה אינם נכונים.";
-    if (/email not confirmed/i.test(message)) return "צריך לאמת את כתובת האימייל דרך ההודעה שנשלחה אליך.";
-    if (/user already registered/i.test(message)) return "כבר קיים חשבון עם האימייל הזה. עבור ללשונית כניסה.";
-    if (/password.*(least|characters|short)/i.test(message)) return "הסיסמה קצרה מדי. השתמש בלפחות 8 תווים.";
-    if (/invalid email/i.test(message)) return "כתובת האימייל אינה תקינה.";
+    if (/anonymous.*(disabled|not allowed)|anonymous sign.?ins.*disabled/i.test(message)) return "התחברות אורחים אינה מופעלת בפרויקט Supabase. בדוק ש-Anon sign-ins פעיל.";
+    if (/invalid api key|api key/i.test(message)) return "מפתח החיבור של Supabase נדחה. צריך לבדוק את מפתח ה-Publishable בפרויקט.";
     if (/rate limit|too many requests/i.test(message)) return "נשלחו יותר מדי בקשות. המתן מעט ונסה שוב.";
-    if (/failed to fetch|network|load failed/i.test(message)) return "לא ניתן להגיע לשירות ההתחברות. בדוק את החיבור לאינטרנט ונסה שוב.";
+    if (/failed to fetch|network|load failed/i.test(message)) return "הדפדפן לא הצליח להשלים את בקשת החיבור ל-Supabase. בדוק רשת, חסימת תוכן או הגדרות דפדפן.";
     return message.slice(0, 180) || "ההתחברות נכשלה. נסה שוב.";
   };
 
-  const signIn = async (email, password) => {
+  const finishGuestSetup = async (playerNickname, selectedColor, selectedIcon) => {
     setAuthBusy(true);
     setAuthMessage("");
     try {
+      const cleanNickname = String(playerNickname || "").trim().replace(/[<>]/g, "").slice(0, 18);
+      if (cleanNickname.length < 2) throw new Error("בחר כינוי באורך של לפחות שני תווים.");
+      if (!GUEST_COLORS.includes(selectedColor)) throw new Error("בחירת הצבע אינה תקינה.");
+      if (!GUEST_SYMBOLS.includes(selectedIcon)) throw new Error("בחירת הסמל אינה תקינה.");
+
       const response = await awaitWithTimeout(
-        supabase.auth.signInWithPassword({ email, password }),
-        "כניסה עם אימייל",
+        supabase.auth.updateUser({ data: { nickname: cleanNickname, avatarColor: selectedColor, avatarIcon: selectedIcon } }),
+        "שמירת פרופיל אורח",
         15000
       );
       if (response.error) throw response.error;
-      if (!response.data?.user || !response.data?.session) throw new Error("לא התקבלה התחברות פעילה.");
+      const user = response.data?.user;
+      if (!user?.id) throw new Error("לא התקבל פרופיל שחקן מהשרת.");
+
+      try { window.localStorage.setItem(NICKNAME_KEY + ":" + user.id, cleanNickname); } catch {}
+      setUserId(user.id);
+      setNickname(cleanNickname);
+      setAvatarColor(selectedColor);
+      setAvatarIcon(selectedIcon);
+      connectedRef.current = false;
       setStatus("connecting");
-      setStatusMessage("החשבון אומת. מתחבר לעולם המשותף...");
-      setUserId(response.data.user.id);
-      setNickname(getNickname(response.data.user));
+      setStatusMessage("הפרופיל נשמר. מתחבר לעולם המשותף...");
       setRetryToken((value) => value + 1);
     } catch (error) {
-      setStatus("auth-error");
-      setAuthMessage(formatAuthError(error));
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  const signUp = async (email, password, playerNickname) => {
-    setAuthBusy(true);
-    setAuthMessage("");
-    try {
-      const redirectTo = window.location.origin + window.location.pathname;
-      const response = await awaitWithTimeout(
-        supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { nickname: playerNickname },
-            emailRedirectTo: redirectTo
-          }
-        }),
-        "יצירת חשבון",
-        18000
-      );
-      if (response.error) throw response.error;
-      if (response.data?.session && response.data?.user) {
-        setStatus("connecting");
-        setStatusMessage("החשבון נוצר. מתחבר לעולם המשותף...");
-        setUserId(response.data.user.id);
-        setNickname(getNickname(response.data.user));
-        setRetryToken((value) => value + 1);
-      } else {
-        setStatus("awaiting-email-confirmation");
-        setAuthMessage("נשלח קישור אימות לכתובת האימייל. פתח את ההודעה ולחץ על קישור האימות כדי להפעיל את החשבון. לאחר מכן תחזור למשחק.");
-      }
-    } catch (error) {
-      setStatus("auth-error");
+      setStatus("needs-login");
       setAuthMessage(formatAuthError(error));
     } finally {
       setAuthBusy(false);
@@ -307,20 +239,39 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
         12000
       );
       if (sessionResponse.error) throw sessionResponse.error;
-      const user = sessionResponse.data.session?.user;
-      if (!user || user.is_anonymous) {
-        if (user?.is_anonymous) await supabase.auth.signOut();
-        if (!active) return;
-        setUserId(null);
-        setStatus("needs-login");
-        setStatusMessage("כדי להיכנס לעולם המשותף צריך להתחבר עם אימייל וסיסמה.");
-        return;
+      let user = sessionResponse.data.session?.user || null;
+
+      if (!user) {
+        currentStage = "יצירת שחקן אורח";
+        const guestResponse = await awaitWithTimeout(
+          supabase.auth.signInAnonymously(),
+          "יצירת שחקן אורח",
+          18000
+        );
+        if (guestResponse.error) throw guestResponse.error;
+        user = guestResponse.data?.user || guestResponse.data?.session?.user || null;
+        if (!user) throw new Error("Supabase לא החזיר משתמש אורח.");
       }
       if (!active) return;
 
+      const savedNickname = String(user.user_metadata?.nickname || "").trim();
+      if (!savedNickname) {
+        setUserId(user.id);
+        setNickname("");
+        setAvatarColor(DEFAULT_AVATAR_COLOR);
+        setAvatarIcon(DEFAULT_AVATAR_ICON);
+        setStatus("needs-login");
+        setStatusMessage("בחר כינוי, צבע וסמל כדי להיכנס לעולם המשותף.");
+        return;
+      }
+
       const playerName = getNickname(user);
+      const playerColor = GUEST_COLORS.includes(user.user_metadata?.avatarColor) ? user.user_metadata.avatarColor : DEFAULT_AVATAR_COLOR;
+      const playerIcon = GUEST_SYMBOLS.includes(user.user_metadata?.avatarIcon) ? user.user_metadata.avatarIcon : DEFAULT_AVATAR_ICON;
       setUserId(user.id);
       setNickname(playerName);
+      setAvatarColor(playerColor);
+      setAvatarIcon(playerIcon);
 
       currentStage = "טעינת טבלת האיים game_islands";
       const islandResponse = await supabase
@@ -352,6 +303,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
             entries.map((entry) => ({
               id: entry.user_id || key,
               nickname: entry.nickname || "שחקן",
+              avatarColor: GUEST_COLORS.includes(entry.avatarColor) ? entry.avatarColor : DEFAULT_AVATAR_COLOR,
+              avatarIcon: GUEST_SYMBOLS.includes(entry.avatarIcon) ? entry.avatarIcon : DEFAULT_AVATAR_ICON,
               joinedAt: entry.joined_at || null
             }))
           );
@@ -364,6 +317,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
           const nextPlayer = {
             id: payload.user_id,
             nickname: payload.nickname || "שחקן",
+            avatarColor: GUEST_COLORS.includes(payload.avatarColor) ? payload.avatarColor : DEFAULT_AVATAR_COLOR,
+            avatarIcon: GUEST_SYMBOLS.includes(payload.avatarIcon) ? payload.avatarIcon : DEFAULT_AVATAR_ICON,
             x: Number(payload.x) || 0,
             y: Number(payload.y) || 0,
             z: Number(payload.z) || 0,
@@ -418,6 +373,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
           channel.track({
             user_id: user.id,
             nickname: playerName,
+            avatarColor: playerColor,
+            avatarIcon: playerIcon,
             joined_at: new Date().toISOString()
           }).then(({ error }) => {
             if (error && active) setStatusMessage("מחובר, אך מצב הנוכחות לא עודכן.");
@@ -493,6 +450,8 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
         payload: {
           user_id: userId,
           nickname,
+          avatarColor,
+          avatarIcon,
           x: position.x,
           y: Number(position.y) || 0,
           z: position.z,
@@ -501,7 +460,7 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
       }).catch(() => {});
     }, 160);
     return () => window.clearInterval(timer);
-  }, [userId, nickname, status, playerPositionRef]);
+  }, [userId, nickname, avatarColor, avatarIcon, status, playerPositionRef]);
 
   const remoteIslands = useMemo(() => mapIslandRows(remoteIslandRows), [remoteIslandRows]);
   return {
@@ -509,16 +468,15 @@ export function useGameMultiplayer({ playerPositionRef, island }) {
     statusMessage,
     userId,
     nickname,
+    avatarColor,
+    avatarIcon,
     onlinePlayers,
     remotePlayers,
     remoteIslands,
     databaseReady,
     authBusy,
     authMessage,
-    signIn,
-    signUp,
-    clearAuthMessage,
-    showLogin,
+    finishGuestSetup,
     retry
   };
 }
@@ -532,7 +490,7 @@ function RemotePlayerAvatar({ player }) {
   }, [player.x, player.y, player.z, player.yaw]);
 
   const hue = Array.from(String(player.id)).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 360;
-  const bodyColor = "hsl(" + hue + " 62% 55%)";
+  const bodyColor = /^#[0-9a-f]{6}$/i.test(player.avatarColor || "") ? player.avatarColor : "hsl(" + hue + " 62% 55%)";
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -561,7 +519,7 @@ function RemotePlayerAvatar({ player }) {
       anchorY: "middle",
       outlineWidth: 0.018,
       outlineColor: "#17313b"
-    }, String(player.nickname || "שחקן").slice(0, 18))
+    }, String(player.avatarIcon || DEFAULT_AVATAR_ICON) + " " + String(player.nickname || "שחקן").slice(0, 18))
   );
 }
 

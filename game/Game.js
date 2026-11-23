@@ -801,7 +801,7 @@ function Boxes({ world, kind }) {
     mesh.computeBoundingSphere();
   }, [list]);
   const material = kind === "solid"
-    ? h("meshStandardMaterial", { roughness: .96, metalness: 0, flatShading: true })
+    ? h("meshStandardMaterial", { roughness: .84, metalness: .025, roughnessMap: surfaceTexture, bumpMap: surfaceTexture, bumpScale: .016 })
     : kind === "glass"
       ? h("meshPhysicalMaterial", { transparent: true, opacity: .32, roughness: .05, metalness: .3, envMapIntensity: 1.5, depthWrite: false })
       : kind === "roadMarking"
@@ -932,7 +932,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
     ctx.save(); traceCoast(-9); ctx.clip();
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
-      const parkLot = (i === 1 && k === 1) || (i >= GRID - 3 && k >= GRID - 3);
+      const parkLot = (i === 1 && k === 1) || (i === GRID - 2 && k === GRID - 2);
       const recreationLot = (i === 8 && k === 2) || (i === 7 && k === 8);
       const residentialLot = (i === 0 || i === GRID - 1 || k === 0 || k === GRID - 1) && (i + k) % 2 === 0;
       const civicLot = (i === 4 && k === 3) || (i === 7 && k === 6);
@@ -941,7 +941,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
       const creativeLot = i >= 2 && i <= 4 && k >= 2 && k <= 4;
       const innovationLot = i >= 5 && i <= 8 && k >= 7 && k <= 9;
       const coreLot = Math.abs(i - Math.floor(GRID / 2)) + Math.abs(k - Math.floor(GRID / 2)) <= 3;
-      const lotColor = parkLot ? "#a6cf8e" : recreationLot ? "#9acb91" : residentialLot ? "#c1cba8" : innovationLot ? "#b5cbd3" : gardenQuarterLot ? "#b9d8ab" : heritageLot ? "#e7c8a9" : creativeLot ? "#d6c7e4" : civicLot ? "#d8d2b8" : coreLot ? "#c4d2d0" : ((i + k) % 2 ? "#d1d8c8" : "#ded8c8");
+      const lotColor = parkLot ? "#788d65" : recreationLot ? "#87966e" : residentialLot ? "#9ca38b" : innovationLot ? "#8d9da0" : gardenQuarterLot ? "#a7ae96" : heritageLot ? "#b4a18e" : creativeLot ? "#aaa9a0" : civicLot ? "#aaa99c" : coreLot ? "#abaea9" : ((i + k) % 2 ? "#b8b5a9" : "#c0bbae");
       ctx.fillStyle = lotColor;
       ctx.fillRect(to(x), to(z), (BLOCK - 8) * p, (BLOCK - 8) * p);
       ctx.strokeStyle = parkLot || recreationLot ? "#91a37a" : "#a49f91";
@@ -1243,7 +1243,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
   }, [buildings, busRoutes, curvedRoads, alleyways, publicSpaces]);
   useEffect(() => () => { data.texture.dispose(); data.surfaceTexture.dispose(); }, [data]);
   return h(React.Fragment, null,
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, bumpMap: data.surfaceTexture, bumpScale: wet ? .012 : .006, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .32 : .96, metalness: wet ? .12 : 0, envMapIntensity: wet ? .85 : .7 })),
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], receiveShadow: true }, h("planeGeometry", { args: [data.total, data.total] }), h("meshStandardMaterial", { map: data.texture, roughnessMap: data.surfaceTexture, bumpMap: data.surfaceTexture, bumpScale: wet ? .045 : .027, transparent: true, alphaTest: .025, depthWrite: true, roughness: wet ? .24 : .9, metalness: wet ? .24 : .015, envMapIntensity: wet ? 1.3 : .55 })),
 
   );
 }
@@ -1257,8 +1257,8 @@ function Trees({ world, nightFactor }) {
     world.trees.forEach((tree, i) => {
       const baseY = tree.y ?? 0;
       obj.position.set(tree.x, baseY + 1.1 * tree.s, tree.z); obj.scale.setScalar(tree.s); obj.rotation.set(0, i * 1.71 + (tree.turn || 0), 0); obj.updateMatrix(); trunk.current.setMatrixAt(i, obj.matrix);
-      obj.position.set(tree.x, baseY + 3 * tree.s, tree.z); obj.updateMatrix(); crown.current.setMatrixAt(i, obj.matrix); crown.current.setColorAt(i, color.setHSL(.285 + (i % 5) * .018, .62, .43 + (i % 3) * .035));
-      obj.position.set(tree.x + Math.sin(i * 1.71) * .6 * tree.s, baseY + 3.9 * tree.s, tree.z + Math.cos(i * 1.71) * .6 * tree.s); obj.scale.setScalar(tree.s * .65); obj.updateMatrix(); crown2.current.setMatrixAt(i, obj.matrix); crown2.current.setColorAt(i, color.setHSL(.31 + (i % 4) * .018, .64, .49));
+      obj.position.set(tree.x, baseY + 3 * tree.s, tree.z); obj.updateMatrix(); crown.current.setMatrixAt(i, obj.matrix); crown.current.setColorAt(i, color.setHSL(.25 + (i % 5) * .02, .45, .32 + (i % 3) * .05));
+      obj.position.set(tree.x + Math.sin(i * 1.71) * .6 * tree.s, baseY + 3.9 * tree.s, tree.z + Math.cos(i * 1.71) * .6 * tree.s); obj.scale.setScalar(tree.s * .65); obj.updateMatrix(); crown2.current.setMatrixAt(i, obj.matrix); crown2.current.setColorAt(i, color.setHSL(.24 + (i % 4) * .02, .5, .38));
       const clusters = [
         { ref: crown3, x: -.72, y: 3.12, z: .12, scale: .58, hue: .255 },
         { ref: crown4, x: .7, y: 3.2, z: .18, scale: .61, hue: .285 },
@@ -1270,19 +1270,19 @@ function Trees({ world, nightFactor }) {
         obj.rotation.set(.05 * Math.sin(i), i * .83 + cluster.hue * 8, .04 * Math.cos(i));
         obj.updateMatrix();
         cluster.ref.current.setMatrixAt(i, obj.matrix);
-        cluster.ref.current.setColorAt(i, color.setHSL(cluster.hue + (i % 3) * .012, .6, .42 + (i % 4) * .025));
+        cluster.ref.current.setColorAt(i, color.setHSL(cluster.hue + (i % 3) * .012, .43, .3 + (i % 4) * .035));
       });
     });
     world.lamps.forEach((lamp, i) => { obj.position.set(lamp.x, 2.5, lamp.z); obj.scale.set(1, 1, 1); obj.rotation.set(0, 0, 0); obj.updateMatrix(); lampPole.current.setMatrixAt(i, obj.matrix); obj.position.y = 5.1; obj.updateMatrix(); lampHead.current.setMatrixAt(i, obj.matrix); });
     [trunk, crown, crown2, crown3, crown4, crown5, lampPole, lampHead].forEach((r) => { if (r.current) { r.current.instanceMatrix.needsUpdate = true; if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; r.current.computeBoundingSphere(); } });
   }, [world]);
   return h(React.Fragment, null,
-    h("instancedMesh", { ref: trunk, args: [undefined, undefined, world.trees.length], castShadow: true }, h("cylinderGeometry", { args: [.15, .22, 2.2, 6] }), h("meshStandardMaterial", { color: "#9a6844", roughness: 1, flatShading: true })),
-    h("instancedMesh", { ref: crown, args: [undefined, undefined, world.trees.length], castShadow: true }, h("icosahedronGeometry", { args: [1.42, 0] }), h("meshStandardMaterial", { roughness: 1, flatShading: true })),
-    h("instancedMesh", { ref: crown2, args: [undefined, undefined, world.trees.length], castShadow: true }, h("icosahedronGeometry", { args: [1.02, 0] }), h("meshStandardMaterial", { roughness: 1, flatShading: true })),
-    h("instancedMesh", { ref: crown3, args: [undefined, undefined, world.trees.length], castShadow: true }, h("icosahedronGeometry", { args: [1, 0] }), h("meshStandardMaterial", { roughness: 1, flatShading: true })),
-    h("instancedMesh", { ref: crown4, args: [undefined, undefined, world.trees.length], castShadow: true }, h("icosahedronGeometry", { args: [1, 0] }), h("meshStandardMaterial", { roughness: 1, flatShading: true })),
-    h("instancedMesh", { ref: crown5, args: [undefined, undefined, world.trees.length], castShadow: true }, h("icosahedronGeometry", { args: [1, 0] }), h("meshStandardMaterial", { roughness: 1, flatShading: true })),
+    h("instancedMesh", { ref: trunk, args: [undefined, undefined, world.trees.length], castShadow: true }, h("cylinderGeometry", { args: [.15, .22, 2.2, 7] }), h("meshStandardMaterial", { color: "#6b4a2f" })),
+    h("instancedMesh", { ref: crown, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1.42, 16, 12] }), h("meshStandardMaterial", { roughness: .92 })),
+    h("instancedMesh", { ref: crown2, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1.02, 14, 10] }), h("meshStandardMaterial", { roughness: .9 })),
+    h("instancedMesh", { ref: crown3, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1, 14, 10] }), h("meshStandardMaterial", { roughness: .96 })),
+    h("instancedMesh", { ref: crown4, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1, 14, 10] }), h("meshStandardMaterial", { roughness: .96 })),
+    h("instancedMesh", { ref: crown5, args: [undefined, undefined, world.trees.length], castShadow: true }, h("sphereGeometry", { args: [1, 14, 10] }), h("meshStandardMaterial", { roughness: .96 })),
     h("instancedMesh", { ref: lampPole, args: [undefined, undefined, world.lamps.length], castShadow: true }, h("cylinderGeometry", { args: [.07, .1, 5, 6] }), h("meshStandardMaterial", { color: "#2f3a40", metalness: .6, roughness: .4 })),
     h("instancedMesh", { ref: lampHead, args: [undefined, glow, world.lamps.length] }, h("sphereGeometry", { args: [.25, 10, 8] }))
   );

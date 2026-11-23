@@ -335,19 +335,19 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
         h("planeGeometry", { args: [27.5, 27.5] })
       ),
       ...[[-17, -14, 7.2, 1.25, 5.5], [18, -17, 8.4, 1.55, 6.5], [-20, 17, 9.5, 1.7, 7.2], [18, 18, 7.8, 1.35, 6.2]].map(([dx, dz, sx, sy, sz], i) =>
-        h("mesh", { key: "meadow-hill-" + i, position: [cx + dx, -1.35, cz + dz], scale: [sx, sy, sz], material: fur(i % 2 ? "#91b873" : "#a0c17b"), castShadow: true, receiveShadow: true },
+        h("mesh", { key: "meadow-hill-" + i, position: [cx + dx, -1.15, cz + dz], scale: [sx, sy, sz], material: fur(i % 2 ? "#91b873" : "#a0c17b"), castShadow: true, receiveShadow: true },
           h("icosahedronGeometry", { args: [1, 2] })
         )
       ),
       ...[[-4, 8, 7.5, .3], [1, 5, 6, -.3], [5, -1, 5.2, .42], [7, 4.5, 4.8, -.5], [-1, 10, 4.2, .15]].map(([dx, dz, len, yaw], i) =>
         h("mesh", { key: "trail-" + i, position: [cx + dx, .018, cz + dz], rotation: [-Math.PI / 2, 0, yaw], material: PATH },
-          h("planeGeometry", { args: [1.55, len * 1.55] })
+          h("planeGeometry", { args: [1.25, len] })
         )
       ),
-      h("mesh", { position: [cx - 10, .035, cz - 4], rotation: [-Math.PI / 2, 0, 0], scale: [7.8, 6.3, 1], material: STONE },
+      h("mesh", { position: [cx - 5, .035, cz - 2], rotation: [-Math.PI / 2, 0, 0], scale: [3.9, 3.15, 1], material: STONE },
         h("circleGeometry", { args: [1, 48] })
       ),
-      h("mesh", { position: [cx - 10, .07, cz - 4], rotation: [-Math.PI / 2, 0, 0], scale: [7.1, 5.7, 1], material: WATER },
+      h("mesh", { position: [cx - 5, .07, cz - 2], rotation: [-Math.PI / 2, 0, 0], scale: [3.54, 2.82, 1], material: WATER },
         h("circleGeometry", { args: [1, 48] })
       ),
       ...[[-6.8, -4.2], [-3.4, -4.5], [-7.9, -.5]].map(([dx, dz], i) =>
@@ -366,7 +366,7 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
           )
         );
       }),
-      h("group", { position: [cx + 16, .04, cz + 12], scale: [1.5, 1.35, 1.5], rotation: [0, -.25, 0] },
+      h("group", { position: [cx + 8, .04, cz + 6], scale: [1.15, 1.15, 1.15], rotation: [0, -.25, 0] },
         h("mesh", { position: [0, .22, 0], material: WOOD }, h("boxGeometry", { args: [4.8, .22, 3.3] })),
         ...[-1, 1].flatMap((side) => [-1, 1].map((back) =>
           h("mesh", { key: "post-" + side + "-" + back, position: [side * 2.05, -.12, back * 1.3], material: WOOD },

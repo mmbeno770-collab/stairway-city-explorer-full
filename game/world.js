@@ -12,9 +12,9 @@ export const CABLE_STATIONS = [
 ];
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const THEMES = [
-    { theme: "cafe", label: "בית קפה", floor: "#e9b887" }, { theme: "library", label: "ספרייה", floor: "#8fa9b8" }, { theme: "gym", label: "חדר כושר", floor: "#8c9db8" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#f0dfc6" }, { theme: "office", label: "משרדים", floor: "#b6d8d7" }, { theme: "apartment", label: "דירת מגורים", floor: "#e6c69f" }, { theme: "arcade", label: "אולם משחקים", floor: "#a9a2d4" }, { theme: "garden", label: "גן פנימי", floor: "#a9c98b" }, { theme: "music", label: "אולפן מוזיקה", floor: "#d49bb0" }, { theme: "kids", label: "חדר ילדים", floor: "#d3e9df" }, { theme: "researchLab", label: "מעבדת מחקר", floor: "#b9dce5" }, { theme: "dataCenter", label: "מרכז נתונים", floor: "#9db8c8" }, { theme: "smartFactory", label: "ייצור מתקדם", floor: "#c6d0c8" },
+    { theme: "cafe", label: "בית קפה", floor: "#76523d" }, { theme: "library", label: "ספרייה", floor: "#584638" }, { theme: "gym", label: "חדר כושר", floor: "#343d49" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#d7d0c2" }, { theme: "office", label: "משרדים", floor: "#8d9b9d" }, { theme: "apartment", label: "דירת מגורים", floor: "#b99a72" }, { theme: "arcade", label: "אולם משחקים", floor: "#25283b" }, { theme: "garden", label: "גן פנימי", floor: "#637a4d" }, { theme: "music", label: "אולפן מוזיקה", floor: "#56383a" }, { theme: "kids", label: "חדר ילדים", floor: "#c3d0ce" }, { theme: "researchLab", label: "מעבדת מחקר", floor: "#c6d6d5" }, { theme: "dataCenter", label: "מרכז נתונים", floor: "#344955" }, { theme: "smartFactory", label: "ייצור מתקדם", floor: "#66747a" },
 ];
-const FACADES = ["#f1c27d", "#f5a9a0", "#93cadb", "#a8cfb0", "#c4b1e5", "#eddc9d", "#8ec9c5", "#e7b5d1", "#d5c8a8", "#9db7da"];
+const FACADES = ["#d9cbb5", "#b9aa97", "#c7bda9", "#84999c", "#e3d8c4", "#8d9b99", "#bba88b", "#9aa6a3", "#c6bcae", "#77888d"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [], busStops = [], alleyways = [], publicSpaces = [];
@@ -30,8 +30,8 @@ export function generateWorld(seed = 7) {
         const width = style === "villa" ? 9.1 : 8.15, depth = style === "villa" ? 9.8 : 9.1;
         const floors = style === "villa" ? 2 : 1, wallHeight = floors === 2 ? 6.35 : 3.45;
         const x0 = homeX - width / 2, x1 = homeX + width / 2, z0 = homeZ - depth / 2, z1 = homeZ + depth / 2;
-        const wall = style === "villa" ? "#f1d8b7" : style === "cottage" ? "#f4d4b3" : "#e7e6d7";
-        const roof = style === "villa" ? "#5b8790" : style === "cottage" ? "#d77861" : "#638b78";
+        const wall = style === "villa" ? "#d5c4a8" : style === "cottage" ? "#d9c7ad" : "#c9c9bf";
+        const roof = style === "villa" ? "#465965" : style === "cottage" ? "#9a5543" : "#58636a";
         homes.push({ id, cx: homeX, cz: homeZ, style, width, depth, floors, wallHeight, wallColor: wall, roofColor: roof });
         add(x0 - .25, 0, z0 - .25, x1 + .25, .24, z1 + .25, "#b8b4a9", "solid", true);
         add(x0, .24, z0, x1, .34, z1, "#9a9386", "solid", true);
@@ -213,7 +213,6 @@ export function generateWorld(seed = 7) {
         );
     };
     for (let gx = 0; gx < GRID; gx++) for (let gz = 0; gz < GRID; gz++) {
-        if (gx >= GRID - 3 && gz >= GRID - 3 && !(gx === GRID - 3 && gz === GRID - 3)) continue;
         let cx = -CITY_HALF + gx * BLOCK + BLOCK / 2;
         let cz = -CITY_HALF + gz * BLOCK + BLOCK / 2;
         const lotX0 = -CITY_HALF + gx * BLOCK + 4, lotX1 = lotX0 + BLOCK - 8;
@@ -282,23 +281,23 @@ export function generateWorld(seed = 7) {
             addCableStationPlaza(cableStation, cx, cz, gx, gz);
             continue;
         }
-        if (gx === GRID - 3 && gz === GRID - 3) {
-            // Expanded 2x2-block nature reserve: a pond, broad meadows, wooded slopes and quiet paths.
-            wildlifeReserve = { x: cx, z: cz, width: BLOCK * 2 - 8, depth: BLOCK * 2 - 8, pond: { x: cx - 10, z: cz - 4, radius: 7.4 } };
+        if (gx === GRID - 2 && gz === GRID - 2) {
+            // A dedicated wildlife reserve with a natural pond, meadow clearings and shaded paths.
+            wildlifeReserve = { x: cx, z: cz, pond: { x: cx - 5, z: cz - 2, radius: 3.6 } };
             const grove = [
-                [-27, -23, 1.02], [-21, -27, .92], [-9, -25, .94], [7, -26, 1.0], [23, -22, .98],
-                [27, -7, .92], [25, 16, .96], [19, 27, 1.02], [4, 25, .94], [-12, 27, .92],
-                [-27, 18, .98], [-26, -1, .88], [0, -29, .9], [11, 12, .94], [-16, 10, .9],
-                [28, 3, .9], [-4, 4, .92], [14, -10, .94]
+                [-11.0, -9.0, .96], [-8.8, -11.0, .82], [-2.5, -10.6, .88],
+                [4.8, -10.8, .9], [10.7, -8.8, .84], [11.0, -1.2, .78],
+                [-11.0, 4.4, .9], [-9.2, 10.2, .84], [-3.8, 11.0, .82],
+                [4.7, 10.8, .92], [10.6, 9.2, .88], [0.8, -11.2, .72]
             ];
-            for (const [dx, dz, size] of grove) trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .16, turn: r() * .7 });
-            // Pond shoreline and small footbridge.
-            add(cx - 18.2, 0, cz - 10.4, cx - 2.0, .62, cz + 2.4, "#527f82", "collisionOnly", true, true);
-            for (const bx of [-18.5, 18.5]) {
-                add(cx + bx - 1.8, .48, cz + 2.4, cx + bx + 1.8, .68, cz + 2.7, "#76583d", "solid", false);
-                add(cx + bx - 1.8, .68, cz + 2.4, cx + bx + 1.8, 1.25, cz + 2.58, "#76583d", "solid", false);
+            for (const [dx, dz, size] of grove) trees.push({ x: cx + dx, z: cz + dz, s: size + r() * .14, turn: r() * .7 });
+            // Hidden collider keeps visitors on the pond's curved shoreline.
+            add(cx - 8.8, 0, cz - 5.1, cx - 1.2, .62, cz + 1.1, "#527f82", "collisionOnly", true, true);
+            for (const bx of [-9.1, 9.1]) {
+                add(cx + bx - 1.2, .48, cz + 1.2, cx + bx + 1.2, .68, cz + 1.48, "#76583d", "solid", false);
+                add(cx + bx - 1.2, .68, cz + 1.2, cx + bx + 1.2, 1.25, cz + 1.38, "#76583d", "solid", false);
             }
-            lamps.push({ x: cx - 25, z: cz - 24 }, { x: cx + 25, z: cz + 24 }, { x: cx - 25, z: cz + 24 }, { x: cx + 25, z: cz - 24 });
+            lamps.push({ x: cx - 10.8, z: cz - 10.5 }, { x: cx + 10.8, z: cz + 10.5 });
             continue;
         }
         if (gx === 1 && gz === 1) {
@@ -494,16 +493,16 @@ export function generateWorld(seed = 7) {
                         : cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
         const x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2;
         const facadePalettes = {
-            heritage: ["#f2c99f", "#e5a18b", "#f4ddb5", "#d58f79", "#ecc49b"],
-            garden: ["#d5e7bf", "#a9d5b6", "#f0e5b7", "#98c6a5", "#c7dca5"],
-            creative: ["#a8d9e8", "#efb0a2", "#f3d78d", "#b7a8e4", "#97d5c4"],
-            innovation: ["#8bc6d8", "#75a9c5", "#a2d9cf", "#829ed0", "#b1c8e8"]
+            heritage: ["#c9ad90", "#b77b62", "#d6c1a2", "#a9826d", "#c8b18d"],
+            garden: ["#c4c9b0", "#a8b8a7", "#d0c8ad", "#9eafa4", "#c6b99d"],
+            creative: ["#9aafb0", "#bd8c70", "#d0c5ae", "#879da3", "#b5a1a0"],
+            innovation: ["#31444f", "#4b6069", "#61747c", "#293d49", "#708087"]
         };
         const glassPalettes = {
-            heritage: ["#a4d3d2", "#c1e0d7"],
-            garden: ["#9ed9c1", "#c0e4cf"],
-            creative: ["#8ccddd", "#b4dcd4"],
-            innovation: ["#7ebed4", "#95d4d8", "#a5c6e8", "#72b2c8"]
+            heritage: ["#92a7a4", "#a5aaa0"],
+            garden: ["#a2c0b2", "#b5c9bc"],
+            creative: ["#79a8b2", "#9bbdb6"],
+            innovation: ["#5b9eaa", "#77b6c1", "#80aebc", "#4b8798"]
         };
         const facadePalette = facadePalettes[district] || FACADES;
         const glassPalette = glassPalettes[district] || ["#83aab9", "#9bbdb6"];

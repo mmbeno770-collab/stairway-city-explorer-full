@@ -1,4 +1,4 @@
-const CACHE_NAME = "stairway-city-wildlife-points-unified-20261124-v6";
+const CACHE_NAME = "stairway-city-adventure-missions-20261124-v7";
 const SHELL = [
   "./",
   "./manifest.webmanifest",

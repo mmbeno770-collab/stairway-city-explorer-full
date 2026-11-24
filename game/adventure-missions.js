@@ -161,7 +161,6 @@ function ObservationDeck({ target, active }) {
     if (marker.current) { marker.current.position.y = 2.5 + Math.sin(t * 2.1) * .18; marker.current.rotation.y = t * .6; marker.current.visible = active; }
   });
   if (!target.building) return null;
-  const building = target.building, x0 = building.x0, x1 = building.x1, z0 = building.z0, z1 = building.z1;
   return h("group", { position: [target.x, target.y + .03, target.z] },
     h("mesh", { rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [4.1, 4.45, 56] })),
     h("mesh", { position: [0, .08, 0], material: mats.gold }, h("cylinderGeometry", { args: [3.5, 3.8, .16, 48] })),

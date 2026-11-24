@@ -421,7 +421,7 @@ function OwnedIslandSign({island}) {
   )),
   React.createElement("mesh",{position:[0,3.02,.02],material:landmarkWood,castShadow:true},React.createElement("boxGeometry",{args:[4.2,1.55,.24]})),
   React.createElement("mesh",{position:[0,3.02,.16],material:trimMaterial},React.createElement("boxGeometry",{args:[3.95,1.3,.045]})),
-  React.createElement("mesh",{position:[0,3.02,.19],material:signMaterial},React.createElement("planeGeometry",{args:[3.78,1.12]}))
+  React.createElement("mesh",{position:[0,3.02,.19],material:signMaterial},React.createElement("planeGeometry",{args:[3.78,.85]}))
  );
 }
 function OwnedIslandField({field}) {

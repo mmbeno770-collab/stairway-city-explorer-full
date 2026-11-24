@@ -49,7 +49,9 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
       x: Number.isFinite(mission.x) ? mission.x : reserve.x + (mission.dx || 0) * reserveScale,
       z: Number.isFinite(mission.z) ? mission.z : reserve.z + (mission.dz || 0) * reserveScale
     };
-    if (mission.type === "lighthouse") marker = adventureLayout["secret-lighthouse"];
+    if (mission.type === "birdhouses") marker = { x: reserve.x - 11, z: reserve.z - 9 };
+    else if (mission.type === "stream") marker = { x: reserve.x - 5, z: reserve.z + 12 };
+    else if (mission.type === "lighthouse") marker = adventureLayout["secret-lighthouse"];
     else if (mission.type === "buoys") marker = adventureLayout.buoys[0] || marker;
     else if (mission.type === "observation") marker = adventureLayout["city-observation"];
     else if (mission.type === "cableTour") marker = CABLE_STATIONS[0];

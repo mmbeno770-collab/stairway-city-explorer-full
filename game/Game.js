@@ -252,7 +252,10 @@ function normalizeOwnedIsland(raw) {
     rocks: Array.isArray(raw.rocks) ? raw.rocks.slice(0, 50) : [],
     animals: Array.isArray(raw.animals) ? raw.animals.slice(0, 60) : [],
     fields: Array.isArray(raw.fields) ? raw.fields.slice(0, 40) : [],
-    structures: Array.isArray(raw.structures) ? raw.structures.slice(0, 60) : [],
+    structures: Array.isArray(raw.structures) ? raw.structures.slice(0, 60).map((structure) => ({
+      ...structure,
+      health: numberOr(structure.health, 100, 0, 100)
+    })) : [],
     guardCount: numberOr(raw.guardCount, 0, 0, 100),
     guardShields: numberOr(raw.guardShields, 0, 0, 100),
     shieldStrength: numberOr(raw.shieldStrength, 0, 0, 100),
@@ -301,7 +304,7 @@ function IslandCreationForm({ points, onCreate }) {
     )
   );
 }
-function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateIsland, onExpandIsland, onBuildIslandItem, onClose }) {
+function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateIsland, onExpandIsland, onBuildIslandItem, onStormIsland, onRepairIslandStructure, onRechargeIslandShield, onClose }) {
   const guardPower = island ? island.guardCount + island.guardShields * 2 + island.structures.filter((item) => item.type === "signal-tower").length * 4 + (island.shieldStrength || 0) : 0;
   return h("div", { className: "shop-overlay", role: "dialog", "aria-modal": true, "aria-label": "חנות האיים והשדרוגים", dir: "rtl" },
     h("section", { className: "shop-card shop-card-islands" },
@@ -325,6 +328,30 @@ function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateI
             h("span", null, "הרחבות: " + island.expansionCount),
             h("span", null, "כוח שמירה: " + guardPower),
             h("span", null, "עוצמת מגן: " + (island.shieldStrength || 0) + "/100")
+          ),
+          h("section", { className: "island-weather-panel" },
+            h("strong", null, "🌩️ אירועי טבע באי"),
+            h("p", null, "סערת רוחות עלולה לפגוע במבנים ולהחליש את המגן. מחולל מגן פעיל מצמצם את הנזק."),
+            h("div", { className: "island-weather-actions" },
+              h("button", { type: "button", disabled: !island.structures.length && !(island.shieldStrength || 0), onClick: onStormIsland }, "הפעל סערת רוחות"),
+              island.structures.some((item) => item.type === "shield-generator") && (island.shieldStrength || 0) < 100
+                ? h("button", { type: "button", disabled: points < 60, onClick: onRechargeIslandShield }, "טעינת מגן · 60 נקודות")
+                : null
+            )
+          ),
+          island.structures.some((item) => Number(item.health ?? 100) < 100) && h("section", { className: "island-repair-panel" },
+            h("strong", null, "🔧 תיקון מבנים"),
+            ...island.structures.filter((item) => Number(item.health ?? 100) < 100).map((item) => {
+              const definition = ISLAND_BUILD_ITEMS.find((entry) => entry.id === item.type);
+              const health = Math.max(0, Math.min(100, Number(item.health ?? 100)));
+              return h("div", { className: "island-repair-row", key: item.id },
+                h("div", null,
+                  h("b", null, definition?.title || item.type),
+                  h("small", null, "מצב המבנה: " + health + "%")
+                ),
+                h("button", { type: "button", disabled: points < 35 || health >= 100, onClick: () => onRepairIslandStructure(item.id) }, points >= 35 ? "תיקון · 35 נק׳" : "חסרות נקודות")
+              );
+            })
           ),
           h("div", { className: "island-purchase-row" },
             h("strong", null, "הרחבת האי · 80 נקודות"),
@@ -2747,6 +2774,50 @@ export default function Game() {
     setWildlifeMission((score) => ({ ...score, points: next.points }));
     setShopNotice("האי הורחב! השטח החדש כבר מופיע בעולם.");
   }, []);
+  const stormPlayerIsland = useCallback(() => {
+    const current = shopSaveRef.current, island = current.customIsland;
+    if (!island || (!island.structures.length && !(island.shieldStrength || 0))) return;
+    const shieldBefore = Math.max(0, Math.min(100, Number(island.shieldStrength) || 0));
+    const protection = shieldBefore / 100;
+    const damage = Math.max(5, Math.round(30 * (1 - protection * .82)));
+    const structures = island.structures.map((structure) => ({
+      ...structure,
+      health: Math.max(0, Math.min(100, Number(structure.health ?? 100) - damage))
+    }));
+    const shieldAfter = Math.max(0, shieldBefore - 18);
+    const damaged = structures.filter((structure) => structure.health < 100).length;
+    const next = { ...current, customIsland: { ...island, structures, shieldStrength: shieldAfter } };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setShopNotice("סערת רוחות עברה באי: " + damaged + " מבנים נפגעו עד " + damage + "% והמגן ירד ל־" + shieldAfter + "/100.");
+  }, []);
+  const repairPlayerIslandStructure = useCallback((structureId) => {
+    const current = shopSaveRef.current, island = current.customIsland;
+    const price = 35;
+    if (!island || current.points < price) return;
+    const target = island.structures.find((structure) => structure.id === structureId);
+    if (!target || Number(target.health ?? 100) >= 100) return;
+    const structures = island.structures.map((structure) => structure.id === structureId
+      ? { ...structure, health: Math.min(100, Number(structure.health ?? 100) + 25) }
+      : structure);
+    const next = { ...current, points: current.points - price, customIsland: { ...island, structures } };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: next.points }));
+    setShopNotice("המבנה תוקן ב־25%. אפשר להמשיך לתקן עד 100%.");
+  }, []);
+  const rechargePlayerIslandShield = useCallback(() => {
+    const current = shopSaveRef.current, island = current.customIsland;
+    const price = 60;
+    if (!island || current.points < price || !island.structures.some((item) => item.type === "shield-generator")) return;
+    const shieldStrength = Math.min(100, (island.shieldStrength || 0) + 25);
+    if (shieldStrength === (island.shieldStrength || 0)) return;
+    const next = { ...current, points: current.points - price, customIsland: { ...island, shieldStrength } };
+    shopSaveRef.current = next;
+    setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: next.points }));
+    setShopNotice("המגן נטען ל־" + shieldStrength + "/100.");
+  }, []);
   const buildOnPlayerIsland = useCallback((item) => {
     const current = shopSaveRef.current, island = current.customIsland;
     if (!island || current.points < item.price || (item.id === "shield-generator" && (island.shieldStrength || 0) >= 100)) return;
@@ -2761,12 +2832,12 @@ export default function Game() {
       updated.fields = [...island.fields, { id: "field-" + count, x, z }];
     } else if (item.type === "shield") {
       updated.guardShields = (island.guardShields || 0) + 5;
-      updated.structures = [...island.structures, { id: "shield-" + count, type: "shield-kit", x, z }];
+      updated.structures = [...island.structures, { id: "shield-" + count, type: "shield-kit", x, z, health: 100 }];
     } else if (item.id === "shield-generator") {
       updated.shieldStrength = Math.min(100, (island.shieldStrength || 0) + 20);
-      updated.structures = [...island.structures, { id: item.id + "-" + count, type: item.id, x, z }];
+      updated.structures = [...island.structures, { id: item.id + "-" + count, type: item.id, x, z, health: 100 }];
     } else {
-      updated.structures = [...island.structures, { id: item.id + "-" + count, type: item.id, x, z }];
+      updated.structures = [...island.structures, { id: item.id + "-" + count, type: item.id, x, z, health: 100 }];
       if (item.id === "guard-camp") updated.guardCount = (island.guardCount || 0) + 5;
     }
     const next = { ...current, points: current.points - item.price, customIsland: updated };
@@ -3049,7 +3120,9 @@ export default function Game() {
       shopOpen && h(ShopPanel, {
         coins: shopSave.coins, points: shopSave.points, ownedItems: shopSave.ownedItems, island: shopSave.customIsland,
         notice: shopNotice, onBuy: buyShopItem, onCreateIsland: createPlayerIsland,
-        onExpandIsland: expandPlayerIsland, onBuildIslandItem: buildOnPlayerIsland, onClose: () => setShopOpen(false)
+        onExpandIsland: expandPlayerIsland, onBuildIslandItem: buildOnPlayerIsland,
+        onStormIsland: stormPlayerIsland, onRepairIslandStructure: repairPlayerIslandStructure,
+        onRechargeIslandShield: rechargePlayerIslandShield, onClose: () => setShopOpen(false)
       })
     )
   );

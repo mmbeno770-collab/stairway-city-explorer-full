@@ -483,7 +483,7 @@ function OwnedIslandDecor({ structure }) {
  if (type === "dock") return React.createElement("group", root,
   box("dock-deck", [0, .26, 0], [2.8, .2, 8.0], landmarkWood),
   ...Array.from({ length: 9 }, (_, i) => box("dock-plank-" + i, [0, .38, -3.6 + i * .9], [2.84, .05, .055], landmarkStone)),
-  ...[-1, 1].flatMap((side) => [-1, 1].map((end) => cylinder("dock-post-" + side + "-" + end, [side * 1.15, .72, end * 3.6], .12, 1.25, landmarkWood, 8))
+  ...[-1, 1].flatMap((side) => [-1, 1].map((end) => cylinder("dock-post-" + side + "-" + end, [side * 1.15, .72, end * 3.6], .12, 1.25, landmarkWood, 8)))
  );
  if (type === "mini-boat") return React.createElement("group", root,
   box("boat-hull", [0, .55, 0], [2.0, .5, 4.2], landmarkRoof),

@@ -1,4 +1,4 @@
-const CACHE_NAME = "stairway-city-detailed-map-island-price-20261124-v5";
+const CACHE_NAME = "stairway-city-wildlife-points-unified-20261124-v6";
 const SHELL = [
   "./",
   "./manifest.webmanifest",

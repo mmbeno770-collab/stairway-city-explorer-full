@@ -63,12 +63,12 @@ export function createMarineWorld(){
 }
 export function isMainlandLand(x,z){return Math.hypot(x,z)<=mainlandCoastRadius(Math.atan2(z,x));}
 export function getIslandAt(x,z,islands){
- for(const island of islands){const nx=(x-island.x)/(island.rx*.82),nz=(z-island.z)/(island.rz*.82),a=Math.atan2(nz,nx),edge=1+Math.sin(a*5+island.rx)*.035+Math.cos(a*3+island.rz)*.025;if(nx*nx+nz*nz<=edge*edge)return island;}
+ for(const island of islands){const nx=(x-island.x)/(island.rx*.96),nz=(z-island.z)/(island.rz*.96),a=Math.atan2(nz,nx),edge=1+Math.sin(a*5+island.rx)*.035+Math.cos(a*3+island.rz)*.025;if(nx*nx+nz*nz<=edge*edge)return island;}
  return null;
 }
 export function createIslandCollisionBoxes(islands){
  const boxes=[];
- for(const island of islands){const rx=island.rx*.82,rz=island.rz*.82,rows=17;
+ for(const island of islands){const rx=island.rx*.96,rz=island.rz*.96,rows=17;
   for(let row=0;row<rows;row++){const z0=island.z-rz+row/rows*rz*2,z1=island.z-rz+(row+1)/rows*rz*2,nz=((z0+z1)/2-island.z)/rz,half=rx*Math.sqrt(Math.max(.025,1-nz*nz))*.96;if(half<1)continue;
    boxes.push({x0:island.x-half,x1:island.x+half,y0:-1.9,y1:.28,z0,z1,color:island.color,kind:"marine-collider",collide:true,noGround:false});
   }

@@ -441,6 +441,8 @@ const islandGold = new THREE.MeshStandardMaterial({ color: "#d9b65e", metalness:
 const islandGlow = new THREE.MeshBasicMaterial({ color: "#a8f1ee", toneMapped: false });
 const islandShieldMaterial = new THREE.MeshBasicMaterial({ color: "#79e6ff", transparent: true, opacity: .105, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
 const islandShieldRim = new THREE.MeshBasicMaterial({ color: "#8cecff", transparent: true, opacity: .72, depthWrite: false, toneMapped: false });
+const islandDamageMarker = new THREE.MeshBasicMaterial({ color: "#f2aa57", toneMapped: false });
+const islandDamageRim = new THREE.MeshBasicMaterial({ color: "#f2aa57", transparent: true, opacity: .8, depthWrite: false, toneMapped: false });
 const tankIslandArmor = new THREE.MeshStandardMaterial({ color: "#667d62", roughness: .84, metalness: .2 });
 const tankIslandTracks = new THREE.MeshStandardMaterial({ color: "#29332e", roughness: .96, metalness: .12 });
 const tankIslandTrim = new THREE.MeshStandardMaterial({ color: "#b5aa7d", roughness: .58, metalness: .28 });
@@ -624,7 +626,13 @@ function IslandModel({island}){
   ...(island.trees||[]).map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
   ...(island.animals||[]).map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal})),
   ...(island.fields||[]).map((field,i)=>React.createElement(OwnedIslandField,{key:field.id||"field-"+i,field})),
-  ...(island.structures||[]).map((structure,i)=>React.createElement(OwnedIslandStructure,{key:structure.id||"structure-"+i,structure}))
+  ...(island.structures||[]).map((structure,i)=>React.createElement(React.Fragment,{key:structure.id||"structure-"+i},
+   React.createElement(OwnedIslandStructure,{structure}),
+   Number(structure.health ?? 100) < 100 && React.createElement("group",{position:[structure.x,2.7,structure.z]},
+    React.createElement("mesh",{material:islandDamageMarker,renderOrder:5},React.createElement("sphereGeometry",{args:[.19,10,8]})),
+    React.createElement("mesh",{rotation:[Math.PI/2,0,0],material:islandDamageRim,renderOrder:5},React.createElement("torusGeometry",{args:[.28,.035,6,16]}))
+   )
+  ))
  );
 }
 const fishColors=["#f2b84b","#e76a52","#66c5c7","#e9e1bd","#8d83d9","#4e9c77","#f28d45","#4e83c7","#c8d76a"];

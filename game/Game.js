@@ -389,6 +389,35 @@ function islandBeachLandingPoint(island, fromX, fromZ, islands) {
   }
   return { x: island.x, z: island.z, face: Math.atan2(island.x - fromX, island.z - fromZ) };
 }
+
+function mainlandBeachLandingPoint(fromX, fromZ) {
+  const angle = Math.atan2(fromZ, fromX);
+  const distance = Math.hypot(fromX, fromZ);
+  const coastRadius = mainlandCoastRadius(angle);
+  let radius = Math.max(0, Math.min(coastRadius - 3.6, distance - 1.3));
+  for (let attempt = 0; attempt < 14; attempt += 1) {
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    if (isMainlandLand(x, z)) {
+      return {
+        x, z,
+        face: Math.atan2(-Math.cos(angle), -Math.sin(angle))
+      };
+    }
+    radius -= .55;
+  }
+  const safeRadius = Math.max(0, coastRadius - 12);
+  return {
+    x: Math.cos(angle) * safeRadius,
+    z: Math.sin(angle) * safeRadius,
+    face: Math.atan2(-Math.cos(angle), -Math.sin(angle))
+  };
+}
+
+function isNearMainlandShore(x, z) {
+  const angle = Math.atan2(z, x);
+  return Math.abs(Math.hypot(x, z) - mainlandCoastRadius(angle)) <= 64;
+}
 const WALK = 6.2, RUN = 10.5, ACCEL = 16, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", jetSki: "לרכוב באופנוע ים", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 const SHOP_STORAGE_KEY = "stairway-city-explorer-shop-v1";
@@ -2560,7 +2589,6 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         boat.steering += (steerX - boat.steering) * (1 - Math.exp(-3.8 * dt));
         boat.yaw += boat.steering * .82 * Math.min(1, Math.abs(boat.speed) / 3.5) * dt * Math.sign(boat.speed || 1);
         const nx = boat.x + Math.sin(boat.yaw) * boat.speed * dt, nz = boat.z + Math.cos(boat.yaw) * boat.speed * dt;
-        const coastNow = Math.max(Math.abs(boat.x), Math.abs(boat.z)), coastNext = Math.max(Math.abs(nx), Math.abs(nz));
         const islandAtNext = getIslandAt(nx, nz, marine.islands);
         const rememberedDock = boat.dockIsland && boat.speed >= 0
           ? marine.islands.find((item) => item.id === boat.dockIsland &&
@@ -2568,7 +2596,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           : null;
         const shoreDock = boat.speed >= 0 ? nearestIslandShore(nx, nz, marine.islands, 1.14) : null;
         const dockIsland = islandAtNext || rememberedDock || shoreDock;
-        if (isMainlandLand(nx, nz) && coastNext < coastNow) { boat.dockIsland = null; boat.speed *= .2; }
+        if (isMainlandLand(nx, nz)) { boat.dockIsland = null; boat.speed *= .2; }
         else if (dockIsland) { boat.dockIsland = dockIsland.id; boat.speed *= .18; }
         else { boat.dockIsland = null; boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
         boat.y = getWaterHeight(boat.x, boat.z, s.t);
@@ -2584,7 +2612,13 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
             s.face = landing.face; s.onGround = true; s.near = -1;
             s.mode = "walk"; onMode("walk"); onPrompt("ירדתם לחוף של " + island.name);
           }
-          else if (isMainlandLand(boat.landX, boat.landZ)) { p.set(boat.landX, .2, boat.landZ); s.mode = "walk"; onMode("walk"); onPrompt("ירדתם אל החוף"); }
+          else if (isNearMainlandShore(boat.x, boat.z)) {
+            const landing = mainlandBeachLandingPoint(boat.x, boat.z);
+            p.set(landing.x, terrainGround(landing.x, landing.z, 0, .7, RAD), landing.z);
+            col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
+            s.face = landing.face; s.onGround = true; s.near = -1;
+            s.mode = "walk"; onMode("walk"); onPrompt("ירדתם לחוף העיר בצד שבו עצרתם");
+          }
           else { p.y = -2.7; s.mode = "swim"; onMode("swim"); onPrompt("נכנסתם למים · מצב צלילה הופעל"); }
           boat.dockIsland = null; boat.speed = 0; s.target = -1; s.v.set(0, 0, 0); onHud("");
         } else {

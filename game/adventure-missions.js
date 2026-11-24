@@ -162,12 +162,12 @@ function ObservationDeck({ target, active }) {
   });
   if (!target.building) return null;
   return h("group", { position: [target.x, target.y + .03, target.z] },
-    h("mesh", { rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [4.1, 4.45, 56] })),
-    h("mesh", { position: [0, .08, 0], material: mats.gold }, h("cylinderGeometry", { args: [3.5, 3.8, .16, 48] })),
-    h("mesh", { position: [0, .18, 0], material: new THREE.MeshPhysicalMaterial({ color: "#8fd0d7", transparent: true, opacity: .2, metalness: .45, roughness: .18 }) }, h("cylinderGeometry", { args: [3.1, 3.1, .08, 48] })),
+    h("mesh", { rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [2.7, 3.0, 56] })),
+    h("mesh", { position: [0, .08, 0], material: mats.gold }, h("cylinderGeometry", { args: [2.55, 2.75, .16, 48] })),
+    h("mesh", { position: [0, .18, 0], material: new THREE.MeshPhysicalMaterial({ color: "#8fd0d7", transparent: true, opacity: .2, metalness: .45, roughness: .18 }) }, h("cylinderGeometry", { args: [2.25, 2.25, .08, 48] })),
     ...[-1, 1].flatMap((side) => [
-      h("mesh", { key: "view-rail-x-" + side, position: [side * 4.25, .72, 0], material: mats.dark }, h("boxGeometry", { args: [.12, 1.35, 7.1] })),
-      h("mesh", { key: "view-rail-z-" + side, position: [0, .72, side * 4.25], material: mats.dark }, h("boxGeometry", { args: [7.1, 1.35, .12] }))
+      h("mesh", { key: "view-rail-x-" + side, position: [side * 2.9, .72, 0], material: mats.dark }, h("boxGeometry", { args: [.12, 1.35, 5.2] })),
+      h("mesh", { key: "view-rail-z-" + side, position: [0, .72, side * 2.9], material: mats.dark }, h("boxGeometry", { args: [5.2, 1.35, .12] }))
     ]),
     h("group", { ref: telescope, position: [0, .22, -1.0] },
       ...[-1, 1].map((side) => h("mesh", { key: "tripod-" + side, position: [side * .42, .56, .16], rotation: [0, 0, side * .24], material: mats.gold }, h("cylinderGeometry", { args: [.045, .065, 1.15, 9] }))),
@@ -176,8 +176,8 @@ function ObservationDeck({ target, active }) {
       h("mesh", { position: [0, .32, -.12], material: mats.gold }, h("cylinderGeometry", { args: [.36, .36, .12, 20] }))
     ),
     h("mesh", { ref: marker, position: [0, 2.5, 0], material: mats.glow }, h("octahedronGeometry", { args: [.34, 1] })),
-    h("mesh", { position: [0, .27, 2.5], material: mats.wood }, h("boxGeometry", { args: [2.6, .75, .13] })),
-    h("mesh", { position: [0, .7, 2.58], material: mats.glow }, h("boxGeometry", { args: [2.1, .045, .025] }))
+    h("mesh", { position: [0, .27, 1.9], material: mats.wood }, h("boxGeometry", { args: [2.6, .75, .13] })),
+    h("mesh", { position: [0, .7, 1.98], material: mats.glow }, h("boxGeometry", { args: [2.1, .045, .025] }))
   );
 }
 
@@ -225,7 +225,7 @@ export function AdventureMissions({ world, marine, playerPositionRef, completedI
     const lighthouse = layout["secret-lighthouse"];
     if (!completedIds.includes("secret-lighthouse") && player.y >= 16.55 && Math.hypot(player.x - lighthouse.x, player.z - lighthouse.z) < 7.8) onMissionComplete?.("secret-lighthouse");
     const view = layout["city-observation"];
-    if (!completedIds.includes("city-observation") && view.building && player.y >= view.y - .85 && Math.hypot(player.x - view.x, player.z - view.z) < 5.6) onMissionComplete?.("city-observation");
+    if (!completedIds.includes("city-observation") && view.building && player.y >= view.y - .85 && Math.hypot(player.x - view.x, player.z - view.z) < 3.7) onMissionComplete?.("city-observation");
   });
   return h(React.Fragment, null,
     layout.island && h(Lighthouse, { point: layout["secret-lighthouse"], active: !completedIds.includes("secret-lighthouse") }),

@@ -86,13 +86,99 @@ export function createAdventureMissionColliders(world, marine) {
   }));
   boxes.push(
     { x0: point.x - 2.1, x1: point.x + 2.1, y0: .25, y1: 16.5, z0: point.z - 2.1, z1: point.z + 2.1, kind: "collisionOnly", collide: true, noGround: true },
-    { x0: point.x - 6.1, x1: point.x + 6.1, y0: 16.52, y1: 16.85, z0: point.z - 6.1, z1: point.z + 6.1, kind: "missionStep", collide: true }
+    { x0: point.x - 7.2, x1: point.x + 7.2, y0: 16.52, y1: 16.85, z0: point.z - 7.2, z1: point.z + 7.2, kind: "missionStep", collide: true }
   );
   return boxes;
 }
 
+function beamBetween(key, start, end, thickness, material) {
+  const a = new THREE.Vector3(...start);
+  const b = new THREE.Vector3(...end);
+  const direction = new THREE.Vector3().subVectors(b, a);
+  const length = direction.length();
+  const midpoint = new THREE.Vector3().addVectors(a, b).multiplyScalar(.5);
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(1, 0, 0),
+    direction.normalize()
+  );
+  return h("mesh", {
+    key, position: midpoint.toArray(), quaternion, material, castShadow: true, receiveShadow: true
+  }, h("boxGeometry", { args: [length, thickness, thickness] }));
+}
+
+function stairRailings(steps) {
+  const railings = [];
+  for (let side = 0; side < 4; side += 1) {
+    const run = steps.slice(side * 12, side * 12 + 12);
+    for (const edge of [-1, 1]) {
+      const edgePoint = (step) => {
+        const xOffset = side === 1 || side === 3 ? edge * .78 : 0;
+        const zOffset = side === 0 || side === 2 ? edge * .78 : 0;
+        return [step.x - steps[0].x + xOffset, step.y, step.z - steps[0].z + zOffset];
+      };
+      run.forEach((step, index) => {
+        if (index % 2 !== 0 && index !== run.length - 1) return;
+        const p = edgePoint(step);
+        railings.push(h("mesh", {
+          key: "stair-rail-post-" + side + "-" + edge + "-" + index,
+          position: [p[0], p[1] + .55, p[2]],
+          material: mats.dark,
+          castShadow: true
+        }, h("boxGeometry", { args: [.11, 1.1, .11] })));
+      });
+      for (let index = 0; index < run.length - 1; index += 1) {
+        const a = edgePoint(run[index]), b = edgePoint(run[index + 1]);
+        railings.push(beamBetween(
+          "stair-top-rail-" + side + "-" + edge + "-" + index,
+          [a[0], a[1] + 1.08, a[2]],
+          [b[0], b[1] + 1.08, b[2]],
+          .13, mats.gold
+        ));
+        railings.push(beamBetween(
+          "stair-mid-rail-" + side + "-" + edge + "-" + index,
+          [a[0], a[1] + .58, a[2]],
+          [b[0], b[1] + .58, b[2]],
+          .075, mats.dark
+        ));
+      }
+    }
+  }
+  return railings;
+}
+
+function lighthouseBalcony() {
+  const guardrails = [];
+  const count = 48, radius = 6.9;
+  const entryAngle = Math.atan2(-4.1, -4.65);
+  const angleDistance = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  for (let index = 0; index < count; index += 1) {
+    const angle = index / count * Math.PI * 2;
+    if (angleDistance(angle, entryAngle) > .34) {
+      guardrails.push(h("mesh", {
+        key: "balcony-post-" + index,
+        position: [Math.cos(angle) * radius, 17.43, Math.sin(angle) * radius],
+        material: mats.dark,
+        castShadow: true
+      }, h("cylinderGeometry", { args: [.065, .075, 1.12, 9] })));
+    }
+
+    const nextAngle = (index + 1) / count * Math.PI * 2;
+    const middle = angle + (nextAngle - angle) / 2;
+    if (angleDistance(middle, entryAngle) <= .34) continue;
+    const aTop = [Math.cos(angle) * radius, 17.98, Math.sin(angle) * radius];
+    const bTop = [Math.cos(nextAngle) * radius, 17.98, Math.sin(nextAngle) * radius];
+    const aMid = [aTop[0], 17.48, aTop[2]];
+    const bMid = [bTop[0], 17.48, bTop[2]];
+    guardrails.push(beamBetween("balcony-top-rail-" + index, aTop, bTop, .15, mats.gold));
+    guardrails.push(beamBetween("balcony-mid-rail-" + index, aMid, bMid, .075, mats.dark));
+  }
+  return guardrails;
+}
+
 function Lighthouse({ point, active }) {
   const beam = useRef(null), lamp = useRef(null), steps = useMemo(() => makeLighthouseSteps(point), [point]);
+  const stairRails = useMemo(() => stairRailings(steps), [steps]);
+  const balconyRails = useMemo(() => lighthouseBalcony(), []);
   useFrame(({ clock }) => {
     if (beam.current) beam.current.rotation.y = clock.elapsedTime * .34;
     if (lamp.current) lamp.current.material.emissiveIntensity = .85 + Math.sin(clock.elapsedTime * 2.4) * .24;
@@ -111,22 +197,28 @@ function Lighthouse({ point, active }) {
     h("group", { ref: beam, position: [0, 16.92, 0] },
       h("mesh", { position: [0, 0, 6.4], rotation: [Math.PI / 2, 0, 0], material: new THREE.MeshBasicMaterial({ color: "#ffe7a0", transparent: true, opacity: active ? .12 : .045, side: THREE.DoubleSide, depthWrite: false }) }, h("coneGeometry", { args: [2.3, 13, 24, 1, true] }))
     ),
-    h("mesh", { position: [0, 16.845, 0], rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [2.35, 6.05, 64] })),
-    h("mesh", { position: [0, 17.12, 0], material: mats.gold }, h("torusGeometry", { args: [5.35, .12, 10, 64] })),
-    h("mesh", { position: [0, 17.12, 0], rotation: [Math.PI / 2, 0, 0], material: mats.gold }, h("torusGeometry", { args: [5.35, .07, 8, 64] })),
+
+    // A broad stone balcony, with a clear opening where the spiral stairs arrive.
+    h("mesh", { position: [0, 16.845, 0], rotation: [-Math.PI / 2, 0, 0], material: mats.white, receiveShadow: true },
+      h("ringGeometry", { args: [2.34, 7.02, 72] })),
+    h("mesh", { position: [0, 16.93, 0], rotation: [Math.PI / 2, 0, 0], material: mats.gold },
+      h("torusGeometry", { args: [7.0, .12, 10, 72] })),
+    h("mesh", { position: [0, 16.93, 0], rotation: [Math.PI / 2, 0, 0], material: mats.gold },
+      h("torusGeometry", { args: [2.35, .09, 10, 56] })),
+    h("mesh", { position: [-4.65, 16.73, -4.1], material: mats.white, castShadow: true, receiveShadow: true },
+      h("boxGeometry", { args: [2.25, .22, 2.25] })),
+    ...balconyRails,
+
     ...steps.map((step) => h("mesh", {
       key: "stair-" + step.index,
       position: [step.x - point.x, step.y - .18, step.z - point.z],
       material: step.index % 4 === 0 ? mats.gold : mats.wood,
       castShadow: true, receiveShadow: true
     }, h("boxGeometry", { args: [step.sx, .34, step.sz] }))),
-    ...steps.filter((step) => step.index % 2 === 0).map((step) =>
-      h("mesh", { key: "stair-post-" + step.index, position: [step.x - point.x + (step.x > point.x ? .72 : step.x < point.x ? -.72 : 0), step.y + .43, step.z - point.z + (step.z > point.z ? .72 : step.z < point.z ? -.72 : 0)], material: mats.dark }, h("cylinderGeometry", { args: [.045, .06, .86, 8] }))
-    ),
+    ...stairRails,
     h("mesh", { position: [0, 17.18, 0], material: mats.glow, visible: active }, h("octahedronGeometry", { args: [.48, 1] }))
   );
 }
-
 function Buoy({ point, index, progressRef }) {
   const root = useRef(null), halo = useRef(null), bulb = useRef(null);
   const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#d84b43", roughness: .35, metalness: .24, emissive: "#9e3027", emissiveIntensity: .16 }), []);

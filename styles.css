@@ -515,6 +515,12 @@ button { font: inherit; }
 .world-map-svg { display: block; width: 100%; height: auto; border-radius: 14px; overflow: hidden; background: #173f4a; }
 .map-island-label { fill: #fff7df; stroke: rgba(29,47,37,.76); stroke-width: 2px; paint-order: stroke; font-size: 9px; font-weight: 800; }
 .map-pin-number { fill: #fff; font-size: 9px; font-weight: 900; }
+
+.map-district-label { fill: rgba(255,248,221,.9); stroke: rgba(38,52,49,.78); stroke-width: 2.2px; paint-order: stroke; font-size: 6.4px; font-weight: 800; }
+.map-compass-label, .map-scale-label { fill: #fff2d1; stroke: rgba(25,47,54,.8); stroke-width: 1.5px; paint-order: stroke; font-size: 8px; font-weight: 800; }
+.map-city-label { font-size: 11px; }
+.map-island-label { font-size: 8.5px; }
+.map-legend { gap: 7px 10px; font-size: 10px; }
 .map-city-label { fill: #f7f0d7; stroke: rgba(35,55,43,.8); stroke-width: 3px; paint-order: stroke; font-size: 12px; font-weight: 900; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 7px 12px; padding: 9px 3px; color: #c8d6d1; font-size: 10px; }
 .map-mission-list, .map-landmark-list { display: grid; gap: 6px; margin-top: 8px; padding: 10px; border-radius: 11px; background: rgba(255,255,255,.045); }

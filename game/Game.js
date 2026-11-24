@@ -205,6 +205,8 @@ const ISLAND_BUILD_ITEMS = [
   { id: "signal-tower", type: "structure", icon: "📡", title: "מגדל איתות", price: 90, description: "מגדל סימון והגנה לאי" },
   { id: "guard-camp", type: "structure", icon: "🛡️", title: "מחנה שומרים", price: 150, description: "מוסיף 5 שומרים לדירוג ההגנה" },
   { id: "shield-kit", type: "shield", icon: "🛡️", title: "ציוד מגן לשומרים", price: 50, description: "מעלה את דירוג השמירה" },
+  { id: "display-tank", type: "structure", icon: "🚜", title: "טנק תצוגה", price: 900, description: "רכב זחלי משוריין לקישוט האי, ללא ירי" },
+  { id: "shield-generator", type: "structure", icon: "🫧", title: "מחולל מגן לאי", price: 420, description: "מוסיף 20 לעוצמת המגן ומציג כיפת אנרגיה סביב האי, עד 100" }
   { id: "fountain", type: "structure", icon: "⛲", title: "מזרקה", price: 85, description: "מזרקה קטנה עם מים זורמים לאי" },
   { id: "bench", type: "structure", icon: "🪑", title: "ספסל גן", price: 45, description: "ספסל עץ בשבילי האי" },
   { id: "pool", type: "structure", icon: "🏊", title: "בריכה", price: 180, description: "בריכה כחולה לצד הבית" },
@@ -231,7 +233,7 @@ function makeOwnedIsland(name, styleId, flagColor) {
     id: "player-island-self", name, ownerName: name, isPlayerIsland: true,
     x: 760, z: 760, rx: 58, rz: 46, biome: style.biome, color: style.color, sand: style.sand,
     flagColor, outline, trees: [], rocks: [], animals: [], fields: [], structures: [],
-    guardCount: 0, guardShields: 0, expansionCount: 0
+    guardCount: 0, guardShields: 0, shieldStrength: 0, expansionCount: 0
   };
 }
 function normalizeOwnedIsland(raw) {
@@ -253,6 +255,7 @@ function normalizeOwnedIsland(raw) {
     structures: Array.isArray(raw.structures) ? raw.structures.slice(0, 60) : [],
     guardCount: numberOr(raw.guardCount, 0, 0, 100),
     guardShields: numberOr(raw.guardShields, 0, 0, 100),
+    shieldStrength: numberOr(raw.shieldStrength, 0, 0, 100),
     expansionCount: numberOr(raw.expansionCount, 0, 0, 5)
   };
 }
@@ -299,7 +302,7 @@ function IslandCreationForm({ points, onCreate }) {
   );
 }
 function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateIsland, onExpandIsland, onBuildIslandItem, onClose }) {
-  const guardPower = island ? island.guardCount + island.guardShields * 2 + island.structures.filter((item) => item.type === "signal-tower").length * 4 : 0;
+  const guardPower = island ? island.guardCount + island.guardShields * 2 + island.structures.filter((item) => item.type === "signal-tower").length * 4 + (island.shieldStrength || 0) : 0;
   return h("div", { className: "shop-overlay", role: "dialog", "aria-modal": true, "aria-label": "חנות האיים והשדרוגים", dir: "rtl" },
     h("section", { className: "shop-card shop-card-islands" },
       h("header", { className: "shop-header" },
@@ -320,7 +323,8 @@ function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateI
           h("div", { className: "owned-island-stats" },
             h("span", null, "גודל: " + island.rx + " × " + island.rz),
             h("span", null, "הרחבות: " + island.expansionCount),
-            h("span", null, "כוח שמירה: " + guardPower)
+            h("span", null, "כוח שמירה: " + guardPower),
+            h("span", null, "עוצמת מגן: " + (island.shieldStrength || 0) + "/100")
           ),
           h("div", { className: "island-purchase-row" },
             h("strong", null, "הרחבת האי · 80 נקודות"),
@@ -337,7 +341,7 @@ function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateI
               h("small", null, item.description),
               h("div", { className: "island-build-buy" },
                 h("b", null, item.price + " נק׳"),
-                h("button", { type: "button", disabled: points < item.price, onClick: () => onBuildIslandItem(item) }, points >= item.price ? "הוספה" : "חסרות נקודות")
+                h("button", { type: "button", disabled: points < item.price || (item.id === "shield-generator" && (island.shieldStrength || 0) >= 100), onClick: () => onBuildIslandItem(item) }, (item.id === "shield-generator" && (island.shieldStrength || 0) >= 100) ? "המגן מלא" : points >= item.price ? "הוספה" : "חסרות נקודות")
               )
             ))
           ),
@@ -2745,7 +2749,7 @@ export default function Game() {
   }, []);
   const buildOnPlayerIsland = useCallback((item) => {
     const current = shopSaveRef.current, island = current.customIsland;
-    if (!island || current.points < item.price) return;
+    if (!island || current.points < item.price || (item.id === "shield-generator" && (island.shieldStrength || 0) >= 100)) return;
     const count = island.animals.length + island.fields.length + island.structures.length;
     const col = count % 4, row = Math.floor(count / 4) % 4;
     const x = island.x + (col - 1.5) * Math.min(13, island.rx * .22);
@@ -2758,6 +2762,9 @@ export default function Game() {
     } else if (item.type === "shield") {
       updated.guardShields = (island.guardShields || 0) + 5;
       updated.structures = [...island.structures, { id: "shield-" + count, type: "shield-kit", x, z }];
+    } else if (item.id === "shield-generator") {
+      updated.shieldStrength = Math.min(100, (island.shieldStrength || 0) + 20);
+      updated.structures = [...island.structures, { id: item.id + "-" + count, type: item.id, x, z }];
     } else {
       updated.structures = [...island.structures, { id: item.id + "-" + count, type: item.id, x, z }];
       if (item.id === "guard-camp") updated.guardCount = (island.guardCount || 0) + 5;

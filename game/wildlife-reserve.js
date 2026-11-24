@@ -461,7 +461,7 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
     if (!completedIds.includes("secret-stream") && !notified.current.has("secret-stream")) {
       const streamSteps = [[-5, 12, 5.0], [-5, -2, 4.8], [12, -10, 5.4]];
       const step = streamSteps[extraProgress.current.streamStep];
-      if (step && Math.hypot(player.x - (cx + step[0] * reserveScale), player.z - (cz + step[1] * reserveScale)) < step[2]) {
+      if (step && Math.hypot(player.x - (cx + step[0]), player.z - (cz + step[1])) < step[2]) {
         extraProgress.current.streamStep += 1;
         if (extraProgress.current.streamStep === streamSteps.length) {
           notified.current.add("secret-stream");
@@ -595,11 +595,12 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
     ...animals.map((animal) => h(CityAnimal, { key: animal.id, animal, playerPositionRef, reserveCenter: { x: cx, z: cz } })),
     ...WILDLIFE_MISSIONS.filter((mission) => ["visit", "deerGuard", "birdhouses", "stream"].includes(mission.type) && !completedIds.includes(mission.id)).flatMap((mission) => {
       if (mission.type === "stream") return [
-        h(MissionBeacon, { key: mission.id + "-start", x: cx - 5 * reserveScale, z: cz + 12 * reserveScale }),
-        h(MissionBeacon, { key: mission.id + "-bridge", x: cx - 5 * reserveScale, z: cz - 2 * reserveScale }),
-        h(MissionBeacon, { key: mission.id + "-fall", x: cx + 12 * reserveScale, z: cz - 10 * reserveScale })
+        h(MissionBeacon, { key: mission.id + "-start", x: cx - 5, z: cz + 12 }),
+        h(MissionBeacon, { key: mission.id + "-bridge", x: cx - 5, z: cz - 2 }),
+        h(MissionBeacon, { key: mission.id + "-fall", x: cx + 12, z: cz - 10 })
       ];
-      return [h(MissionBeacon, { key: mission.id, x: cx + (mission.dx || 0) * reserveScale, z: cz + (mission.dz || 0) * reserveScale })];
+      const localScale = mission.type === "birdhouses" ? 1 : reserveScale;
+      return [h(MissionBeacon, { key: mission.id, x: cx + (mission.dx || 0) * localScale, z: cz + (mission.dz || 0) * localScale })];
     }),
     h("group", { position: [0, .3, -470] },
       ...[-.9, .9].map((side) => h("mesh", { key: "island-sign-post-" + side, position: [side, 1.25, 0], material: WOOD, castShadow: true },

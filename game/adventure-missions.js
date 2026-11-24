@@ -109,7 +109,7 @@ function Lighthouse({ point, active }) {
     h("mesh", { position: [0, 18.05, 0], material: mats.white }, h("sphereGeometry", { args: [1.5, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2] })),
     h("mesh", { ref: lamp, position: [0, 16.92, 0], material: new THREE.MeshStandardMaterial({ color: "#ffe8a1", emissive: "#f5c35e", emissiveIntensity: 1.1 }) }, h("sphereGeometry", { args: [.42, 20, 16] })),
     h("group", { ref: beam, position: [0, 16.92, 0] },
-      h("mesh", { position: [0, .02, 6.4], rotation: [-.06, 0, 0], material: new THREE.MeshBasicMaterial({ color: "#ffe7a0", transparent: true, opacity: active ? .12 : .045, side: THREE.DoubleSide, depthWrite: false }) }, h("coneGeometry", { args: [2.3, 13, 24, 1, true] }))
+      h("mesh", { position: [0, 0, 6.4], rotation: [Math.PI / 2, 0, 0], material: new THREE.MeshBasicMaterial({ color: "#ffe7a0", transparent: true, opacity: active ? .12 : .045, side: THREE.DoubleSide, depthWrite: false }) }, h("coneGeometry", { args: [2.3, 13, 24, 1, true] }))
     ),
     h("mesh", { position: [0, 17.075, 0], rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [2.35, 6.05, 64] })),
     h("mesh", { position: [0, 17.12, 0], material: mats.gold }, h("torusGeometry", { args: [5.35, .12, 10, 64] })),

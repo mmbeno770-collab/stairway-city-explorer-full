@@ -204,7 +204,21 @@ const ISLAND_BUILD_ITEMS = [
   { id: "building", type: "structure", icon: "🏢", title: "בניין", price: 200, description: "מבנה גדול באי" },
   { id: "signal-tower", type: "structure", icon: "📡", title: "מגדל איתות", price: 90, description: "מגדל סימון והגנה לאי" },
   { id: "guard-camp", type: "structure", icon: "🛡️", title: "מחנה שומרים", price: 150, description: "מוסיף 5 שומרים לדירוג ההגנה" },
-  { id: "shield-kit", type: "shield", icon: "🛡️", title: "ציוד מגן לשומרים", price: 50, description: "מעלה את דירוג השמירה" }
+  { id: "shield-kit", type: "shield", icon: "🛡️", title: "ציוד מגן לשומרים", price: 50, description: "מעלה את דירוג השמירה" },
+  { id: "fountain", type: "structure", icon: "⛲", title: "מזרקה", price: 85, description: "מזרקה קטנה עם מים זורמים לאי" },
+  { id: "bench", type: "structure", icon: "🪑", title: "ספסל גן", price: 45, description: "ספסל עץ בשבילי האי" },
+  { id: "pool", type: "structure", icon: "🏊", title: "בריכה", price: 180, description: "בריכה כחולה לצד הבית" },
+  { id: "playground", type: "structure", icon: "🛝", title: "מתקן משחקים", price: 150, description: "מגלשה ונדנדה קטנה" },
+  { id: "ice-cream-stand", type: "structure", icon: "🍦", title: "דוכן גלידה", price: 95, description: "דוכן צבעוני לאורחים" },
+  { id: "clock-tower", type: "structure", icon: "🕰️", title: "מגדל שעון", price: 260, description: "מגדל שעון קטן ומיוחד" },
+  { id: "sculpture", type: "structure", icon: "🗿", title: "פסל אמנות", price: 110, description: "פסל לקישוט מרכז האי" },
+  { id: "garden-lantern", type: "structure", icon: "🏮", title: "פנס גן", price: 60, description: "תאורה נעימה לשעות הערב" },
+  { id: "greenhouse", type: "structure", icon: "🏡", title: "חממה", price: 230, description: "חממת זכוכית לגידול צמחים" },
+  { id: "dock", type: "structure", icon: "🛟", title: "רציף עץ", price: 160, description: "רציף קטן על שפת האי" },
+  { id: "mini-boat", type: "structure", icon: "⛵", title: "סירת נוי", price: 125, description: "סירת נוי קטנה ליד הרציף" },
+  { id: "crystal", type: "structure", icon: "💎", title: "גביש זוהר", price: 420, description: "גביש נדיר שמאיר בלילה" },
+  { id: "mini-island", type: "structure", icon: "🏝️", title: "אי צף קטן", price: 850, description: "אי זעיר עם עץ דקל" },
+  { id: "golden-fountain", type: "structure", icon: "🌟", title: "מזרקת זהב", price: 720, description: "מזרקה מיוחדת ונדירה" }
 ];
 function makeOwnedIsland(name, styleId, flagColor) {
   const style = ISLAND_STYLE_OPTIONS.find((item) => item.id === styleId) || ISLAND_STYLE_OPTIONS[0];

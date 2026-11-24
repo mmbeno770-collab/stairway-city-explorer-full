@@ -1,14 +1,15 @@
 export const CAR = { MAX_FORWARD: 24, MAX_REVERSE: 8, ACCEL: 10, BRAKE: 18, DRAG: 1.8, STEER: 1.25, RADIUS: 1.05 };
 export function makeCar(x, y, z, yaw = 0, color = "#c0392b", kind = "sedan") {
-    const dimensions = kind === "tank" ? [3.8, 5.5] : kind === "bus" ? [2.5, 6.6] : kind === "jeep" ? [2.2, 4.5] : kind === "race" ? [2.0, 4.45] : [1.9, 4.15];
+    const dimensions = kind === "tank" ? [3.8, 5.5] : kind === "bus" ? [2.5, 6.6] : kind === "camper" ? [2.4, 5.0] : kind === "golfCart" ? [1.9, 2.9] : kind === "scooter" ? [.9, 1.65] : kind === "jeep" ? [2.2, 4.5] : kind === "race" ? [2.0, 4.45] : [1.9, 4.15];
     return { x, y, z, yaw, speed: 0, steering: 0, color, kind, width: dimensions[0], length: dimensions[1], radius: dimensions[0] / 2, brake: false };
 }
 export function stepCar(car, controls, dt, env) {
     const throttle = Math.max(-1, Math.min(1, controls.throttle));
     const steer = Math.max(-1, Math.min(1, controls.steer));
     const tank = car.kind === "tank", bus = car.kind === "bus", race = car.kind === "race";
-    const maxForward = tank ? 8.5 : bus ? 15 : race ? 32 : CAR.MAX_FORWARD;
-    const acceleration = tank ? 4.8 : bus ? 7 : CAR.ACCEL;
+    const scooter = car.kind === "scooter", golfCart = car.kind === "golfCart", camper = car.kind === "camper";
+    const maxForward = tank ? 8.5 : bus ? 15 : scooter ? 18 : golfCart ? 14 : camper ? 18 : race ? 32 : CAR.MAX_FORWARD;
+    const acceleration = tank ? 4.8 : bus ? 7 : scooter ? 7.5 : golfCart ? 6 : camper ? 7 : CAR.ACCEL;
     car.brake = controls.brake;
     if (controls.brake) car.speed *= Math.exp(-CAR.BRAKE * dt);
     else if (Math.abs(throttle) > .02) {
@@ -21,10 +22,10 @@ export function stepCar(car, controls, dt, env) {
     const steerBlend = 1 - Math.exp(-8 * dt);
     car.steering += (steer - car.steering) * steerBlend;
     const speedFactor = Math.min(1, Math.abs(car.speed) / 3.5);
-    car.yaw += car.steering * (tank ? .72 : bus ? .88 : CAR.STEER) * speedFactor * dt * Math.sign(car.speed || 1);
+    car.yaw += car.steering * (tank ? .72 : bus ? .88 : scooter ? 1.35 : golfCart ? 1.05 : camper ? .95 : CAR.STEER) * speedFactor * dt * Math.sign(car.speed || 1);
     const proposed = { x: car.x + Math.sin(car.yaw) * car.speed * dt, z: car.z + Math.cos(car.yaw) * car.speed * dt };
     const beforeX = proposed.x, beforeZ = proposed.z;
-    env.resolve(proposed, car.y + .2, car.y + (car.kind === "bus" ? 2.5 : 1.75), (car.width || 1.9) / 2, car);
+    env.resolve(proposed, car.y + .2, car.y + (car.kind === "bus" || camper ? 2.5 : golfCart ? 1.8 : 1.75), (car.width || 1.9) / 2, car);
     const hit = Math.hypot(proposed.x - beforeX, proposed.z - beforeZ) > .025;
     car.x = proposed.x; car.z = proposed.z;
     if (hit) car.speed *= .24;
@@ -35,7 +36,7 @@ export function stepCar(car, controls, dt, env) {
 export function resolveCarObstacles(point, yLo, yHi, radius, cars, ignoreCar) {
     for (const other of cars) {
         if (other === ignoreCar) continue;
-        const otherBottom = other.y, otherTop = other.y + (other.kind === "bus" ? 2.5 : 1.85);
+        const otherBottom = other.y, otherTop = other.y + (other.kind === "bus" || other.kind === "camper" ? 2.5 : 1.85);
         if (otherTop <= yLo || otherBottom >= yHi) continue;
         const dx = point.x - other.x, dz = point.z - other.z, c = Math.cos(other.yaw), s = Math.sin(other.yaw);
         let lx = dx * c - dz * s, lz = dx * s + dz * c;

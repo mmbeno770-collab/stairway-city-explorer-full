@@ -47,6 +47,52 @@ function CarModel({ car }) {
         busPassengers.current.forEach((passenger, index) => { if (passenger) passenger.visible = index < (car.passengerCount || 0); });
     });
     const bodyMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: car.color, metalness: .38, roughness: .24, clearcoat: .92, clearcoatRoughness: .16, envMapIntensity: 1.45 }), [car.color]);
+    if (car.kind === "scooter") {
+        return _jsxs("group", { ref: root, children: [
+            _jsx("mesh", { material: bodyMat, position: [0, .63, 0], children: _jsx("boxGeometry", { args: [.52, .14, 1.18] }) }),
+            _jsx("mesh", { material: trim, position: [0, .84, -.3], children: _jsx("boxGeometry", { args: [.24, .12, .42] }) }),
+            _jsx("mesh", { material: bodyMat, position: [0, 1.05, .48], children: _jsx("cylinderGeometry", { args: [.055, .065, .88, 10] }) }),
+            _jsx("mesh", { material: trim, position: [0, 1.48, .48], children: _jsx("boxGeometry", { args: [.74, .07, .12] }) }),
+            _jsx("mesh", { material: headlamp, position: [0, 1.35, .82], children: _jsx("sphereGeometry", { args: [.12, 10, 8] }) }),
+            ...[-1, 1].map((side) => _jsx("mesh", { material: bodyMat, position: [side * .23, .76, -.36], children: _jsx("boxGeometry", { args: [.055, .08, .3] }) }, "scooter-step-" + side)),
+            ...[-.63, .63].map((z, index) => _jsx("group", {
+                key: "scooter-wheel-" + index, position: [0, .28, z], rotation: [0, 0, Math.PI / 2],
+                children: makeWheelParts(.23, .13)
+            }))
+        ] });
+    }
+    if (car.kind === "golfCart") {
+        return _jsxs("group", { ref: root, children: [
+            _jsx("mesh", { material: bodyMat, position: [0, .55, 0], children: _jsx("boxGeometry", { args: [1.7, .46, 2.65] }) }),
+            _jsx("mesh", { material: trim, position: [0, .92, -.35], children: _jsx("boxGeometry", { args: [1.55, .48, 1.05] }) }),
+            _jsx("mesh", { material: glass, position: [0, 1.25, .76], children: _jsx("boxGeometry", { args: [1.48, .54, .055] }) }),
+            _jsx("mesh", { material: bodyMat, position: [0, 1.72, -.08], children: _jsx("boxGeometry", { args: [1.92, .13, 2.9] }) }),
+            ...[-1, 1].flatMap((side) => [
+                _jsx("mesh", { material: trim, position: [side * .78, 1.38, -.08], children: _jsx("boxGeometry", { args: [.08, .74, .08] }) }, "cart-roof-post-" + side),
+                _jsx("mesh", { material: trim, position: [side * .78, .34, .96], children: _jsx("boxGeometry", { args: [.08, .42, .08] }) }, "cart-front-post-" + side)
+            ]),
+            ...[-1, 1].flatMap((side) => [-1, 1].map((axle) => _jsx("group", {
+                key: "cart-wheel-" + side + "-" + axle, position: [side * .89, .32, axle * .88], rotation: [0, 0, Math.PI / 2],
+                children: makeWheelParts(.29, .16)
+            })))
+        ] });
+    }
+    if (car.kind === "camper") {
+        return _jsxs("group", { ref: root, children: [
+            _jsx("mesh", { material: bodyMat, position: [0, 1.1, -.08], castShadow: true, children: _jsx("boxGeometry", { args: [2.28, 1.8, 4.85] }) }),
+            _jsx("mesh", { material: trim, position: [0, .42, 2.37], children: _jsx("boxGeometry", { args: [2.2, .18, .12] }) }),
+            _jsx("mesh", { material: glass, position: [0, 1.52, 2.36], children: _jsx("boxGeometry", { args: [1.78, .66, .055] }) }),
+            ...[-1, 1].flatMap((side) => [
+                _jsx("mesh", { material: glass, position: [side * 1.15, 1.35, -.4], children: _jsx("boxGeometry", { args: [.04, .62, 1.05] }) }, "camper-window-" + side),
+                _jsx("mesh", { material: trim, position: [side * 1.18, .92, -1.45], children: _jsx("boxGeometry", { args: [.04, .1, .7] }) }, "camper-trim-" + side)
+            ]),
+            _jsx("mesh", { material: bodyMat, position: [0, 2.05, -.15], children: _jsx("boxGeometry", { args: [1.65, .12, 2.0] }) }),
+            ...[-1, 1].flatMap((side) => [-1, 1].map((axle) => _jsx("group", {
+                key: "camper-wheel-" + side + "-" + axle, position: [side * 1.12, .37, axle * 1.58], rotation: [0, 0, Math.PI / 2],
+                children: makeWheelParts(.37, .19)
+            })))
+        ] });
+    }
     if (car.kind === "bus") {
         const busWindows = [-2.35, -1.15, .05, 1.25, 2.35].flatMap((z) => [-1, 1].map((side) =>
             _jsx("mesh", { material: glass, position: [side * 1.235, 1.72, z], children: _jsx("boxGeometry", { args: [.035, .82, .9] }) }, `window-${z}-${side}`)

@@ -393,6 +393,33 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
         );
       })
     ),
+    h("group", { position: [cx - 5, .18, cz - 2] },
+      h("mesh", { position: [0, 0, 0], material: WOOD, castShadow: true }, h("boxGeometry", { args: [7.8, .2, 1.35] })),
+      ...Array.from({ length: 9 }, (_, i) => h("mesh", { key: "bridge-plank-" + i, position: [-3.35 + i * .84, .12, .04], material: i % 2 ? WOOD : STONE }, h("boxGeometry", { args: [.055, .08, 1.42] }))),
+      ...[-1, 1].flatMap((side) => [
+        h("mesh", { key: "bridge-post-" + side, position: [side * 3.65, .75, 0], material: WOOD }, h("cylinderGeometry", { args: [.08, .1, 1.25, 8] })),
+        h("mesh", { key: "bridge-rail-" + side, position: [side * 3.65, 1.28, 0], material: WOOD }, h("boxGeometry", { args: [.14, .13, 1.35] }))
+      ])
+    ),
+    h("group", { position: [cx - 9.2, .04, cz - 2.2] },
+      h("mesh", { position: [0, .85, 0], material: STONE, scale: [1.2, .9, .9] }, h("dodecahedronGeometry", { args: [1.65, 1] })),
+      h("mesh", { position: [0, 1.65, .38], material: fur("#55aebd"), scale: [1.05, 1.8, .08] }, h("planeGeometry", { args: [1.25, 1.75] })),
+      h("mesh", { position: [0, .12, .95], material: fur("#55aebd"), rotation: [-Math.PI / 2, 0, 0] }, h("circleGeometry", { args: [1.05, 20] }))
+    ),
+    h("group", { position: [cx + 11, .04, cz + 10.5] },
+      h("mesh", { position: [0, 1.15, 0], material: WOOD }, h("boxGeometry", { args: [4.1, .16, 3.5] })),
+      ...[-1, 1].flatMap((side) => [
+        h("mesh", { key: "butterfly-frame-" + side, position: [side * 1.95, 1.55, 0], material: WOOD }, h("boxGeometry", { args: [.12, 1.35, 3.4] })),
+        h("mesh", { key: "butterfly-glass-" + side, position: [side * 1.88, 1.63, 0], material: new THREE.MeshPhysicalMaterial({ color: "#a7d8cf", transparent: true, opacity: .32, roughness: .18, depthWrite: false }) }, h("boxGeometry", { args: [.035, 1.12, 3.15] }))
+      ]),
+      h("mesh", { position: [0, 2.28, 0], material: WOOD, rotation: [0, 0, 0] }, h("boxGeometry", { args: [4.35, .16, 3.8] })),
+      ...Array.from({ length: 6 }, (_, i) => h("mesh", { key: "butterfly-flower-" + i, position: [-1.4 + (i % 3) * 1.4, .42, -1.15 + Math.floor(i / 3) * 2.2], material: FLOWER }, h("sphereGeometry", { args: [.13, 8, 7] })))
+    ),
+    h("group", { position: [cx - 12, .04, cz + 8] },
+      h("mesh", { position: [0, 1.55, 0], material: WOOD }, h("cylinderGeometry", { args: [.055, .08, 3.1, 8] })),
+      h("mesh", { position: [0, 3.25, 0], material: fur("#c58a45") }, h("cylinderGeometry", { args: [.42, .48, .68, 8] })),
+      h("mesh", { position: [0, 3.63, 0], material: WOOD }, h("coneGeometry", { args: [.54, .34, 8] }))
+    ),
     ...animals.map((animal) => h(CityAnimal, { key: animal.id, animal, playerPositionRef, reserveCenter: { x: cx, z: cz } })),
     ...WILDLIFE_MISSIONS.filter((mission) => mission.type === "visit" && !completedIds.includes(mission.id)).map((mission) =>
       h(MissionBeacon, { key: mission.id, x: cx + mission.dx * reserveScale, z: cz + mission.dz * reserveScale })

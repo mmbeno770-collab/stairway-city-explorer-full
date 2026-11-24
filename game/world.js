@@ -82,6 +82,33 @@ export function generateWorld(seed = 7) {
         addRooftopHelicopter(homeX, wallHeight + .94, homeZ, .39, 3.25);
     };
     const addLandmarkLot = (type, cx, cz) => {
+        if (type === "bakery") {
+            add(cx - 11.5, 0, cz - 11.5, cx + 11.5, .16, cz + 11.5, "#88877f", "solid", true);
+            add(cx - 6.6, .16, cz - 5.8, cx - 6.3, 4.0, cz + 5.8, "#d5c19e", "solid", true);
+            add(cx + 6.3, .16, cz - 5.8, cx + 6.6, 4.0, cz + 5.8, "#d5c19e", "solid", true);
+            add(cx - 6.6, .16, cz - 5.8, cx + 6.6, 4.0, cz - 5.5, "#d5c19e", "solid", true);
+            add(cx - 6.6, .16, cz + 5.5, cx - 1.25, 4.0, cz + 5.8, "#d5c19e", "solid", true);
+            add(cx + 1.25, .16, cz + 5.5, cx + 6.6, 4.0, cz + 5.8, "#d5c19e", "solid", true);
+            add(cx - 7.0, 3.95, cz - 6.2, cx + 7.0, 4.25, cz + 6.2, "#8d5140", "solid", true);
+            landmarks.push({ type: "bakery", x: cx, z: cz, name: "מאפיית העיר" });
+            inter.push({ type: "car", x: cx - 8.8, y: .12, z: cz + 10.0, face: 0, color: "#e6b34e", kind: "scooter", parking: true });
+            lamps.push({ x: cx - 10, z: cz - 10 }, { x: cx + 10, z: cz - 10 });
+            return;
+        }
+        if (type === "aquarium") {
+            add(cx - 12, 0, cz - 12, cx + 12, .16, cz + 12, "#87918e", "solid", true);
+            add(cx - 8.4, .16, cz - 6.8, cx - 8.1, 4.5, cz + 6.8, "#668f9a", "solid", true);
+            add(cx + 8.1, .16, cz - 6.8, cx + 8.4, 4.5, cz + 6.8, "#668f9a", "solid", true);
+            add(cx - 8.4, .16, cz - 6.8, cx + 8.4, 4.5, cz - 6.5, "#668f9a", "solid", true);
+            add(cx - 8.4, .16, cz + 6.5, cx - 1.45, 4.5, cz + 6.8, "#668f9a", "solid", true);
+            add(cx + 1.45, .16, cz + 6.5, cx + 8.4, 4.5, cz + 6.8, "#668f9a", "solid", true);
+            add(cx - 8.7, 4.45, cz - 7.1, cx + 8.7, 4.75, cz + 7.1, "#526b72", "solid", true);
+            landmarks.push({ type: "aquarium", x: cx, z: cz, name: "האקווריום העירוני" });
+            inter.push({ type: "car", x: cx - 6.4, y: .12, z: cz + 10.0, face: 0, color: "#5a9b8b", kind: "golfCart", parking: true });
+            inter.push({ type: "car", x: cx + 6.2, y: .12, z: cz + 10.0, face: 0, color: "#d7d1bd", kind: "camper", parking: true });
+            lamps.push({ x: cx - 10.5, z: cz - 10.5 }, { x: cx + 10.5, z: cz - 10.5 });
+            return;
+        }
         if (type === "mall") {
             add(cx - 11.6, 0, cz - 11.6, cx + 11.6, .24, cz + 11.6, "#777f80", "solid", true);
             add(cx - 11.15, .24, cz - 11.15, cx + 11.15, .32, cz + 11.15, "#c1c1b7", "solid", true);
@@ -382,6 +409,8 @@ export function generateWorld(seed = 7) {
         if (gx === 2 && gz === 7) { addLandmarkLot("mall", cx, cz); continue; }
         if (gx === 8 && gz === 2) { addLandmarkLot("sports", cx, cz); continue; }
         if (gx === 7 && gz === 8) { addLandmarkLot("amusement", cx, cz); continue; }
+        if (gx === 4 && gz === 1) { addLandmarkLot("bakery", cx, cz); continue; }
+        if (gx === 7 && gz === 4) { addLandmarkLot("aquarium", cx, cz); continue; }
         // Small public places break up the repeating blocks and give pedestrians somewhere to gather.
         if ((gx === 4 && gz === 3) || (gx === 7 && gz === 6)) {
             const marketSquare = gx === 4;

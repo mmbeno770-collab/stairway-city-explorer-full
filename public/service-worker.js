@@ -1,4 +1,4 @@
-const CACHE_NAME = "stairway-city-shell-upgrade-20261123-v1";
+const CACHE_NAME = "stairway-city-shop-nature-20261124-v2";
 const SHELL = [
   "./",
   "./manifest.webmanifest",

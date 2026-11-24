@@ -329,6 +329,58 @@ function MallModel({ place }) {
     return h("group", { key: "mall-model" }, ...pieces);
 }
 
+function BakeryModel({ place }) {
+    const { x: cx, z: cz } = place;
+    const pieces = [];
+    const add = (p, s, mat, rot, id) => pieces.push(box(p, s, mat, rot, "bakery-" + id));
+    add([cx, .22, cz], [23, .2, 23], M.roofStone, null, "plaza");
+    add([cx, 2.0, cz - 5.45], [13.2, 3.65, .28], M.cream, null, "back-wall");
+    add([cx - 6.45, 2.0, cz], [.28, 3.65, 10.9], M.cream, null, "left-wall");
+    add([cx + 6.45, 2.0, cz], [.28, 3.65, 10.9], M.cream, null, "right-wall");
+    add([cx - 3.85, 2.0, cz + 5.45], [5.15, 3.65, .28], M.cream, null, "front-left");
+    add([cx + 3.85, 2.0, cz + 5.45], [5.15, 3.65, .28], M.cream, null, "front-right");
+    add([cx, 4.05, cz], [14.1, .32, 12.5], M.roofRed, null, "roof");
+    pieces.push(h("mesh", { key: "bakery-gable", position: [cx, 4.85, cz], material: M.roofRed, rotation: [0, Math.PI / 4, 0] }, h("coneGeometry", { args: [7.5, 1.65, 4] })));
+    add([cx - 4.4, 2.25, cz + 5.63], [2.4, 1.45, .08], M.glass, null, "front-window-left");
+    add([cx + 4.4, 2.25, cz + 5.63], [2.4, 1.45, .08], M.glass, null, "front-window-right");
+    add([cx, 3.45, cz + 5.78], [5.3, .85, .22], M.red, null, "sign");
+    add([cx, 3.47, cz + 5.91], [4.2, .12, .05], M.gold, null, "sign-line");
+    add([cx, .18, cz + 3.7], [4.5, .18, 1.15], M.wood, null, "counter");
+    for (let i = 0; i < 5; i++) {
+        pieces.push(sphere([cx - 1.6 + i * .8, .75, cz + 3.65], [.27, .17, .27], i % 2 ? M.yellow : M.cream, "bakery-bread-" + i));
+    }
+    for (const side of [-1, 1]) {
+        add([cx + side * 7.5, .42, cz + 9.9], [3.3, .16, 2.1], M.roofStone, null, "scooter-pad-" + side);
+    }
+    return h("group", { key: "bakery-model" }, ...pieces);
+}
+
+function AquariumModel({ place }) {
+    const { x: cx, z: cz } = place;
+    const pieces = [];
+    const add = (p, s, mat, rot, id) => pieces.push(box(p, s, mat, rot, "aquarium-" + id));
+    add([cx, .22, cz], [24, .2, 24], M.roofStone, null, "plaza");
+    add([cx, 2.1, cz - 6.6], [16.8, 3.9, .26], M.glassBlue, null, "rear-glass");
+    add([cx - 8.15, 2.1, cz], [.26, 3.9, 13.2], M.glassBlue, null, "left-glass");
+    add([cx + 8.15, 2.1, cz], [.26, 3.9, 13.2], M.glassBlue, null, "right-glass");
+    add([cx - 4.9, 2.1, cz + 6.6], [6.5, 3.9, .26], M.glassBlue, null, "front-left");
+    add([cx + 4.9, 2.1, cz + 6.6], [6.5, 3.9, .26], M.glassBlue, null, "front-right");
+    add([cx, 4.1, cz], [17.1, .3, 14.0], M.darkWall, null, "roof");
+    add([cx, 4.3, cz], [10.5, .12, 8.7], M.glass, null, "skylight");
+    for (let tank = 0; tank < 3; tank++) {
+        const tx = cx - 5.3 + tank * 5.3;
+        add([tx, .75, cz - 1.6], [4.25, 1.25, 2.5], M.glass, null, "tank-glass-" + tank);
+        add([tx, .48, cz - 1.6], [3.9, .12, 2.18], M.glassBlue, null, "tank-water-" + tank);
+        for (let fish = 0; fish < 3; fish++) {
+            pieces.push(sphere([tx - 1.1 + fish * 1.0, .9 + (fish % 2) * .3, cz - 1.7], [.28, .14, .12], [M.yellow, M.red, M.teal][(fish + tank) % 3], "fish-" + tank + "-" + fish));
+        }
+    }
+    add([cx, 1.0, cz + 6.78], [2.65, 1.9, .18], M.wood, null, "entry-door");
+    add([cx - 10.3, 1.6, cz - 7.7], [.22, 3.0, .22], M.gold, null, "lamp-left");
+    add([cx + 10.3, 1.6, cz - 7.7], [.22, 3.0, .22], M.gold, null, "lamp-right");
+    return h("group", { key: "aquarium-model" }, ...pieces);
+}
+
 function SportsModel({ place }) {
     const { x: cx, z: cz } = place;
     const pieces = [];
@@ -683,6 +735,8 @@ export function CityLandmarks({ world, helis }) {
             if (place.type === "mall") return h(MallModel, { key: "mall-" + index, place });
             if (place.type === "sports") return h(SportsModel, { key: "sports-" + index, place });
             if (place.type === "amusement") return h(AmusementModel, { key: "amusement-" + index, place });
+            if (place.type === "bakery") return h(BakeryModel, { key: "bakery-" + index, place });
+            if (place.type === "aquarium") return h(AquariumModel, { key: "aquarium-" + index, place });
             return null;
         }),
         h(RooftopHelicopters, { helis, key: "rooftop-helicopters" })

@@ -404,6 +404,107 @@ function OwnedIslandField({field}) {
   }))
  );
 }
+const islandGold = new THREE.MeshStandardMaterial({ color: "#d9b65e", metalness: .72, roughness: .28 });
+const islandGlow = new THREE.MeshBasicMaterial({ color: "#a8f1ee", toneMapped: false });
+function OwnedIslandDecor({ structure }) {
+ const box = (key, position, size, material = landmarkWood, rotation = [0, 0, 0]) =>
+  React.createElement("mesh", { key, position, scale: size, material, rotation, castShadow: true, receiveShadow: true }, React.createElement("boxGeometry", { args: [1, 1, 1] }));
+ const cylinder = (key, position, radius, height, material = landmarkWood, radial = 12, rotation = [0, 0, 0]) =>
+  React.createElement("mesh", { key, position, material, rotation, castShadow: true }, React.createElement("cylinderGeometry", { args: [radius, radius, height, radial] }));
+ const sphere = (key, position, scale, material = landmarkStone) =>
+  React.createElement("mesh", { key, position, scale, material, castShadow: true }, React.createElement("sphereGeometry", { args: [1, 12, 10] }));
+ const root = { position: [structure.x, .31, structure.z] };
+ const type = structure.type;
+ if (type === "bench") return React.createElement("group", root,
+  box("seat", [0, .62, 0], [2.4, .18, .68]), box("back", [0, 1.12, -.27], [2.4, .85, .16]),
+  ...[-.85, .85].map((side) => box("leg-" + side, [side, .3, 0], [.16, .62, .55]))
+ );
+ if (type === "fountain" || type === "golden-fountain") {
+  const stone = type === "golden-fountain" ? islandGold : landmarkStone;
+  const water = type === "golden-fountain" ? islandGlow : landmarkWater;
+  return React.createElement("group", root,
+   cylinder("outer-basin", [0, .48, 0], 2.0, .42, stone, 24),
+   cylinder("water", [0, .72, 0], 1.7, .08, water, 24),
+   cylinder("center-pillar", [0, 1.15, 0], .22, 1.0, stone, 12),
+   sphere("top-bowl", [0, 1.72, 0], [.68, .2, .68], stone),
+   sphere("water-drop", [0, 2.15, 0], [.22, .46, .22], water)
+  );
+ }
+ if (type === "pool") return React.createElement("group", root,
+  box("pool-base", [0, .38, 0], [7.6, .48, 5.2], landmarkStone),
+  box("pool-water", [0, .66, 0], [6.9, .06, 4.5], landmarkWater),
+  ...[-1, 1].flatMap((side) => [
+   box("pool-edge-x-" + side, [side * 3.68, .79, 0], [.22, .28, 5.3]),
+   box("pool-edge-z-" + side, [0, .79, side * 2.48], [7.5, .28, .22])
+  ])
+ );
+ if (type === "playground") return React.createElement("group", root,
+  box("play-base", [0, .22, 0], [6.0, .14, 5.2], new THREE.MeshStandardMaterial({ color: "#d8b77b", roughness: .95 })),
+  ...[-1, 1].map((side) => cylinder("swing-post-" + side, [side * 1.8, 1.45, -1.4], .08, 2.7, landmarkWood, 8)),
+  box("swing-top", [0, 2.78, -1.4], [4.0, .14, .16]),
+  box("swing-seat", [0, .75, -1.4], [1.0, .16, .6], islandGold),
+  box("slide-platform", [1.65, 1.15, .9], [1.4, .18, 1.3], islandGold),
+  box("slide-ramp", [1.65, .6, 2.0], [1.25, .12, 1.9], landmarkRoof, [-.4, 0, 0])
+ );
+ if (type === "ice-cream-stand") return React.createElement("group", root,
+  box("counter", [0, .72, 0], [3.8, 1.35, 2.4], landmarkWood),
+  box("counter-top", [0, 1.43, 0], [4.0, .16, 2.55], islandGold),
+  box("awning", [0, 2.35, 0], [4.5, .18, 2.9], landmarkRoof),
+  ...[-1, 0, 1].map((i) => box("awning-stripe-" + i, [i * 1.45, 2.46, .04], [.7, .06, 2.86], i % 2 ? islandGold : landmarkStone)),
+  sphere("icecream", [0, 1.95, .05], [.42, .42, .42], landmarkWater)
+ );
+ if (type === "clock-tower") return React.createElement("group", root,
+  box("tower", [0, 3.2, 0], [2.3, 6.4, 2.3], landmarkStone),
+  box("roof", [0, 6.55, 0], [2.8, .28, 2.8], landmarkRoof),
+  cylinder("spire", [0, 7.0, 0], .12, .8, islandGold, 8),
+  React.createElement("mesh", { position: [0, 4.3, 1.18], material: landmarkWater }, React.createElement("circleGeometry", { args: [.72, 24] })),
+  box("clock-hand-x", [0, 4.3, 1.21], [.08, .62, .04], landmarkWood),
+  box("clock-hand-y", [.18, 4.58, 1.22], [.38, .07, .04], landmarkWood)
+ );
+ if (type === "sculpture") return React.createElement("group", root,
+  cylinder("pedestal", [0, .55, 0], .9, 1.1, landmarkStone, 12),
+  sphere("base-form", [0, 1.55, 0], [.72, .72, .72], islandGold),
+  sphere("top-form", [.15, 2.45, 0], [.42, .9, .42], landmarkWater)
+ );
+ if (type === "garden-lantern") return React.createElement("group", root,
+  cylinder("post", [0, 1.5, 0], .09, 3.0, landmarkWood, 8),
+  box("lamp-frame", [0, 3.0, 0], [.85, .75, .85], islandGold),
+  sphere("lamp-glow", [0, 3.0, 0], [.48, .48, .48], islandGlow)
+ );
+ if (type === "greenhouse") return React.createElement("group", root,
+  box("greenhouse-base", [0, .25, 0], [6.8, .24, 5.8], landmarkStone),
+  ...[-1, 1].flatMap((side) => [
+   box("greenhouse-side-" + side, [side * 3.25, 1.8, 0], [.08, 3.0, 5.4], glass),
+   box("greenhouse-front-" + side, [side * 1.65, 1.8, 2.65], [3.2, 3.0, .08], glass)
+  ]),
+  box("greenhouse-roof", [0, 3.35, 0], [7.1, .18, 6.0], islandGold),
+  ...[-1, 0, 1].map((i) => cylinder("greenhouse-plant-" + i, [i * 1.55, .78, 0], .18, 1.1, landmarkWater, 7))
+ );
+ if (type === "dock") return React.createElement("group", root,
+  box("dock-deck", [0, .26, 0], [2.8, .2, 8.0], landmarkWood),
+  ...Array.from({ length: 9 }, (_, i) => box("dock-plank-" + i, [0, .38, -3.6 + i * .9], [2.84, .05, .055], landmarkStone)),
+  ...[-1, 1].flatMap((side) => [-1, 1].map((end) => cylinder("dock-post-" + side + "-" + end, [side * 1.15, .72, end * 3.6], .12, 1.25, landmarkWood, 8))
+ );
+ if (type === "mini-boat") return React.createElement("group", root,
+  box("boat-hull", [0, .55, 0], [2.0, .5, 4.2], landmarkRoof),
+  box("boat-deck", [0, .83, -.2], [1.6, .08, 2.8], landmarkWood),
+  box("boat-cabin", [0, 1.45, -.7], [1.3, 1.15, 1.35], glass),
+  cylinder("boat-mast", [0, 2.5, .9], .045, 2.6, islandGold, 8),
+  React.createElement("mesh", { position: [.48, 2.45, .9], material: landmarkStone }, React.createElement("coneGeometry", { args: [.7, 1.1, 3] }))
+ );
+ if (type === "crystal") return React.createElement("group", root,
+  cylinder("crystal-base", [0, .45, 0], .9, .5, landmarkStone, 8),
+  React.createElement("mesh", { position: [0, 1.75, 0], scale: [.95, 2.5, .95], material: crystal, castShadow: true }, React.createElement("octahedronGeometry", { args: [1, 1] })),
+  sphere("crystal-light", [0, 2.0, 0], [.28, .28, .28], islandGlow)
+ );
+ if (type === "mini-island") return React.createElement("group", root,
+  sphere("floating-rock", [0, .4, 0], [2.2, .65, 2.0], landmarkStone),
+  sphere("grass-top", [0, .82, 0], [2.1, .18, 1.9], GRASS),
+  cylinder("palm-trunk", [0, 2.0, 0], .11, 2.3, landmarkWood, 7),
+  sphere("palm-crown", [0, 3.35, 0], [1.05, .44, 1.05], leaf)
+ );
+ return null;
+}
 function OwnedIslandStructure({structure}) {
  if(structure.type==="house")return React.createElement("group",{position:[structure.x,.31,structure.z]},
   React.createElement("mesh",{position:[0,1.2,0],material:landmarkStone,castShadow:true,receiveShadow:true},React.createElement("boxGeometry",{args:[4.6,2.4,3.9]})),
@@ -436,6 +537,7 @@ function OwnedIslandStructure({structure}) {
  if(structure.type==="shield-kit")return React.createElement("group",{position:[structure.x,.31,structure.z]},
   ...Array.from({length:5},(_,i)=>React.createElement("mesh",{key:i,position:[(i-2)*.68,.82,0],material:new THREE.MeshStandardMaterial({color:"#7898b3",metalness:.28,roughness:.55}),castShadow:true},React.createElement("cylinderGeometry",{args:[.28,.28,.12,6]})))
  );
+ if(["fountain","bench","pool","playground","ice-cream-stand","clock-tower","sculpture","garden-lantern","greenhouse","dock","mini-boat","crystal","mini-island","golden-fountain"].includes(structure.type)) return React.createElement(OwnedIslandDecor, { structure });
  return null;
 }
 function IslandModel({island}){

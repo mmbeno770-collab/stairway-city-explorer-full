@@ -608,7 +608,7 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
       h("mesh", { position: [0, 2.28, -.02], material: WOOD, castShadow: true }, h("boxGeometry", { args: [3.3, 1.05, .2] })),
       h("mesh", { position: [0, 2.28, .095], material: fur("#d9e2d7") }, h("boxGeometry", { args: [3.05, .8, .035] })),
       h("mesh", { position: [0, 2.28, .12], material: fur(completedIds.includes("island") ? "#d9b24c" : "#577b50") }, h("boxGeometry", { args: [2.82, .62, .025] })),
-      h("mesh", { position: [0, 2.28, .137], material: ISLAND_SIGN_FACE }, h("planeGeometry", { args: [2.55, .48] }))
+      h("mesh", { position: [0, 2.28, .137], material: ISLAND_SIGN_FACE }, h("planeGeometry", { args: [2.4, .6] }))
     ),
     !completedIds.includes("island") ? h(MissionBeacon, { x: 5, z: -470 }) : null
   );

@@ -35,9 +35,10 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
     const timer = window.setInterval(update, 350);
     return () => window.clearInterval(timer);
   }, [playerPositionRef]);
-  const size = 520, pad = 28, span = 2200, inner = size - pad * 2;
-  const px = (x) => pad + ((x + 1100) / span) * inner;
-  const py = (z) => pad + ((z + 1100) / span) * inner;
+
+  const size = 620, pad = 24, span = 1800, inner = size - pad * 2, unit = inner / span;
+  const px = (x) => pad + ((x + span / 2) / span) * inner;
+  const py = (z) => pad + ((z + span / 2) / span) * inner;
   const islands = marine?.islands || [];
   const reserve = world.wildlifeReserve || { x: 0, z: 0 };
   const missions = WILDLIFE_MISSIONS.map((mission, index) => ({
@@ -46,64 +47,235 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
     z: Number.isFinite(mission.z) ? mission.z : reserve.z + (mission.dz || 0),
     index
   }));
-  const route = world.busRoutes?.[0]?.path || [];
-  const routeStep = Math.max(1, Math.ceil(route.length / 120));
-  const routePoints = route.filter((_, index) => index % routeStep === 0 || index === route.length - 1)
-    .map((point) => String(px(point.x)) + "," + String(py(point.z))).join(" ");
-  const landmarks = world.landmarks || [];
-  const busStops = world.busStops || [];
-  const transitSpaces = (world.publicSpaces || []).filter((place) => place.style === "transit");
+  const pathFromPoints = (points) => (points || []).map((point, index) =>
+    (index ? "L " : "M ") + px(point.x) + " " + py(point.z)
+  ).join(" ");
+  const coastPoints = Array.from({ length: 180 }, (_, index) => {
+    const angle = index / 180 * Math.PI * 2;
+    const radius = mainlandCoastRadius(angle);
+    return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
+  });
+  const coastPath = pathFromPoints(coastPoints) + " Z";
+  const islandPath = (island, factor = 1) => {
+    const outline = Array.isArray(island.outline) && island.outline.length >= 3
+      ? island.outline
+      : Array.from({ length: 32 }, (_, index) => {
+        const angle = index / 32 * Math.PI * 2;
+        return [Math.cos(angle), Math.sin(angle)];
+      });
+    return outline.map(([x, z], index) =>
+      (index ? "L " : "M ") + px(island.x + x * island.rx * factor) + " " + py(island.z + z * island.rz * factor)
+    ).join(" ") + " Z";
+  };
+
+  const gridRoads = Array.from({ length: GRID + 1 }, (_, index) => {
+    const position = -CITY_HALF + index * BLOCK;
+    return [
+      h("path", { key: "road-x-" + index, d: "M " + px(position) + " " + py(-CITY_HALF) + " L " + px(position) + " " + py(CITY_HALF), fill: "none", stroke: "#d0c8a9", strokeWidth: 8 * unit, strokeLinecap: "round" }),
+      h("path", { key: "road-x-inner-" + index, d: "M " + px(position) + " " + py(-CITY_HALF) + " L " + px(position) + " " + py(CITY_HALF), fill: "none", stroke: "#58636a", strokeWidth: 5.7 * unit, strokeLinecap: "round" }),
+      h("path", { key: "road-z-" + index, d: "M " + px(-CITY_HALF) + " " + py(position) + " L " + px(CITY_HALF) + " " + py(position), fill: "none", stroke: "#d0c8a9", strokeWidth: 8 * unit, strokeLinecap: "round" }),
+      h("path", { key: "road-z-inner-" + index, d: "M " + px(-CITY_HALF) + " " + py(position) + " L " + px(CITY_HALF) + " " + py(position), fill: "none", stroke: "#58636a", strokeWidth: 5.7 * unit, strokeLinecap: "round" })
+    ];
+  }).flat();
+
+  const districtColors = {
+    innovation: "#8da7b0",
+    heritage: "#c7a77d",
+    garden: "#91ad8a",
+    creative: "#b49bc0",
+    mixed: "#b7b6a7"
+  };
+  const districtNames = {
+    innovation: "רובע החדשנות",
+    heritage: "הרובע ההיסטורי",
+    garden: "רובע הגנים",
+    creative: "הרובע היצירתי",
+    mixed: "שכונת מגורים"
+  };
+  const buildingGroups = {};
+  (world.buildings || []).forEach((building) => {
+    const key = building.district || "mixed";
+    if (!buildingGroups[key]) buildingGroups[key] = { x: 0, z: 0, count: 0 };
+    buildingGroups[key].x += (building.x0 + building.x1) / 2;
+    buildingGroups[key].z += (building.z0 + building.z1) / 2;
+    buildingGroups[key].count += 1;
+  });
+  const districtLabels = Object.entries(buildingGroups).map(([district, group]) =>
+    h("text", {
+      key: "district-" + district,
+      x: px(group.x / group.count),
+      y: py(group.z / group.count),
+      textAnchor: "middle",
+      className: "map-district-label"
+    }, districtNames[district] || district)
+  );
+
+  const buildings = (world.buildings || []).map((building) => h("rect", {
+    key: "building-" + building.id,
+    x: px(building.x0), y: py(building.z0),
+    width: Math.max(1, (building.x1 - building.x0) * unit),
+    height: Math.max(1, (building.z1 - building.z0) * unit),
+    rx: 1.3, fill: districtColors[building.district] || districtColors.mixed,
+    stroke: "#34484a", strokeWidth: .8, opacity: .9
+  }));
+  const homes = (world.homes || []).map((home, index) => h("rect", {
+    key: "home-" + (home.id ?? index),
+    x: px(home.cx - home.width / 2), y: py(home.cz - home.depth / 2),
+    width: Math.max(1, home.width * unit), height: Math.max(1, home.depth * unit),
+    rx: 1.1, fill: "#d8c69c", stroke: "#5f6d58", strokeWidth: .7
+  }));
+  const treeMarkers = (world.trees || []).map((tree, index) => h("circle", {
+    key: "city-tree-" + index, cx: px(tree.x), cy: py(tree.z),
+    r: Math.max(.8, Math.min(2.1, 1.1 + (tree.s || 1) * .45) * unit * 2.2),
+    fill: "#397b54", stroke: "#d4e4b2", strokeWidth: .45, opacity: .96
+  }));
+  const curvedRoads = (world.curvedRoads || []).map((road) => h("path", {
+    key: "curved-road-" + road.id,
+    d: pathFromPoints(road.path), fill: "none",
+    stroke: "#485a62", strokeWidth: 5.8 * unit,
+    strokeLinecap: "round", strokeLinejoin: "round"
+  }));
+  const alleyways = (world.alleyways || []).map((alley) => h("path", {
+    key: alley.id, d: pathFromPoints(alley.points), fill: "none",
+    stroke: "#8e927f", strokeWidth: Math.max(.8, (alley.width || 1.8) * unit),
+    strokeDasharray: "2 1", strokeLinecap: "round"
+  }));
+  const crosswalks = (world.crosswalks || []).map((crossing) => {
+    const stripes = Array.from({ length: 5 }, (_, index) => {
+      const offset = (index - 2) * 1.15;
+      return crossing.axis === "x"
+        ? "M " + px(crossing.x + offset) + " " + py(crossing.z - 2.3) + " L " + px(crossing.x + offset) + " " + py(crossing.z + 2.3)
+        : "M " + px(crossing.x - 2.3) + " " + py(crossing.z + offset) + " L " + px(crossing.x + 2.3) + " " + py(crossing.z + offset);
+    }).join(" ");
+    return h("path", { key: "crossing-" + crossing.id, d: stripes, fill: "none", stroke: "#f4f0dc", strokeWidth: 1.2, opacity: .88 });
+  });
+
+  const busRoutes = (world.busRoutes || []).map((route) => {
+    const step = Math.max(1, Math.ceil((route.path || []).length / 180));
+    const points = (route.path || []).filter((point, index) => index % step === 0 || index === route.path.length - 1);
+    return h("path", {
+      key: "bus-route-" + route.id, d: pathFromPoints(points), fill: "none",
+      stroke: "#54cbd1", strokeWidth: 2.8, strokeDasharray: "5 3",
+      strokeLinecap: "round", opacity: .95
+    });
+  });
+  const busStops = (world.busStops || []).map((stop) => h("g", { key: "bus-" + stop.id },
+    h("circle", { cx: px(stop.x), cy: py(stop.z), r: 4.2, fill: "#177fa6", stroke: "#e8f5ff", strokeWidth: 1.4 }),
+    h("text", { x: px(stop.x), y: py(stop.z) + 2.5, textAnchor: "middle", className: "map-pin-number" }, "ב"),
+    h("title", null, stop.name)
+  ));
+  const cableStations = CABLE_STATIONS.map((station) => h("g", { key: "cable-" + station.id },
+    h("rect", { x: px(station.x) - 3.2, y: py(station.z) - 3.2, width: 6.4, height: 6.4, rx: 1.2, fill: "#7953bd", stroke: "#f0e5ff", strokeWidth: 1 }),
+    h("text", { x: px(station.x), y: py(station.z) + 2.3, textAnchor: "middle", className: "map-pin-number" }, "ר"),
+    h("title", null, station.name)
+  ));
+  const transitSpaces = (world.publicSpaces || []).filter((place) => place.style === "transit" && Number.isFinite(place.x) && Number.isFinite(place.z));
+  const publicMarkers = transitSpaces.map((place) => h("circle", {
+    key: "public-" + place.id, cx: px(place.x), cy: py(place.z), r: 3.2,
+    fill: "#e8ad4a", stroke: "#fff0c6", strokeWidth: 1
+  }));
+  const landmarks = (world.landmarks || []).filter((place) => Number.isFinite(place.x) && Number.isFinite(place.z));
+  const landmarkMarkers = landmarks.map((place, index) => h("g", { key: "landmark-" + index },
+    h("path", { d: "M " + px(place.x) + " " + (py(place.z) - 4.2) + " l 4.2 4.2 -4.2 4.2 -4.2 -4.2 Z", fill: "#e9b75c", stroke: "#fff0c6", strokeWidth: .9 }),
+    h("title", null, place.name)
+  ));
+  const islandLayers = islands.map((island) => h("g", { key: island.id },
+    h("path", { d: islandPath(island, 1.12), fill: "#203d43", opacity: .36, transform: "translate(1.4 2)" }),
+    h("path", { d: islandPath(island, 1.015), fill: island.sand || "#dfc58e", stroke: "#f4e4ba", strokeWidth: 1.2 }),
+    h("path", { d: islandPath(island, .86), fill: island.color || "#568c62", stroke: "#344d40", strokeWidth: .9 }),
+    h("path", { d: islandPath(island, .72), fill: "none", stroke: "rgba(255,255,255,.25)", strokeWidth: .8, strokeDasharray: "2 3" }),
+    ...(island.trees || []).map((tree, index) => h("circle", {
+      key: "tree-" + index, cx: px(tree.x), cy: py(tree.z),
+      r: Math.max(1.1, Math.min(2.7, (tree.scale || 1) * 1.8)),
+      fill: tree.type === "cactus" ? "#75934e" : tree.type === "crystal" ? "#9ce3ed" : "#28694a",
+      stroke: "#e5e0b6", strokeWidth: .5
+    })),
+    ...(island.rocks || []).map((rock, index) => h("circle", {
+      key: "rock-" + index, cx: px(rock.x), cy: py(rock.z),
+      r: Math.max(.7, (rock.scale || 1) * .75), fill: "#8d9089", stroke: "#d5d0bd", strokeWidth: .4
+    })),
+    island.isPlayerIsland && h("path", {
+      d: "M " + px(island.x) + " " + (py(island.z) - 16) + " l 0 13",
+      stroke: "#fff7df", strokeWidth: 1.8
+    }),
+    island.isPlayerIsland && h("path", {
+      d: "M " + px(island.x) + " " + (py(island.z) - 16) + " l 10 3 -10 3 Z",
+      fill: island.flagColor || "#d84b45", stroke: "#fff7df", strokeWidth: .7
+    }),
+    h("text", {
+      x: px(island.x), y: py(island.z) + 3,
+      textAnchor: "middle", className: "map-island-label"
+    }, island.isPlayerIsland ? "האי שלך" : island.name),
+    h("title", null, island.name + " · " + island.biome)
+  ));
+
   const completedCount = missions.filter((mission) => completedIds.includes(mission.id)).length;
+  const missionMarkers = missions.map((mission) => {
+    const done = completedIds.includes(mission.id);
+    return h("g", { key: mission.id },
+      h("circle", { cx: px(mission.x), cy: py(mission.z), r: 6.4, fill: done ? "#438a67" : "#d69c36", stroke: done ? "#c8f1d4" : "#fff0bb", strokeWidth: 1.6 }),
+      h("text", { x: px(mission.x), y: py(mission.z) + 2.5, textAnchor: "middle", className: "map-pin-number" }, String(mission.index + 1)),
+      h("title", null, mission.title + (done ? " · הושלמה" : " · משימה"))
+    );
+  });
+
   return h("div", { className: "tool-panel-scroll map-panel-body" },
     h("div", { className: "map-status-line" },
-      h("span", null, "🔵 המיקום שלך"),
+      h("span", null, "🔵 המיקום שלך · X " + Math.round(player.x) + " · Z " + Math.round(player.z)),
       h("span", null, completedCount + "/" + missions.length + " משימות הושלמו")
     ),
-    h("svg", { className: "world-map-svg", viewBox: "0 0 520 520", role: "img", "aria-label": "מפת העיר והאיים עם מיקום השחקן, משימות ותחנות מרכזיות" },
+    h("svg", { className: "world-map-svg", viewBox: "0 0 620 620", role: "img", "aria-label": "מפת עולם מפורטת עם כבישים, שכונות, איים, תחנות, אתרים ומיקום השחקן" },
       h("defs", null,
-        h("pattern", { id: "map-water-grid", width: "34", height: "34", patternUnits: "userSpaceOnUse" },
-          h("path", { d: "M 34 0 L 0 0 0 34", fill: "none", stroke: "#8eb8ba", strokeWidth: ".55", opacity: ".22" })
-        )
+        h("pattern", { id: "map-water-grid", width: "36", height: "36", patternUnits: "userSpaceOnUse" },
+          h("path", { d: "M 36 0 L 0 0 0 36", fill: "none", stroke: "#8eb8ba", strokeWidth: ".65", opacity: ".22" })
+        ),
+        h("pattern", { id: "map-water-ripples", width: "74", height: "58", patternUnits: "userSpaceOnUse" },
+          h("path", { d: "M 8 18 q 9 -5 18 0 M 43 43 q 11 -5 22 0", fill: "none", stroke: "#9bd1d0", strokeWidth: ".8", opacity: ".17" })
+        ),
+        h("clipPath", { id: "world-map-city-clip" }, h("path", { d: coastPath }))
       ),
-      h("rect", { x: 0, y: 0, width: size, height: size, rx: 18, fill: "#173f4a" }),
+      h("rect", { x: 0, y: 0, width: size, height: size, rx: 18, fill: "#123b49" }),
       h("rect", { x: 0, y: 0, width: size, height: size, rx: 18, fill: "url(#map-water-grid)" }),
-      h("path", { d: "M " + px(-190) + " " + py(-175) + " L " + px(190) + " " + py(-175) + " L " + px(190) + " " + py(175) + " L " + px(-190) + " " + py(175) + " Z", fill: "#6b806a", stroke: "#b7b28c", strokeWidth: "2", opacity: ".82" }),
-      h("ellipse", { cx: px(0), cy: py(0), rx: 57, ry: 48, fill: "#778d72", stroke: "#e1d1a6", strokeWidth: "2", opacity: ".82" }),
-      ...islands.map((island) => h("g", { key: island.id },
-        h("ellipse", { cx: px(island.x), cy: py(island.z), rx: Math.max(10, island.rx * inner / span * .86), ry: Math.max(9, island.rz * inner / span * .86), fill: island.color || "#568c62", stroke: "#e6d5a7", strokeWidth: "2", opacity: ".94" }),
-        h("ellipse", { cx: px(island.x), cy: py(island.z), rx: Math.max(5, island.rx * inner / span * .62), ry: Math.max(5, island.rz * inner / span * .62), fill: "none", stroke: island.isPlayerIsland ? island.flagColor : "rgba(255,255,255,.22)", strokeWidth: island.isPlayerIsland ? "3" : "1", strokeDasharray: island.isPlayerIsland ? "none" : "3 4" }),
-        island.isPlayerIsland && h("path", { d: "M " + (px(island.x)-6) + " " + (py(island.z)-18) + " l 12 0 0 9 -12 0 Z", fill: island.flagColor, stroke: "#fff5d9", strokeWidth: "1" }),
-        h("text", { x: px(island.x), y: py(island.z) + 3, textAnchor: "middle", className: "map-island-label" }, island.isPlayerIsland ? "האי שלך: " + island.name : island.name)
-      )),
-      routePoints && h("polyline", { points: routePoints, fill: "none", stroke: "#8de2e4", strokeWidth: "3", strokeDasharray: "7 5", strokeLinecap: "round", opacity: ".92" }),
-      ...transitSpaces.map((place) => h("circle", { key: place.id, cx: px(place.x), cy: py(place.z), r: 5, fill: "#3e9eca", stroke: "#e9f9ff", strokeWidth: "1.5" })),
-      ...busStops.map((stop) => h("g", { key: "bus-" + stop.id },
-        h("circle", { cx: px(stop.x), cy: py(stop.z), r: 6.5, fill: "#247ea7", stroke: "#e8f5ff", strokeWidth: "2" }),
-        h("text", { x: px(stop.x), y: py(stop.z) + 3, textAnchor: "middle", className: "map-pin-number" }, "ב")
-      )),
-      ...landmarks.map((place, index) => h("g", { key: "landmark-" + index },
-        h("path", { d: "M " + px(place.x) + " " + (py(place.z)-7) + " l 7 7 -7 7 -7 -7 Z", fill: "#e9b75c", stroke: "#fff0c6", strokeWidth: "1" }),
-        h("title", null, place.name)
-      )),
-      ...missions.map((mission) => {
-        const offset = mission.id === "deer-ride" ? -7 : mission.id === "squirrel-catch" ? 7 : 0;
-        const x = px(mission.x) + offset, y = py(mission.z);
-        const done = completedIds.includes(mission.id);
-        return h("g", { key: mission.id },
-          h("circle", { cx: x, cy: y, r: 10, fill: done ? "#568d70" : "#d69c36", stroke: done ? "#c8f1d4" : "#fff0bb", strokeWidth: "2" }),
-          h("text", { x, y: y + 3.5, textAnchor: "middle", className: "map-pin-number" }, String(mission.index + 1)),
-          h("title", null, mission.title + (done ? " · הושלמה" : " · משימה"))
-        );
-      }),
-      h("circle", { cx: px(player.x), cy: py(player.z), r: 11, fill: "none", stroke: "#8edcff", strokeWidth: "3", opacity: ".8" }),
-      h("circle", { cx: px(player.x), cy: py(player.z), r: 6, fill: "#1678ee", stroke: "#ffffff", strokeWidth: "2.5" }),
-      h("text", { x: px(0), y: py(0) + 66, textAnchor: "middle", className: "map-city-label" }, "עיר מרכזית")
+      h("rect", { x: 0, y: 0, width: size, height: size, rx: 18, fill: "url(#map-water-ripples)" }),
+      h("path", { d: coastPath, fill: "#6e876e", stroke: "#e6d3a5", strokeWidth: 2.2 }),
+      h("g", { clipPath: "url(#world-map-city-clip)" },
+        h("path", { d: coastPath, fill: "#71886f" }),
+        ...gridRoads,
+        ...curvedRoads,
+        ...alleyways,
+        ...buildings,
+        ...homes,
+        ...treeMarkers,
+        ...crosswalks,
+        ...busRoutes,
+        ...districtLabels,
+        h("text", { x: px(0), y: py(0) + 4, textAnchor: "middle", className: "map-city-label" }, "מרכז העיר")
+      ),
+      ...islandLayers,
+      ...publicMarkers,
+      ...busStops,
+      ...cableStations,
+      ...landmarkMarkers,
+      ...missionMarkers,
+      h("circle", { cx: px(player.x), cy: py(player.z), r: 7.5, fill: "none", stroke: "#8edcff", strokeWidth: 2.4, opacity: .9 }),
+      h("circle", { cx: px(player.x), cy: py(player.z), r: 4.3, fill: "#1678ee", stroke: "#ffffff", strokeWidth: 1.8 }),
+      h("g", { transform: "translate(570 58)" },
+        h("path", { d: "M 0 -16 L -6 5 L 0 1 L 6 5 Z", fill: "#f7f0d7", stroke: "#233e48", strokeWidth: 1 }),
+        h("text", { x: 0, y: 19, textAnchor: "middle", className: "map-compass-label" }, "צפון")
+      ),
+      h("g", { transform: "translate(28 586)" },
+        h("path", { d: "M 0 0 H " + (200 * unit), stroke: "#fff3d1", strokeWidth: 3 }),
+        h("path", { d: "M 0 -4 V 4 M " + (200 * unit) + " " + -4 + " V 4", stroke: "#fff3d1", strokeWidth: 1.5 }),
+        h("text", { x: 100 * unit, y: -7, textAnchor: "middle", className: "map-scale-label" }, "200 מ׳")
+      )
     ),
     h("div", { className: "map-legend" },
+      h("span", null, "🔵 אתה כאן"),
       h("span", null, "🟡 משימה פעילה"),
       h("span", null, "🟢 משימה שהושלמה"),
-      h("span", null, "🔷 תחנת אוטובוס"),
-      h("span", null, "🔵 אתה כאן")
+      h("span", null, "🚌 תחנת אוטובוס"),
+      h("span", null, "🟣 תחנת רכבל"),
+      h("span", null, "◆ מקום מרכזי")
     ),
     h("div", { className: "map-mission-list" },
       h("strong", null, "מיקומי המשימות"),
@@ -114,13 +286,13 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
       ))
     ),
     h("div", { className: "map-landmark-list" },
-      h("strong", null, "מקומות מרכזיים"),
+      h("strong", null, "מקומות מרכזיים ותחנות"),
       ...landmarks.map((place, index) => h("span", { key: "l-" + index }, "◆ " + place.name)),
-      ...busStops.map((stop) => h("span", { key: "s-" + stop.id }, "🚌 " + stop.name))
+      ...busStops.map((stop) => h("span", { key: "s-" + stop.id }, "🚌 " + stop.name)),
+      ...CABLE_STATIONS.map((station) => h("span", { key: "c-" + station.id }, "🚠 " + station.name))
     )
   );
 }
-
 function BusArrivalBoard({ busInfoRef, embedded = false }) {
   const [expanded, setExpanded] = useState(embedded);
   const [, refresh] = useState(0);
@@ -325,9 +497,9 @@ function IslandCreationForm({ points, onCreate }) {
       h("span", { className: "island-flag-preview", style: { background: flagColor } }, "⚑")
     ),
     h("div", { className: "island-purchase-row" },
-      h("strong", null, "5,000 נקודות"),
-      h("button", { type: "button", disabled: points < 5000 || !name.trim(), onClick: () => onCreate({ name: name.trim(), style, flagColor }) },
-        points >= 5000 ? "רכישה ויצירת האי" : "חסרות " + (5000 - points) + " נקודות"
+      h("strong", null, "1,000 נקודות"),
+      h("button", { type: "button", disabled: points < 1000 || !name.trim(), onClick: () => onCreate({ name: name.trim(), style, flagColor }) },
+        points >= 1000 ? "רכישה ויצירת האי" : "חסרות " + (1000 - points) + " נקודות"
       )
     )
   );
@@ -2805,11 +2977,11 @@ export default function Game() {
   const createPlayerIsland = useCallback((draft) => {
     const current = shopSaveRef.current;
     if (current.customIsland) { setShopNotice("כבר יש לך אי אישי."); return; }
-    if (current.points < 5000) { setShopNotice("צריך 5,000 נקודות כדי לקנות אי."); return; }
+    if (current.points < 1000) { setShopNotice("צריך 1,000 נקודות כדי לקנות אי."); return; }
     const name = String(draft?.name || "").trim().slice(0, 24);
     if (!name) { setShopNotice("צריך לבחור שם לאי."); return; }
     const island = makeOwnedIsland(name, draft.style, draft.flagColor);
-    const next = { ...current, points: current.points - 5000, customIsland: island };
+    const next = { ...current, points: current.points - 1000, customIsland: island };
     shopSaveRef.current = next;
     setShopSave(next);
     setWildlifeMission((score) => ({ ...score, points: next.points }));

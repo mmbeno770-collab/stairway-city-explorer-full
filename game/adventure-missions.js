@@ -86,7 +86,7 @@ export function createAdventureMissionColliders(world, marine) {
   }));
   boxes.push(
     { x0: point.x - 2.1, x1: point.x + 2.1, y0: .25, y1: 16.5, z0: point.z - 2.1, z1: point.z + 2.1, kind: "collisionOnly", collide: true, noGround: true },
-    { x0: point.x - 6.1, x1: point.x + 6.1, y0: 16.75, y1: 17.08, z0: point.z - 6.1, z1: point.z + 6.1, kind: "missionStep", collide: true }
+    { x0: point.x - 6.1, x1: point.x + 6.1, y0: 16.52, y1: 16.85, z0: point.z - 6.1, z1: point.z + 6.1, kind: "missionStep", collide: true }
   );
   return boxes;
 }
@@ -111,7 +111,7 @@ function Lighthouse({ point, active }) {
     h("group", { ref: beam, position: [0, 16.92, 0] },
       h("mesh", { position: [0, 0, 6.4], rotation: [Math.PI / 2, 0, 0], material: new THREE.MeshBasicMaterial({ color: "#ffe7a0", transparent: true, opacity: active ? .12 : .045, side: THREE.DoubleSide, depthWrite: false }) }, h("coneGeometry", { args: [2.3, 13, 24, 1, true] }))
     ),
-    h("mesh", { position: [0, 17.075, 0], rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [2.35, 6.05, 64] })),
+    h("mesh", { position: [0, 16.845, 0], rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [2.35, 6.05, 64] })),
     h("mesh", { position: [0, 17.12, 0], material: mats.gold }, h("torusGeometry", { args: [5.35, .12, 10, 64] })),
     h("mesh", { position: [0, 17.12, 0], rotation: [Math.PI / 2, 0, 0], material: mats.gold }, h("torusGeometry", { args: [5.35, .07, 8, 64] })),
     ...steps.map((step) => h("mesh", {

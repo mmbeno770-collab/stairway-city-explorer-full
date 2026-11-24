@@ -500,9 +500,9 @@ function IslandCreationForm({ points, onCreate }) {
         ...ISLAND_STYLE_OPTIONS.map((option) => h("option", { key: option.id, value: option.id }, option.title))
       )
     ),
-    h("label", { className: "island-form-field island-flag-picker" }, "צבע הדגל",
+    h("label", { className: "island-form-field island-flag-picker" }, "צבע מסגרת השלט",
       h("input", { type: "color", value: flagColor, onChange: (event) => setFlagColor(event.target.value), "aria-label": "בחירת צבע הדגל" }),
-      h("span", { className: "island-flag-preview", style: { background: flagColor } }, "⚑")
+      h("span", { className: "island-flag-preview", style: { background: flagColor } }, "🪧")
     ),
     h("div", { className: "island-purchase-row" },
       h("strong", null, "1,000 נקודות"),
@@ -527,7 +527,7 @@ function ShopPanel({ points, ownedItems, island, notice, onBuy, onCreateIsland, 
         ? h(IslandCreationForm, { points, onCreate: onCreateIsland })
         : h("section", { className: "owned-island-shop" },
           h("div", { className: "owned-island-heading" },
-            h("span", { className: "owned-island-flag", style: { background: island.flagColor } }, "⚑"),
+            h("span", { className: "owned-island-flag", style: { background: island.flagColor } }, "🪧"),
             h("div", null, h("strong", null, island.name), h("small", null, ISLAND_STYLE_OPTIONS.find((style) => style.biome === island.biome)?.title || "אי אישי"))
           ),
           h("div", { className: "owned-island-stats" },

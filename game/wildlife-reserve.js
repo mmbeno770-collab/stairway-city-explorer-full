@@ -26,7 +26,14 @@ export const WILDLIFE_MISSIONS = [
   { id: "deer-ride", title: "רכיבה על אייל", description: "התכופפו עם C, התקרבו לאייל בשקט, לחצו F כדי לעלות עליו ורכבו לפחות 8 שניות.", location: "קרחת האיילים בשמורת הטבע", type: "deerRide", points: 400 },
   { id: "squirrel-catch", title: "תפיסת סנאי", description: "התכופפו עם C, התקרבו לבסיס העץ כשהסנאי נח על ענף, ולחצו F כדי לתפוס אותו בעדינות.", location: "חורשת הסנאים בשמורת הטבע", type: "squirrel", points: 300 },
   { id: "bird-lookout", title: "מצפור הציפורים", description: "עלו למצפור העץ שבקצה השמורה והגיעו לסמן הזהוב.", location: "מצפור העץ בשמורה", type: "visit", dx: 8, dz: 6, radius: 3.8, points: 180 },
-  { id: "island", title: "כיבוש אי הדקלים", description: "הגיעו לאי הדקלים, מצאו את הדגל ולחצו F כדי לתבוע בעלות על האי.", location: "אי הדקלים, מצפון לעיר", type: "island", x: 0, z: -470, radius: 7, points: 600 }
+  { id: "island", title: "כיבוש אי הדקלים", description: "הגיעו לאי הדקלים, מצאו את הדגל ולחצו F כדי לתבוע בעלות על האי.", location: "אי הדקלים, מצפון לעיר", type: "island", x: 0, z: -470, radius: 7, points: 600 },
+  { id: "deer-guardian", title: "שומר האיילים", description: "התכופפו עם C, התקרבו לקרחת האיילים והישארו ליד שלושת האיילים במשך 7 שניות בלי להבהיל אותם.", location: "קרחת האיילים בשמורת הטבע", type: "deerGuard", dx: 4.3, dz: -8.3, points: 320 },
+  { id: "birdhouses", title: "בית לציפורים", description: "מצאו שלושה בתי ציפורים ברחבי השמורה והתקרבו לכל אחד מהם כדי לבדוק אותו.", location: "חורשת בתי הציפורים בשמורת הטבע", type: "birdhouses", dx: -11, dz: -9, points: 260 },
+  { id: "secret-stream", title: "בעקבות הנחל", description: "עקבו אחרי הנחל, עברו על גשר העץ והמשיכו עד למפל הנסתר.", location: "הנחל והגשר בשמורת הטבע", type: "stream", dx: -5, dz: 12, points: 300 },
+  { id: "secret-lighthouse", title: "המגדלור הסודי", description: "הפליגו לאי הדקלים, מצאו את המגדלור וטפסו במדרגות עד למרפסת האור בראשו.", location: "אי הדקלים, מצפון לעיר", type: "lighthouse", points: 500 },
+  { id: "buoy-course", title: "מסלול המצופים", description: "הפליגו בסירה דרך חמשת המצופים לפי הסדר, מהמצוף הראשון ועד החמישי.", location: "הים שמקיף את אי הדקלים", type: "buoys", points: 380 },
+  { id: "city-observation", title: "תצפית העיר", description: "הגיעו לגג הבניין הגבוה ביותר בעיר, מצאו את הטלסקופ והסימון הסודי.", location: "מרפסת התצפית על גג המגדל הגבוה בעיר", type: "observation", points: 340 },
+  { id: "cable-journey", title: "מסע הרכבל", description: "עלו לרכבל ובקרו בשלוש תחנות רכבל שונות במהלך הנסיעה.", location: "שלוש תחנות לאורך קו הרכבל", type: "cableTour", points: 300 }
 ];
 
 function CityAnimal({ animal, playerPositionRef, reserveCenter }) {
@@ -237,6 +244,78 @@ function AnimalLeg({ position, material, refValue, length = .42, width = .075 })
   );
 }
 
+const STREAM_WATER = new THREE.MeshPhysicalMaterial({ color: "#49aebe", roughness: .16, metalness: .04, transparent: true, opacity: .78, clearcoat: 1, clearcoatRoughness: .08, side: THREE.DoubleSide, depthWrite: false });
+const BIRDHOUSE_WOOD = fur("#936a43");
+const BIRDHOUSE_ROOF = fur("#b45f43");
+const BIRDHOUSE_HOLE = fur("#292d2a");
+
+function Birdhouse({ x, z, index }) {
+  const bird = useRef(null), wings = useRef([]);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + index * 1.7;
+    if (bird.current) { bird.current.position.y = 4.28 + Math.sin(t * 2.1) * .045; bird.current.rotation.y = Math.sin(t * .8) * .18; }
+    wings.current.forEach((wing, i) => { if (wing) wing.rotation.z = (i ? 1 : -1) * (.08 + Math.sin(t * 7.5) * .3); });
+  });
+  return h("group", { position: [x, 0, z] },
+    h("mesh", { position: [0, 3.45, -.12], material: BIRDHOUSE_WOOD, castShadow: true }, h("boxGeometry", { args: [.13, 1.35, .15] })),
+    h("mesh", { position: [0, 3.92, .1], material: BIRDHOUSE_WOOD, castShadow: true }, h("boxGeometry", { args: [.88, .82, .68] })),
+    h("mesh", { position: [0, 4.4, .1], material: BIRDHOUSE_ROOF, castShadow: true }, h("coneGeometry", { args: [.72, .5, 4] })),
+    h("mesh", { position: [0, 3.99, .45], material: BIRDHOUSE_HOLE }, h("circleGeometry", { args: [.13, 20] })),
+    h("mesh", { position: [0, 3.72, .53], material: BIRDHOUSE_WOOD }, h("cylinderGeometry", { args: [.035, .035, .34, 8] })),
+    h("group", { ref: bird, position: [0, 4.28, .66] },
+      h("mesh", { material: fur(index === 1 ? "#6f9b88" : "#d2a25c"), scale: [.19, .14, .24], castShadow: true }, h("sphereGeometry", { args: [1, 16, 12] })),
+      h("mesh", { position: [0, .13, .14], material: CREAM, scale: [.105, .1, .12] }, h("sphereGeometry", { args: [1, 12, 10] })),
+      h("mesh", { position: [0, .04, .28], material: ORANGE, rotation: [Math.PI / 2, 0, 0] }, h("coneGeometry", { args: [.06, .18, 6] })),
+      ...[-1, 1].map((side, i) => h("mesh", { key: "wing-" + side, ref: (node) => { wings.current[i] = node; }, position: [side * .17, .02, -.02], rotation: [0, 0, side * .12], material: fur("#547b70"), scale: [.2, .055, .2] }, h("sphereGeometry", { args: [1, 12, 8] })))
+    )
+  );
+}
+
+function Waterfall({ x, z }) {
+  const sheet = useRef(null), droplets = useRef([]);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (sheet.current) { sheet.current.material.opacity = .68 + Math.sin(t * 4.2) * .08; sheet.current.position.x = x + Math.sin(t * 2.4) * .025; }
+    droplets.current.forEach((drop, i) => {
+      if (!drop) return;
+      const phase = (t * 1.7 + i * .21) % 1;
+      drop.position.y = 3.65 - phase * 3.1;
+      drop.position.x = x - .95 + (i % 5) * .46 + Math.sin(t * 3 + i) * .08;
+      drop.visible = phase < .96;
+      drop.scale.setScalar(.65 + Math.sin(t * 8 + i) * .14);
+    });
+  });
+  return h("group", null,
+    h("mesh", { position: [x, .25, z], material: STONE, scale: [2.6, .75, 1.65], castShadow: true }, h("dodecahedronGeometry", { args: [1, 1] })),
+    h("mesh", { position: [x - 1.8, .45, z + .35], material: STONE, scale: [1.35, .62, 1.25], castShadow: true }, h("dodecahedronGeometry", { args: [1, 1] })),
+    h("mesh", { ref: sheet, position: [x, 1.95, z + .82], material: STREAM_WATER }, h("planeGeometry", { args: [3.35, 3.8, 10, 16] })),
+    ...Array.from({ length: 12 }, (_, i) => h("mesh", { key: "fall-drop-" + i, ref: (node) => { droplets.current[i] = node; }, position: [x, 3.2, z + 1.04], material: STREAM_WATER }, h("sphereGeometry", { args: [.055 + (i % 3) * .018, 8, 7] }))),
+    h("mesh", { position: [x, .09, z + 1.85], rotation: [-Math.PI / 2, 0, 0], material: WATER, scale: [2.2, 1.12, 1] }, h("circleGeometry", { args: [1, 36] })),
+    ...[-1, 1].map((side) => h("mesh", { key: "fall-rock-" + side, position: [x + side * 2.05, .55, z + .65], material: STONE, scale: [.9, .72, .8], castShadow: true }, h("dodecahedronGeometry", { args: [.9, 1] })))
+  );
+}
+
+function StreamAndBirdhouses({ cx, cz, reserveScale }) {
+  const route = [[-5, 12], [-5, -2], [0, -5], [6, -8], [12, -10]];
+  const stream = route.slice(0, -1).map(([x1, z1], i) => {
+    const [x2, z2] = route[i + 1], dx = x2 - x1, dz = z2 - z1;
+    return h("mesh", {
+      key: "stream-ribbon-" + i,
+      position: [cx + (x1 + x2) / (2 * reserveScale), .105, cz + (z1 + z2) / (2 * reserveScale)],
+      rotation: [-Math.PI / 2, 0, Math.atan2(dx, dz)],
+      material: STREAM_WATER
+    }, h("planeGeometry", { args: [1.8 / reserveScale, Math.hypot(dx, dz) / reserveScale] }));
+  });
+  const houses = [[-11, -9], [10.7, -8.8], [4.7, 10.8]].map(([dx, dz], index) =>
+    h(Birdhouse, { key: "birdhouse-" + index, x: cx + dx / reserveScale, z: cz + dz / reserveScale, index })
+  );
+  return h(React.Fragment, null,
+    ...stream,
+    h(Waterfall, { x: cx + 12 / reserveScale, z: cz - 10 / reserveScale }),
+    ...houses
+  );
+}
+
 function MissionBeacon({ x, z }) {
   const root = useRef(null);
   const ring = useRef(null);
@@ -319,16 +398,60 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
     };
   }, [wildlifeRef, animals, cx, cz]);
   useEffect(() => { notified.current = new Set(completedIds); }, [completedIds]);
-  useFrame(() => {
+  const extraProgress = useRef({ deerHold: 0, birdhouses: new Set(), streamStep: 0, lastCompletedCount: completedIds.length });
+  useFrame((_, dt) => {
     if (!reserve) return;
     const player = playerPositionRef.current;
-    if (!player || player.mode !== "walk") return;
+    if (!player) return;
+    if (completedIds.length < extraProgress.current.lastCompletedCount) {
+      extraProgress.current.deerHold = 0;
+      extraProgress.current.birdhouses.clear();
+      extraProgress.current.streamStep = 0;
+    }
+    extraProgress.current.lastCompletedCount = completedIds.length;
+    if (player.mode !== "walk") return;
+
     for (const mission of WILDLIFE_MISSIONS) {
       if (mission.type !== "visit" || completedIds.includes(mission.id) || notified.current.has(mission.id)) continue;
       const dx = player.x - (cx + mission.dx * reserveScale), dz = player.z - (cz + mission.dz * reserveScale);
-      if (dx * dx + dz * dz <= mission.radius * mission.radius) {
+      if (dx * dx + dz * dz <= (mission.radius || 4.2) ** 2) {
         notified.current.add(mission.id);
-        onMissionComplete(mission.id);
+        onMissionComplete?.(mission.id);
+      }
+    }
+
+    if (!completedIds.includes("deer-guardian") && !notified.current.has("deer-guardian")) {
+      const deer = (wildlifeRef?.current?.animals || []).filter((animal) => animal.type === "deer" && !animal.mounted);
+      const calmGroup = player.sneaking && deer.length >= 3 && deer.slice(0, 3).every((animal) => {
+        const distance = Math.hypot(player.x - animal.x, player.z - animal.z);
+        return distance < 11.5 && distance > 1.65 && !animal.fleeing;
+      });
+      extraProgress.current.deerHold = calmGroup ? extraProgress.current.deerHold + Math.min(dt, .05) : 0;
+      if (extraProgress.current.deerHold >= 7) {
+        notified.current.add("deer-guardian");
+        onMissionComplete?.("deer-guardian");
+      }
+    }
+
+    if (!completedIds.includes("birdhouses") && !notified.current.has("birdhouses")) {
+      [[-11, -9], [10.7, -8.8], [4.7, 10.8]].forEach(([dx, dz], index) => {
+        if (Math.hypot(player.x - (cx + dx), player.z - (cz + dz)) < 5.2) extraProgress.current.birdhouses.add(index);
+      });
+      if (extraProgress.current.birdhouses.size === 3) {
+        notified.current.add("birdhouses");
+        onMissionComplete?.("birdhouses");
+      }
+    }
+
+    if (!completedIds.includes("secret-stream") && !notified.current.has("secret-stream")) {
+      const streamSteps = [[-5, 12, 5.0], [-5, -2, 4.8], [12, -10, 5.4]];
+      const step = streamSteps[extraProgress.current.streamStep];
+      if (step && Math.hypot(player.x - (cx + step[0] * reserveScale), player.z - (cz + step[1] * reserveScale)) < step[2]) {
+        extraProgress.current.streamStep += 1;
+        if (extraProgress.current.streamStep === streamSteps.length) {
+          notified.current.add("secret-stream");
+          onMissionComplete?.("secret-stream");
+        }
       }
     }
   });
@@ -424,7 +547,8 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
           h("mesh", { position: [0, .16, 0], material: REED }, h("cylinderGeometry", { args: [.018, .025, .32, 5] })),
           h("mesh", { position: [0, .32, 0], material: FLOWER }, h("sphereGeometry", { args: [.075, 8, 7] }))
         );
-      })
+      }),
+      h(StreamAndBirdhouses, { cx, cz, reserveScale })
     ),
     h("group", { position: [cx - 5, .18, cz - 2] },
       h("mesh", { position: [0, 0, 0], material: WOOD, castShadow: true }, h("boxGeometry", { args: [7.8, .2, 1.35] })),
@@ -454,13 +578,20 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
       h("mesh", { position: [0, 3.63, 0], material: WOOD }, h("coneGeometry", { args: [.54, .34, 8] }))
     ),
     ...animals.map((animal) => h(CityAnimal, { key: animal.id, animal, playerPositionRef, reserveCenter: { x: cx, z: cz } })),
-    ...WILDLIFE_MISSIONS.filter((mission) => mission.type === "visit" && !completedIds.includes(mission.id)).map((mission) =>
-      h(MissionBeacon, { key: mission.id, x: cx + mission.dx * reserveScale, z: cz + mission.dz * reserveScale })
-    ),
+    ...WILDLIFE_MISSIONS.filter((mission) => ["visit", "deerGuard", "birdhouses", "stream"].includes(mission.type) && !completedIds.includes(mission.id)).flatMap((mission) => {
+      if (mission.type === "stream") return [
+        h(MissionBeacon, { key: mission.id + "-start", x: cx - 5 * reserveScale, z: cz + 12 * reserveScale }),
+        h(MissionBeacon, { key: mission.id + "-bridge", x: cx - 5 * reserveScale, z: cz - 2 * reserveScale }),
+        h(MissionBeacon, { key: mission.id + "-fall", x: cx + 12 * reserveScale, z: cz - 10 * reserveScale })
+      ];
+      return [h(MissionBeacon, { key: mission.id, x: cx + (mission.dx || 0) * reserveScale, z: cz + (mission.dz || 0) * reserveScale })];
+    }),
     h("group", { position: [0, .3, -470] },
-      h("mesh", { position: [0, 1.45, 0], material: WOOD }, h("cylinderGeometry", { args: [.075, .11, 2.9, 10] })),
-      h("mesh", { position: [.54, 2.45, 0], material: fur("#d9e2d7") }, h("boxGeometry", { args: [1.05, .7, .045] })),
-      h("mesh", { position: [.54, 2.45, .028], material: fur(completedIds.includes("island") ? "#d9b24c" : "#577b50") }, h("planeGeometry", { args: [.9, .56] }))
+      ...[-.9, .9].map((side) => h("mesh", { key: "island-sign-post-" + side, position: [side, 1.25, 0], material: WOOD, castShadow: true },
+        h("cylinderGeometry", { args: [.085, .12, 2.5, 10] }))),
+      h("mesh", { position: [0, 2.28, -.02], material: WOOD, castShadow: true }, h("boxGeometry", { args: [3.3, 1.05, .2] })),
+      h("mesh", { position: [0, 2.28, .095], material: fur("#d9e2d7") }, h("boxGeometry", { args: [3.05, .8, .035] })),
+      h("mesh", { position: [0, 2.28, .12], material: fur(completedIds.includes("island") ? "#d9b24c" : "#577b50") }, h("boxGeometry", { args: [2.82, .62, .025] }))
     ),
     !completedIds.includes("island") ? h(MissionBeacon, { x: 5, z: -470 }) : null
   );

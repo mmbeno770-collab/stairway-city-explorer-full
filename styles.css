@@ -580,6 +580,18 @@ button { font: inherit; }
 .island-build-buy { display: flex; justify-content: space-between; align-items: center; gap: 7px; margin-top: 9px; }
 .island-build-buy b { color: #f3d18b; font-size: 11px; }
 .island-build-buy button { padding: 7px 10px; font-size: 10px; }
+.island-weather-panel, .island-repair-panel { margin-top: 12px; padding: 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: rgba(255,255,255,.045); }
+.island-weather-panel > strong, .island-repair-panel > strong { display: block; color: #f0dfba; font-size: 12px; }
+.island-weather-panel p { margin: 5px 0 10px; color: #c0ccc8; font-size: 10px; line-height: 1.5; }
+.island-weather-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.island-weather-actions button, .island-repair-row button { border: 1px solid rgba(238,205,139,.38); border-radius: 9px; padding: 8px 10px; color: #241d11; background: #e7c77e; font-size: 10px; font-weight: 800; cursor: pointer; }
+.island-weather-actions button:disabled, .island-repair-row button:disabled { color: #c4c8c2; background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.1); cursor: default; }
+.island-repair-panel { display: grid; gap: 8px; }
+.island-repair-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
+.island-repair-row b, .island-repair-row small { display: block; }
+.island-repair-row b { color: #f0e5cf; font-size: 11px; }
+.island-repair-row small { margin-top: 3px; color: #c0ccc8; font-size: 10px; }
+.island-repair-row button { flex: 0 0 auto; }
 .island-online-note, .shop-island-safety-note { margin: 11px 0 0; color: #b8c6c0; font-size: 10px; line-height: 1.55; }
 .shop-island-safety-note { padding: 9px 11px; border-radius: 10px; background: rgba(118,151,183,.09); color: #c1d0d8; }
 .shop-divider-title { padding-top: 12px; border-top: 1px solid rgba(255,255,255,.1); }

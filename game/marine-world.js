@@ -499,7 +499,7 @@ function OwnedIslandDecor({ structure }) {
  );
  if (type === "mini-island") return React.createElement("group", root,
   sphere("floating-rock", [0, .4, 0], [2.2, .65, 2.0], landmarkStone),
-  sphere("grass-top", [0, .82, 0], [2.1, .18, 1.9], GRASS),
+  sphere("grass-top", [0, .82, 0], [2.1, .18, 1.9], leaf),
   cylinder("palm-trunk", [0, 2.0, 0], .11, 2.3, landmarkWood, 7),
   sphere("palm-crown", [0, 3.35, 0], [1.05, .44, 1.05], leaf)
  );

@@ -63,14 +63,14 @@ export function getAdventureMissionLayout(world, marine) {
 }
 
 function makeLighthouseSteps(point) {
-  return Array.from({ length: 32 }, (_, index) => {
-    const side = Math.floor(index / 8), step = index % 8, u = -3.5 + step * 1.0;
+  return Array.from({ length: 48 }, (_, index) => {
+    const side = Math.floor(index / 12), step = index % 12, u = -4.1 + step * .745;
     let x = 0, z = 0, sx = 1.16, sz = 1.42;
     if (side === 0) { x = u; z = -4.65; }
     else if (side === 1) { x = 4.65; z = u; sx = 1.42; sz = 1.16; }
     else if (side === 2) { x = -u; z = 4.65; }
     else { x = -4.65; z = -u; sx = 1.42; sz = 1.16; }
-    const top = .56 + index * .52;
+    const top = .56 + index * .34;
     return { x: point.x + x, z: point.z + z, y: top, sx, sz, index };
   });
 }
@@ -93,7 +93,7 @@ export function createAdventureMissionColliders(world, marine) {
 
 function Lighthouse({ point, active }) {
   const beam = useRef(null), lamp = useRef(null), steps = useMemo(() => makeLighthouseSteps(point), [point]);
-  useFrame(({ clock }, dt) => {
+  useFrame(({ clock }) => {
     if (beam.current) beam.current.rotation.y = clock.elapsedTime * .34;
     if (lamp.current) lamp.current.material.emissiveIntensity = .85 + Math.sin(clock.elapsedTime * 2.4) * .24;
   });
@@ -157,7 +157,7 @@ function ObservationDeck({ target, active }) {
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
     if (telescope.current) telescope.current.rotation.y = Math.sin(t * .22) * .22;
-    if (marker.current) { marker.current.position.y = target.y + 2.5 + Math.sin(t * 2.1) * .18; marker.current.rotation.y = t * .6; }
+    if (marker.current) { marker.current.position.y = 2.5 + Math.sin(t * 2.1) * .18; marker.current.rotation.y = t * .6; marker.current.visible = active; }
   });
   if (!target.building) return null;
   const building = target.building, x0 = building.x0, x1 = building.x1, z0 = building.z0, z1 = building.z1;

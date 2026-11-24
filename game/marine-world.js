@@ -408,17 +408,20 @@ function createOwnedIslandNameTexture(name) {
  ctx.fillText(label,320,73);
  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;return texture;
 }
-function OwnedIslandFlag({island}) {
+function OwnedIslandSign({island}) {
  const texture=useMemo(()=>createOwnedIslandNameTexture(island.name),[island.name]);
  const signMaterial=useMemo(()=>new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}),[texture]);
- const clothMaterial=useMemo(()=>new THREE.MeshStandardMaterial({color:island.flagColor||"#d84b45",side:THREE.DoubleSide,roughness:.82}),[island.flagColor]);
- useEffect(()=>()=>{texture.dispose();signMaterial.dispose();clothMaterial.dispose();},[texture,signMaterial,clothMaterial]);
+ const trimMaterial=useMemo(()=>new THREE.MeshStandardMaterial({color:island.flagColor||"#d4ad68",roughness:.48,metalness:.18}),[island.flagColor]);
+ useEffect(()=>()=>{texture.dispose();signMaterial.dispose();trimMaterial.dispose();},[texture,signMaterial,trimMaterial]);
  return React.createElement("group",{position:[island.x-island.rx*.48,.3,island.z-island.rz*.28]},
-  React.createElement("mesh",{position:[0,2.45,0],material:landmarkWood,castShadow:true},React.createElement("cylinderGeometry",{args:[.085,.11,4.9,8]})),
-  React.createElement("mesh",{position:[.78,4.05,0],material:clothMaterial,castShadow:true},React.createElement("planeGeometry",{args:[1.55,1.02]})),
-  React.createElement("mesh",{position:[0,5.16,0],material:landmarkWood},React.createElement("boxGeometry",{args:[4.6,.12,.18]})),
-  React.createElement("mesh",{position:[0,5.85,.02],material:signMaterial},React.createElement("planeGeometry",{args:[4.55,1.02]})),
-  React.createElement("mesh",{position:[0,5.17,0],material:landmarkWood},React.createElement("boxGeometry",{args:[.12,1.45,.14]}))
+  ...[-1,1].map((side)=>React.createElement("group",{key:"sign-support-"+side,position:[side*1.72,0,0]},
+   React.createElement("mesh",{position:[0,1.68,0],material:landmarkWood,castShadow:true},React.createElement("boxGeometry",{args:[.2,3.35,.2]})),
+   React.createElement("mesh",{position:[0,.14,0],material:trimMaterial},React.createElement("boxGeometry",{args:[.48,.22,.46]})),
+   React.createElement("mesh",{position:[0,3.28,0],material:trimMaterial},React.createElement("boxGeometry",{args:[.3,.16,.3]}))
+  )),
+  React.createElement("mesh",{position:[0,3.02,.02],material:landmarkWood,castShadow:true},React.createElement("boxGeometry",{args:[4.2,1.55,.24]})),
+  React.createElement("mesh",{position:[0,3.02,.16],material:trimMaterial},React.createElement("boxGeometry",{args:[3.95,1.3,.045]})),
+  React.createElement("mesh",{position:[0,3.02,.19],material:signMaterial},React.createElement("planeGeometry",{args:[3.78,1.12]}))
  );
 }
 function OwnedIslandField({field}) {
@@ -617,7 +620,7 @@ function IslandModel({island}){
   React.createElement("mesh",{geometry:top,position:[island.x,.29,island.z],material:grassMat,receiveShadow:true}),
   React.createElement(IslandFoam,{island}),
   !island.isPlayerIsland && React.createElement(IslandLandmark,{island}),
-  island.isPlayerIsland && React.createElement(OwnedIslandFlag,{island}),
+  island.isPlayerIsland && React.createElement(OwnedIslandSign,{island}),
   island.isPlayerIsland && (island.shieldStrength || 0) > 0 && React.createElement("group",{position:[island.x,.34,island.z]},
    React.createElement("mesh",{scale:[island.rx*.88,20+(island.shieldStrength||0)*.16,island.rz*.88],material:islandShieldMaterial,renderOrder:3},React.createElement("sphereGeometry",{args:[1,36,24,0,Math.PI*2,0,Math.PI/2]})),
    React.createElement("mesh",{rotation:[Math.PI/2,0,0],material:islandShieldRim,renderOrder:4},React.createElement("torusGeometry",{args:[Math.min(island.rx,island.rz)*.86,.16,8,96]}))

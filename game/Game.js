@@ -206,7 +206,7 @@ const ISLAND_BUILD_ITEMS = [
   { id: "guard-camp", type: "structure", icon: "🛡️", title: "מחנה שומרים", price: 150, description: "מוסיף 5 שומרים לדירוג ההגנה" },
   { id: "shield-kit", type: "shield", icon: "🛡️", title: "ציוד מגן לשומרים", price: 50, description: "מעלה את דירוג השמירה" },
   { id: "display-tank", type: "structure", icon: "🚜", title: "טנק תצוגה", price: 900, description: "רכב זחלי משוריין לקישוט האי, ללא ירי" },
-  { id: "shield-generator", type: "structure", icon: "🫧", title: "מחולל מגן לאי", price: 420, description: "מוסיף 20 לעוצמת המגן ומציג כיפת אנרגיה סביב האי, עד 100" }
+  { id: "shield-generator", type: "structure", icon: "🫧", title: "מחולל מגן לאי", price: 420, description: "מוסיף 20 לעוצמת המגן ומציג כיפת אנרגיה סביב האי, עד 100" },
   { id: "fountain", type: "structure", icon: "⛲", title: "מזרקה", price: 85, description: "מזרקה קטנה עם מים זורמים לאי" },
   { id: "bench", type: "structure", icon: "🪑", title: "ספסל גן", price: 45, description: "ספסל עץ בשבילי האי" },
   { id: "pool", type: "structure", icon: "🏊", title: "בריכה", price: 180, description: "בריכה כחולה לצד הבית" },

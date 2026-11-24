@@ -47,8 +47,8 @@ export function getAdventureMissionLayout(world, marine) {
   const tallest = (world?.buildings || []).reduce((best, building) =>
     !best || (building.floors?.length || 0) > (best.floors?.length || 0) ? building : best, null);
   const observation = tallest ? {
-    x: (tallest.x0 + tallest.x1) / 2,
-    z: (tallest.z0 + tallest.z1) / 2,
+    x: (tallest.x0 + tallest.x1) / 2 + 5.2,
+    z: (tallest.z0 + tallest.z1) / 2 + 5.2,
     y: (tallest.floors?.length || 1) * FLOOR_H,
     building: tallest
   } : { x: 0, z: 0, y: 0, building: null };
@@ -111,6 +111,7 @@ function Lighthouse({ point, active }) {
     h("group", { ref: beam, position: [0, 16.92, 0] },
       h("mesh", { position: [0, .02, 6.4], rotation: [-.06, 0, 0], material: new THREE.MeshBasicMaterial({ color: "#ffe7a0", transparent: true, opacity: active ? .12 : .045, side: THREE.DoubleSide, depthWrite: false }) }, h("coneGeometry", { args: [2.3, 13, 24, 1, true] }))
     ),
+    h("mesh", { position: [0, 17.075, 0], rotation: [-Math.PI / 2, 0, 0], material: mats.dark }, h("ringGeometry", { args: [2.35, 6.05, 64] })),
     h("mesh", { position: [0, 17.12, 0], material: mats.gold }, h("torusGeometry", { args: [5.35, .12, 10, 64] })),
     h("mesh", { position: [0, 17.12, 0], rotation: [Math.PI / 2, 0, 0], material: mats.gold }, h("torusGeometry", { args: [5.35, .07, 8, 64] })),
     ...steps.map((step) => h("mesh", {
@@ -166,8 +167,8 @@ function ObservationDeck({ target, active }) {
     h("mesh", { position: [0, .08, 0], material: mats.gold }, h("cylinderGeometry", { args: [3.5, 3.8, .16, 48] })),
     h("mesh", { position: [0, .18, 0], material: new THREE.MeshPhysicalMaterial({ color: "#8fd0d7", transparent: true, opacity: .2, metalness: .45, roughness: .18 }) }, h("cylinderGeometry", { args: [3.1, 3.1, .08, 48] })),
     ...[-1, 1].flatMap((side) => [
-      h("mesh", { key: "view-rail-x-" + side, position: [side * (x1 - x0) * .39, .72, 0], material: mats.dark }, h("boxGeometry", { args: [.12, 1.35, 6.4] })),
-      h("mesh", { key: "view-rail-z-" + side, position: [0, .72, side * (z1 - z0) * .39], material: mats.dark }, h("boxGeometry", { args: [6.4, 1.35, .12] }))
+      h("mesh", { key: "view-rail-x-" + side, position: [side * 4.25, .72, 0], material: mats.dark }, h("boxGeometry", { args: [.12, 1.35, 7.1] })),
+      h("mesh", { key: "view-rail-z-" + side, position: [0, .72, side * 4.25], material: mats.dark }, h("boxGeometry", { args: [7.1, 1.35, .12] }))
     ]),
     h("group", { ref: telescope, position: [0, .22, -1.0] },
       ...[-1, 1].map((side) => h("mesh", { key: "tripod-" + side, position: [side * .42, .56, .16], rotation: [0, 0, side * .24], material: mats.gold }, h("cylinderGeometry", { args: [.045, .065, 1.15, 9] }))),
@@ -175,7 +176,7 @@ function ObservationDeck({ target, active }) {
       h("mesh", { position: [0, 1.45, .41], rotation: [-.68, 0, 0], material: mats.glass }, h("cylinderGeometry", { args: [.16, .18, .15, 20] })),
       h("mesh", { position: [0, .32, -.12], material: mats.gold }, h("cylinderGeometry", { args: [.36, .36, .12, 20] }))
     ),
-    h("mesh", { ref: marker, position: [0, target.y + 2.5, 0], material: mats.glow }, h("octahedronGeometry", { args: [.34, 1] })),
+    h("mesh", { ref: marker, position: [0, 2.5, 0], material: mats.glow }, h("octahedronGeometry", { args: [.34, 1] })),
     h("mesh", { position: [0, .27, 2.5], material: mats.wood }, h("boxGeometry", { args: [2.6, .75, .13] })),
     h("mesh", { position: [0, .7, 2.58], material: mats.glow }, h("boxGeometry", { args: [2.1, .045, .025] }))
   );
@@ -225,7 +226,7 @@ export function AdventureMissions({ world, marine, playerPositionRef, completedI
     const lighthouse = layout["secret-lighthouse"];
     if (!completedIds.includes("secret-lighthouse") && player.y >= 16.55 && Math.hypot(player.x - lighthouse.x, player.z - lighthouse.z) < 7.8) onMissionComplete?.("secret-lighthouse");
     const view = layout["city-observation"];
-    if (!completedIds.includes("city-observation") && view.building && player.y >= view.y - .85 && Math.hypot(player.x - view.x, player.z - view.z) < 11.5) onMissionComplete?.("city-observation");
+    if (!completedIds.includes("city-observation") && view.building && player.y >= view.y - .85 && Math.hypot(player.x - view.x, player.z - view.z) < 5.6) onMissionComplete?.("city-observation");
   });
   return h(React.Fragment, null,
     layout.island && h(Lighthouse, { point: layout["secret-lighthouse"], active: !completedIds.includes("secret-lighthouse") }),

@@ -106,7 +106,7 @@ function beamBetween(key, start, end, thickness, material) {
   }, h("boxGeometry", { args: [length, thickness, thickness] }));
 }
 
-function stairRailings(steps) {
+function stairRailings(point, steps) {
   const railings = [];
   for (let side = 0; side < 4; side += 1) {
     const run = steps.slice(side * 12, side * 12 + 12);
@@ -114,7 +114,7 @@ function stairRailings(steps) {
       const edgePoint = (step) => {
         const xOffset = side === 1 || side === 3 ? edge * .78 : 0;
         const zOffset = side === 0 || side === 2 ? edge * .78 : 0;
-        return [step.x - steps[0].x + xOffset, step.y, step.z - steps[0].z + zOffset];
+        return [step.x - point.x + xOffset, step.y, step.z - point.z + zOffset];
       };
       run.forEach((step, index) => {
         if (index % 2 !== 0 && index !== run.length - 1) return;
@@ -177,7 +177,7 @@ function lighthouseBalcony() {
 
 function Lighthouse({ point, active }) {
   const beam = useRef(null), lamp = useRef(null), steps = useMemo(() => makeLighthouseSteps(point), [point]);
-  const stairRails = useMemo(() => stairRailings(steps), [steps]);
+  const stairRails = useMemo(() => stairRailings(point, steps), [point, steps]);
   const balconyRails = useMemo(() => lighthouseBalcony(), []);
   useFrame(({ clock }) => {
     if (beam.current) beam.current.rotation.y = clock.elapsedTime * .34;

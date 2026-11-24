@@ -459,7 +459,7 @@ function normalizeOwnedIsland(raw) {
     rocks: Array.isArray(raw.rocks) ? raw.rocks.slice(0, 50) : [],
     animals: Array.isArray(raw.animals) ? raw.animals.slice(0, 60) : [],
     fields: Array.isArray(raw.fields) ? raw.fields.slice(0, 40) : [],
-    structures: Array.isArray(raw.structures) ? raw.structures.slice(0, 60).map((structure) => ({
+    structures: Array.isArray(raw.structures) ? raw.structures.filter((structure) => structure?.type !== "sculpture").slice(0, 60).map((structure) => ({
       ...structure,
       health: numberOr(structure.health, 100, 0, 100)
     })) : [],

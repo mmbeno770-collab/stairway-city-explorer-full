@@ -20,6 +20,21 @@ const REED = fur("#6f8c50");
 const WOOD = fur("#76583d");
 const STONE = fur("#8a8d7e");
 const FLOWER = fur("#e8d6a8");
+function makeIslandSignMaterial() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 640; canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#244b3a"; ctx.fillRect(0, 0, 640, 160);
+    ctx.strokeStyle = "#e4c68b"; ctx.lineWidth = 10; ctx.strokeRect(8, 8, 624, 144);
+    ctx.direction = "rtl"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "bold 66px Arial"; ctx.fillStyle = "#fff1cf"; ctx.fillText("אי הדקלים", 320, 80);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+}
+const ISLAND_SIGN_FACE = makeIslandSignMaterial();
 
 export const WILDLIFE_MISSIONS = [
   { id: "duck-watch", title: "תצפית על הברווזים", description: "התקרבו בשקט לשפת האגם והתבוננו בברווזים.", location: "האגם בשמורת הטבע", type: "visit", dx: -5, dz: -2, radius: 4.4, points: 120 },
@@ -591,7 +606,8 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
         h("cylinderGeometry", { args: [.085, .12, 2.5, 10] }))),
       h("mesh", { position: [0, 2.28, -.02], material: WOOD, castShadow: true }, h("boxGeometry", { args: [3.3, 1.05, .2] })),
       h("mesh", { position: [0, 2.28, .095], material: fur("#d9e2d7") }, h("boxGeometry", { args: [3.05, .8, .035] })),
-      h("mesh", { position: [0, 2.28, .12], material: fur(completedIds.includes("island") ? "#d9b24c" : "#577b50") }, h("boxGeometry", { args: [2.82, .62, .025] }))
+      h("mesh", { position: [0, 2.28, .12], material: fur(completedIds.includes("island") ? "#d9b24c" : "#577b50") }, h("boxGeometry", { args: [2.82, .62, .025] })),
+      h("mesh", { position: [0, 2.28, .137], material: ISLAND_SIGN_FACE }, h("planeGeometry", { args: [2.55, .48] }))
     ),
     !completedIds.includes("island") ? h(MissionBeacon, { x: 5, z: -470 }) : null
   );

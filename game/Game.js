@@ -20,6 +20,7 @@ import { AmbientLife, QualityMonitor, StreetLights, WeatherEffects } from "./env
 import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./environment-sim.js";
 import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, mainlandCoastRadius, MarineWorld } from "./marine-world.js";
 import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
+import { AdventureMissions, createAdventureMissionColliders, getAdventureMissionLayout } from "./adventure-missions.js";
 import { useGameMultiplayer, MultiplayerAuthPanel, RemotePlayerAvatars, getPlayerIslandLocation } from "./multiplayer.js";
 
 const h = React.createElement;
@@ -41,12 +42,19 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
   const py = (z) => pad + ((z + span / 2) / span) * inner;
   const islands = marine?.islands || [];
   const reserve = world.wildlifeReserve || { x: 0, z: 0 };
-  const missions = WILDLIFE_MISSIONS.map((mission, index) => ({
-    ...mission,
-    x: Number.isFinite(mission.x) ? mission.x : reserve.x + (mission.dx || 0),
-    z: Number.isFinite(mission.z) ? mission.z : reserve.z + (mission.dz || 0),
-    index
-  }));
+  const adventureLayout = getAdventureMissionLayout(world, marine);
+  const reserveScale = 2.05;
+  const missions = WILDLIFE_MISSIONS.map((mission, index) => {
+    let marker = {
+      x: Number.isFinite(mission.x) ? mission.x : reserve.x + (mission.dx || 0) * reserveScale,
+      z: Number.isFinite(mission.z) ? mission.z : reserve.z + (mission.dz || 0) * reserveScale
+    };
+    if (mission.type === "lighthouse") marker = adventureLayout["secret-lighthouse"];
+    else if (mission.type === "buoys") marker = adventureLayout.buoys[0] || marker;
+    else if (mission.type === "observation") marker = adventureLayout["city-observation"];
+    else if (mission.type === "cableTour") marker = CABLE_STATIONS[0];
+    return { ...mission, ...marker, index };
+  });
   const pathFromPoints = (points) => (points || []).map((point, index) =>
     (index ? "L " : "M ") + px(point.x) + " " + py(point.z)
   ).join(" ");
@@ -413,7 +421,6 @@ const ISLAND_BUILD_ITEMS = [
   { id: "playground", type: "structure", icon: "🛝", title: "מתקן משחקים", price: 150, description: "מגלשה ונדנדה קטנה" },
   { id: "ice-cream-stand", type: "structure", icon: "🍦", title: "דוכן גלידה", price: 95, description: "דוכן צבעוני לאורחים" },
   { id: "clock-tower", type: "structure", icon: "🕰️", title: "מגדל שעון", price: 260, description: "מגדל שעון קטן ומיוחד" },
-  { id: "sculpture", type: "structure", icon: "🗿", title: "פסל אמנות", price: 110, description: "פסל לקישוט מרכז האי" },
   { id: "garden-lantern", type: "structure", icon: "🏮", title: "פנס גן", price: 60, description: "תאורה נעימה לשעות הערב" },
   { id: "greenhouse", type: "structure", icon: "🏡", title: "חממה", price: 230, description: "חממת זכוכית לגידול צמחים" },
   { id: "dock", type: "structure", icon: "🛟", title: "רציף עץ", price: 160, description: "רציף קטן על שפת האי" },
@@ -2876,6 +2883,7 @@ export default function Game() {
     const city = generateWorld(7);
     city.islands = marine.islands;
     city.boxes.push(...createIslandCollisionBoxes(marine.islands));
+    city.boxes.push(...createAdventureMissionColliders(city, marine));
     city.boxes.push(...city.trees.map((tree) => {
       const radius = .18 * (tree.s || 1);
       return { x0: tree.x - radius, x1: tree.x + radius, y0: 0, y1: 2.5 * (tree.s || 1), z0: tree.z - radius, z1: tree.z + radius, kind: "collisionOnly", collide: true, noGround: true };
@@ -3035,6 +3043,7 @@ export default function Game() {
     setShopNotice("המגן נטען ל־" + shieldStrength + "/100.");
   }, []);
   const buildOnPlayerIsland = useCallback((item) => {
+    if (!item || item.id === "sculpture") { setShopNotice("פסל אינו זמין לבנייה באי."); return; }
     const current = shopSaveRef.current, island = current.customIsland;
     if (!island || current.points < item.price || (item.id === "shield-generator" && (island.shieldStrength || 0) >= 100)) return;
     const count = island.animals.length + island.fields.length + island.structures.length;
@@ -3158,6 +3167,7 @@ export default function Game() {
         h(MarineWorld, { marine, boats, divingRef, quality }),
         h(RemotePlayerAvatars, { players: multiplayer.remotePlayers }),
          h(WildlifeReserve, { reserve: world.wildlifeReserve, playerPositionRef, wildlifeRef, completedIds: wildlifeMission.completedIds, onMissionComplete: completeWildlifeMission }),
+         h(AdventureMissions, { world, marine, playerPositionRef, completedIds: wildlifeMission.completedIds, onMissionComplete: completeWildlifeMission }),
         h(Cableway, { ride: cableRide, curve: cableCurve }),
         h(Boxes, { world, kind: "solid" }), h(Boxes, { world, kind: "glow" }), h(Boxes, { world, kind: "glass" }),
         h(Boxes, { world, kind: "roadMarking" }), h(Boxes, { world, kind: "tactile" }),
@@ -3217,7 +3227,7 @@ export default function Game() {
             return h("article", { key: mission.id, className: "wildlife-quest-item" + (done ? " is-complete" : "") },
               h("div", { className: "wildlife-quest-item-top" },
                 h("strong", null, (done ? "✓ " : "◈ ") + mission.title),
-                h("span", null, mission.points + " נק׳ · +" + Math.floor(mission.points / 10) + " 🪙")
+                h("span", null, mission.points + " נקודות")
               ),
               h("p", null, mission.description),
               h("small", null, "📍 " + mission.location)

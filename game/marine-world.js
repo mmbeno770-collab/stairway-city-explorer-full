@@ -439,6 +439,12 @@ function OwnedIslandField({field}) {
 }
 const islandGold = new THREE.MeshStandardMaterial({ color: "#d9b65e", metalness: .72, roughness: .28 });
 const islandGlow = new THREE.MeshBasicMaterial({ color: "#a8f1ee", toneMapped: false });
+const islandShieldMaterial = new THREE.MeshBasicMaterial({ color: "#79e6ff", transparent: true, opacity: .105, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+const islandShieldRim = new THREE.MeshBasicMaterial({ color: "#8cecff", transparent: true, opacity: .72, depthWrite: false, toneMapped: false });
+const tankIslandArmor = new THREE.MeshStandardMaterial({ color: "#667d62", roughness: .84, metalness: .2 });
+const tankIslandTracks = new THREE.MeshStandardMaterial({ color: "#29332e", roughness: .96, metalness: .12 });
+const tankIslandTrim = new THREE.MeshStandardMaterial({ color: "#b5aa7d", roughness: .58, metalness: .28 });
+const tankIslandLamp = new THREE.MeshBasicMaterial({ color: "#ffe7a4", toneMapped: false });
 function OwnedIslandDecor({ structure }) {
  const box = (key, position, size, material = landmarkWood, rotation = [0, 0, 0]) =>
   React.createElement("mesh", { key, position, scale: size, material, rotation, castShadow: true, receiveShadow: true }, React.createElement("boxGeometry", { args: [1, 1, 1] }));
@@ -448,6 +454,20 @@ function OwnedIslandDecor({ structure }) {
   React.createElement("mesh", { key, position, scale, material, castShadow: true }, React.createElement("sphereGeometry", { args: [1, 12, 10] }));
  const root = { position: [structure.x, .31, structure.z] };
  const type = structure.type;
+ if (type === "display-tank") return React.createElement("group", root,
+  box("left-track", [-1.82, .56, 0], [.62, .92, 5.35], tankIslandTracks),
+  box("right-track", [1.82, .56, 0], [.62, .92, 5.35], tankIslandTracks),
+  ...[-1, 1].flatMap((side) => [-2, -1, 0, 1, 2].map((z) =>
+   cylinder("track-wheel-" + side + "-" + z, [side * 2.02, .5, z], .31, .16, tankIslandTrim, 16, [0, 0, Math.PI / 2])
+  )),
+  box("armored-hull", [0, .99, 0], [3.5, 1.05, 4.95], tankIslandArmor),
+  box("front-plate", [0, .72, 2.28], [3.1, .48, .32], tankIslandTrim),
+  cylinder("upper-turret", [0, 1.67, -.18], .93, .48, tankIslandArmor, 18),
+  cylinder("turret-hatch", [0, 1.94, -.18], .32, .1, tankIslandTrim, 14),
+  box("observation-light-bar", [0, 2.03, .62], [.95, .2, .28], tankIslandTrim),
+  ...[-1, 1].map((side) => sphere("headlamp-" + side, [side * .82, 1.02, 2.49], [.2, .16, .12], tankIslandLamp)),
+  cylinder("radio-antenna", [.54, 2.05, -.72], .035, .62, tankIslandTrim, 8)
+ );
  if (type === "bench") return React.createElement("group", root,
   box("seat", [0, .62, 0], [2.4, .18, .68]), box("back", [0, 1.12, -.27], [2.4, .85, .16]),
   ...[-.85, .85].map((side) => box("leg-" + side, [side, .3, 0], [.16, .62, .55]))
@@ -539,6 +559,12 @@ function OwnedIslandDecor({ structure }) {
  return null;
 }
 function OwnedIslandStructure({structure}) {
+ if(structure.type==="shield-generator")return React.createElement("group",{position:[structure.x,.31,structure.z]},
+  React.createElement("mesh",{position:[0,.45,0],material:landmarkStone,castShadow:true},React.createElement("cylinderGeometry",{args:[1.25,1.45,.62,16]})),
+  React.createElement("mesh",{position:[0,1.22,0],material:islandGlow},React.createElement("cylinderGeometry",{args:[.3,.44,1.12,12]})),
+  React.createElement("mesh",{position:[0,1.94,0],material:islandShieldRim},React.createElement("sphereGeometry",{args:[.54,16,12]})),
+  React.createElement("mesh",{position:[0,1.94,0],rotation:[Math.PI/2,0,0],material:islandShieldRim},React.createElement("torusGeometry",{args:[.78,.065,8,24]}))
+ );
  if(structure.type==="house")return React.createElement("group",{position:[structure.x,.31,structure.z]},
   React.createElement("mesh",{position:[0,1.2,0],material:landmarkStone,castShadow:true,receiveShadow:true},React.createElement("boxGeometry",{args:[4.6,2.4,3.9]})),
   React.createElement("mesh",{position:[0,2.75,0],material:landmarkRoof,castShadow:true},React.createElement("coneGeometry",{args:[3.35,1.75,4]})),
@@ -570,7 +596,7 @@ function OwnedIslandStructure({structure}) {
  if(structure.type==="shield-kit")return React.createElement("group",{position:[structure.x,.31,structure.z]},
   ...Array.from({length:5},(_,i)=>React.createElement("mesh",{key:i,position:[(i-2)*.68,.82,0],material:new THREE.MeshStandardMaterial({color:"#7898b3",metalness:.28,roughness:.55}),castShadow:true},React.createElement("cylinderGeometry",{args:[.28,.28,.12,6]})))
  );
- if(["fountain","bench","pool","playground","ice-cream-stand","clock-tower","sculpture","garden-lantern","greenhouse","dock","mini-boat","crystal","mini-island","golden-fountain"].includes(structure.type)) return React.createElement(OwnedIslandDecor, { structure });
+ if(["fountain","bench","pool","playground","ice-cream-stand","clock-tower","sculpture","garden-lantern","greenhouse","dock","mini-boat","crystal","mini-island","golden-fountain","display-tank"].includes(structure.type)) return React.createElement(OwnedIslandDecor, { structure });
  return null;
 }
 function IslandModel({island}){
@@ -590,6 +616,10 @@ function IslandModel({island}){
   React.createElement(IslandFoam,{island}),
   !island.isPlayerIsland && React.createElement(IslandLandmark,{island}),
   island.isPlayerIsland && React.createElement(OwnedIslandFlag,{island}),
+  island.isPlayerIsland && (island.shieldStrength || 0) > 0 && React.createElement("group",{position:[island.x,.34,island.z]},
+   React.createElement("mesh",{scale:[island.rx*.88,20+(island.shieldStrength||0)*.16,island.rz*.88],material:islandShieldMaterial,renderOrder:3},React.createElement("sphereGeometry",{args:[1,36,24,0,Math.PI*2,0,Math.PI/2]})),
+   React.createElement("mesh",{rotation:[Math.PI/2,0,0],material:islandShieldRim,renderOrder:4},React.createElement("torusGeometry",{args:[Math.min(island.rx,island.rz)*.86,.16,8,96]}))
+  ),
   ...(island.rocks||[]).map((rock,i)=>React.createElement(IslandRock,{key:"rock-"+i,rock,island})),
   ...(island.trees||[]).map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
   ...(island.animals||[]).map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal})),

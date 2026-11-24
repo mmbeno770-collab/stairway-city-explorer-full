@@ -383,9 +383,9 @@ const WALK = 6.2, RUN = 10.5, ACCEL = 16, GRAVITY = 24, JUMP = 8, STEP = .35, RA
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", jetSki: "לרכוב באופנוע ים", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 const SHOP_STORAGE_KEY = "stairway-city-explorer-shop-v1";
 const SHOP_ITEMS = [
-  { id: "scout-boots", icon: "🥾", title: "נעלי סייר", price: 60, effect: "מהירות הליכה וריצה +15%", description: "חוצים את העיר והאיים קצת יותר מהר." },
-  { id: "camouflage", icon: "🧥", title: "חליפת הסוואה", price: 75, effect: "חיות מבחינות בכם מטווח קצר יותר", description: "מתקרבים לחיות הבר בלי להבריח אותן כל כך מהר." },
-  { id: "spring-boots", icon: "🦘", title: "מגפי קפיצה", price: 90, effect: "עוצמת הקפיצה +22%", description: "קופצים גבוה יותר ומגיעים למקומות חדשים." }
+  { id: "scout-boots", icon: "🥾", title: "נעלי סייר", price: 600, effect: "מהירות הליכה וריצה +15%", description: "חוצים את העיר והאיים קצת יותר מהר." },
+  { id: "camouflage", icon: "🧥", title: "חליפת הסוואה", price: 750, effect: "חיות מבחינות בכם מטווח קצר יותר", description: "מתקרבים לחיות הבר בלי להבריח אותן כל כך מהר." },
+  { id: "spring-boots", icon: "🦘", title: "מגפי קפיצה", price: 900, effect: "עוצמת הקפיצה +22%", description: "קופצים גבוה יותר ומגיעים למקומות חדשים." }
 ];
 const ISLAND_STYLE_OPTIONS = [
   { id: "tropical", title: "טרופי", biome: "tropical", color: "#39864e", sand: "#ead29a" },
@@ -463,14 +463,15 @@ function normalizeOwnedIsland(raw) {
   };
 }
 function readShopSave() {
-  const empty = { coins: 0, points: 0, ownedItems: [], visitedIslandIds: [], completedMissionIds: [], customIsland: null };
+  const empty = { points: 0, ownedItems: [], visitedIslandIds: [], completedMissionIds: [], customIsland: null };
   try {
     const saved = JSON.parse(window.localStorage.getItem(SHOP_STORAGE_KEY) || "null");
     if (!saved || typeof saved !== "object") return empty;
     const knownIds = new Set(SHOP_ITEMS.map((item) => item.id));
+    const legacyPoints = Math.max(0, Math.floor(Number(saved.points) || 0));
+    const legacyCoins = Math.max(0, Math.floor(Number(saved.coins) || 0));
     return {
-      coins: Math.max(0, Math.floor(Number(saved.coins) || 0)),
-      points: Math.max(0, Math.floor(Number(saved.points) || 0)),
+      points: legacyPoints + legacyCoins * 10,
       ownedItems: Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter((id) => knownIds.has(id)))] : [],
       visitedIslandIds: Array.isArray(saved.visitedIslandIds) ? [...new Set(saved.visitedIslandIds.filter((id) => typeof id === "string"))] : [],
       completedMissionIds: Array.isArray(saved.completedMissionIds) ? [...new Set(saved.completedMissionIds.filter((id) => WILDLIFE_MISSIONS.some((mission) => mission.id === id)))] : [],
@@ -504,7 +505,7 @@ function IslandCreationForm({ points, onCreate }) {
     )
   );
 }
-function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateIsland, onExpandIsland, onBuildIslandItem, onStormIsland, onRepairIslandStructure, onRechargeIslandShield, onClose }) {
+function ShopPanel({ points, ownedItems, island, notice, onBuy, onCreateIsland, onExpandIsland, onBuildIslandItem, onStormIsland, onRepairIslandStructure, onRechargeIslandShield, onClose }) {
   const guardPower = island ? island.guardCount + island.guardShields * 2 + island.structures.filter((item) => item.type === "signal-tower").length * 4 + (island.shieldStrength || 0) : 0;
   return h("div", { className: "shop-overlay", role: "dialog", "aria-modal": true, "aria-label": "חנות האיים והשדרוגים", dir: "rtl" },
     h("section", { className: "shop-card shop-card-islands" },
@@ -513,8 +514,7 @@ function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateI
         h("button", { type: "button", className: "shop-close", onClick: onClose, "aria-label": "סגירת החנות" }, "×")
       ),
       h("div", { className: "shop-wallet shop-wallet-dual" },
-        h("span", null, "★ " + points.toLocaleString("he-IL") + " נקודות"),
-        h("strong", null, "🪙 " + coins + " מטבעות")
+        h("span", null, "★ " + points.toLocaleString("he-IL") + " נקודות")
       ),
       !island
         ? h(IslandCreationForm, { points, onCreate: onCreateIsland })
@@ -575,19 +575,19 @@ function ShopPanel({ coins, points, ownedItems, island, notice, onBuy, onCreateI
           h("p", { className: "island-online-note" }, "האי והבנייה נשמרים בדפדפן הזה. תחרויות מול איים של שחקנים אחרים ידרשו שרת משותף.")
         ),
       h("div", { className: "shop-island-safety-note" }, "במקום מערכות טילים וכלי נשק, אפשר לבנות מגדל איתות ומחנה שומרים עם ציוד מגן. דירוג השמירה הוא ניקוד משחקי בלבד."),
-      h("div", { className: "shop-divider-title" }, "שדרוגים לדמות · מטבעות"),
-      h("p", { className: "shop-howto" }, "מרוויחים מטבע אחד על כל 10 נקודות ממשימות. מטבעות ושדרוגים נשמרים גם אחרי יציאה מהמשחק."),
+      h("div", { className: "shop-divider-title" }, "שדרוגים לדמות · נקודות"),
+      h("p", { className: "shop-howto" }, "כל המשימות, הביקורים והשדרוגים משתמשים באותו ארנק נקודות."),
       h("div", { className: "shop-grid" }, ...SHOP_ITEMS.map((item) => {
         const owned = ownedItems.includes(item.id);
-        const enough = coins >= item.price;
+        const enough = points >= item.price;
         return h("article", { key: item.id, className: "shop-item" + (owned ? " is-owned" : "") },
           h("div", { className: "shop-item-icon", "aria-hidden": true }, item.icon),
           h("h3", null, item.title),
           h("p", null, item.description),
           h("div", { className: "shop-item-effect" }, item.effect),
           h("div", { className: "shop-item-buyrow" },
-            h("strong", null, "🪙 " + item.price),
-            h("button", { type: "button", disabled: owned || !enough, onClick: () => onBuy(item) }, owned ? "✓ נרכש" : enough ? "קנייה" : "חסרים " + (item.price - coins))
+            h("strong", null, "★ " + item.price + " נק׳"),
+            h("button", { type: "button", disabled: owned || !enough, onClick: () => onBuy(item) }, owned ? "✓ נרכש" : enough ? "קנייה" : "חסרות " + (item.price - points) + " נקודות")
           )
         );
       })),
@@ -2224,12 +2224,14 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           });
         }
         let nearestWildlife = null, nearestWildlifeD = Infinity;
+        const sneakingNow = !!inp.sneak || keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight");
         if (s.mode === "walk") {
           (wildlifeRef?.current?.animals || []).forEach((animal) => {
             if (!animal || animal.caught || animal.fleeing || animal.mounted || (animal.type !== "deer" && animal.type !== "squirrel")) return;
+            if (animal.type === "squirrel" && !sneakingNow) return;
             const d = Math.hypot(p.x - animal.x, p.z - animal.z);
             const vertical = Math.abs((p.y + 1.35) - (animal.y || 0));
-            const reach = animal.type === "deer" ? 2.55 : 2.2;
+            const reach = animal.type === "deer" ? 2.55 : 1.8;
             if (d < reach && vertical < 3.05 && d < nearestWildlifeD) {
               nearestWildlife = animal;
               nearestWildlifeD = d;
@@ -2272,7 +2274,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         const person = nearestPerson >= 0 && best < 0 ? citizensRef.current[nearestPerson] : null;
         const it = best >= 0 ? world.interactables[best] : null, actionText = it ? (it.type === "door" && doorStatesRef.current[best] ? "לסגור דלת" : PROMPTS[it.type]) : "";
         const actionHint = nearestWildlife
-          ? nearestWildlife.type === "deer" ? "F / פעולה — לעלות על האייל (כדאי להתגנב עם C)" : "F / פעולה — לתפוס את הסנאי"
+          ? nearestWildlife.type === "deer" ? "F / פעולה — לעלות על האייל (התקרבו בשקט עם C)" : "C — להתכופף ולהתקרב · F — לתפוס את הסנאי בעדינות"
           : nearIslandClaim ? "F / פעולה — לכבוש את אי הדקלים"
             : person ? `F / פעולה — לדבר עם ${person.name}`
               : nearestParkRide ? `F / פעולה — לעלות על ${nearestParkRide.label}`
@@ -2305,7 +2307,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           animal.fleeing = false;
           s.nearWildlife = null;
           onWildlifeEvent?.("squirrel-catch");
-          onPrompt("תפסתם סנאי! קיבלתם נקודות משימה");
+          onPrompt("תפסתם את הסנאי בעדינות! המשימה הושלמה");
           s.lastPrompt = "";
         }
       }
@@ -2911,22 +2913,14 @@ export default function Game() {
     shopSaveRef.current = shopSave;
     try { window.localStorage.setItem(SHOP_STORAGE_KEY, JSON.stringify(shopSave)); } catch { /* Storage may be unavailable. */ }
   }, [shopSave]);
-  const addShopCoins = useCallback((points) => {
-    const earned = Math.floor(Number(points) / 10);
-    if (earned <= 0) return 0;
-    const next = { ...shopSaveRef.current, coins: shopSaveRef.current.coins + earned };
-    shopSaveRef.current = next;
-    setShopSave(next);
-    return earned;
-  }, []);
   const buyShopItem = useCallback((item) => {
     const current = shopSaveRef.current;
     if (current.ownedItems.includes(item.id)) return;
-    if (current.coins < item.price) {
-      setShopNotice("חסרים לך " + (item.price - current.coins) + " מטבעות.");
+    if (current.points < item.price) {
+      setShopNotice("חסרות לך " + (item.price - current.points) + " נקודות.");
       return;
     }
-    const next = { ...current, coins: current.coins - item.price, ownedItems: [...current.ownedItems, item.id] };
+    const next = { ...current, points: current.points - item.price, ownedItems: [...current.ownedItems, item.id] };
     shopSaveRef.current = next;
     setShopSave(next);
     setShopNotice("רכשת את " + item.title + "! השדרוג פעיל במשחק.");
@@ -2937,7 +2931,6 @@ export default function Game() {
     const completedMissionIds = [...wildlifeRef.current.completedIds, missionId];
     wildlifeRef.current.completedIds = completedMissionIds;
     if (missionId === "island") wildlifeRef.current.islandClaimed = true;
-    addShopCoins(mission.points);
     const saved = shopSaveRef.current;
     const nextSave = {
       ...saved,
@@ -2949,18 +2942,18 @@ export default function Game() {
     setWildlifeMission((current) => current.completedIds.includes(missionId) ? current : {
       completedIds: completedMissionIds, points: current.points + mission.points
     });
-  }, [addShopCoins]);
+  }, []);
   const awardIslandVisit = useCallback((island) => {
     const islandId = island?.id;
     const current = shopSaveRef.current;
     if (!islandId || current.visitedIslandIds.includes(islandId)) return false;
     const next = {
-      ...current, coins: current.coins + 15, points: current.points + 150,
+      ...current, points: current.points + 25,
       visitedIslandIds: [...current.visitedIslandIds, islandId]
     };
     shopSaveRef.current = next;
     setShopSave(next);
-    setWildlifeMission((score) => ({ ...score, points: score.points + 150 }));
+    setWildlifeMission((score) => ({ ...score, points: score.points + 25 }));
     return true;
   }, []);
   const restartWildlifeMission = useCallback(() => {
@@ -3217,8 +3210,8 @@ export default function Game() {
         ),
         activeDockPanel === "buses" && h(BusArrivalBoard, { busInfoRef, embedded: true }),
         activeDockPanel === "missions" && h("div", { className: "tool-panel-scroll wildlife-quest-list" },
-          h("div", { className: "wildlife-quest-points" }, "★ " + wildlifeMission.points + " נקודות · 🪙 " + shopSave.coins + " מטבעות"),
-          h("small", { className: "wildlife-quest-island-bonus" }, "🏝️ אי חדש: ‎+150 נקודות ו־15 מטבעות (פעם אחת לכל אי)"),
+          h("div", { className: "wildlife-quest-points" }, "★ " + wildlifeMission.points + " נקודות"),
+          h("small", { className: "wildlife-quest-island-bonus" }, "🏝️ על גילוי כל אי חדש מקבלים ‎+25 נקודות (פעם אחת לכל אי)"),
           ...WILDLIFE_MISSIONS.map((mission) => {
             const done = wildlifeMission.completedIds.includes(mission.id);
             return h("article", { key: mission.id, className: "wildlife-quest-item" + (done ? " is-complete" : "") },
@@ -3331,8 +3324,8 @@ export default function Game() {
       (multiplayer.status === "connected" || multiplayer.status === "offline") && !shopOpen && h("div", { className: "start-card" },
         h("div", { className: "start-kicker" }, multiplayer.status === "offline" ? "מצב מקומי · " + (multiplayer.avatarIcon || "⭐") + " " + multiplayer.nickname : "מחובר בתור " + (multiplayer.avatarIcon || "⭐") + " " + multiplayer.nickname),
         h("h1", null, "Stairway City Explorer"),
-        h("p", null, multiplayer.status === "offline" ? "המשחק זמין במצב מקומי. אפשר לטייל בעיר, לגלות את שמורת הטבע ולשמור את ההתקדמות במכשיר הזה. חיבור בין שחקנים יתווסף בהמשך." : "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות ומטבעות. ההרפתקה הבאה שלכם מתחילה כאן."),
-        h("div", { className: "start-wallet" }, "🪙 בארנק: " + shopSave.coins + " מטבעות"),
+        h("p", null, multiplayer.status === "offline" ? "המשחק זמין במצב מקומי. אפשר לטייל בעיר, לגלות את שמורת הטבע ולשמור את ההתקדמות במכשיר הזה. חיבור בין שחקנים יתווסף בהמשך." : "גלו עיר חיה, חקרו איים, פגשו חיות בר והשלימו משימות כדי לצבור נקודות. ההרפתקה הבאה שלכם מתחילה כאן."),
+        h("div", { className: "start-wallet" }, "★ בארנק: " + shopSave.points.toLocaleString("he-IL") + " נקודות"),
         h("div", { className: "start-features" }, h("span", null, "🌲 טבע וחיות"), h("span", null, "🏝️ איים"), h("span", null, "🏆 משימות")),
         h("div", { className: "start-actions" },
           h("button", { className: "start-btn", onClick: () => setStarted(true) }, "התחלת המשחק"),
@@ -3341,7 +3334,7 @@ export default function Game() {
         h("a", { className: "privacy-note", href: "./privacy.html" }, "מדיניות פרטיות")
       ),
       shopOpen && h(ShopPanel, {
-        coins: shopSave.coins, points: shopSave.points, ownedItems: shopSave.ownedItems, island: shopSave.customIsland,
+        points: shopSave.points, ownedItems: shopSave.ownedItems, island: shopSave.customIsland,
         notice: shopNotice, onBuy: buyShopItem, onCreateIsland: createPlayerIsland,
         onExpandIsland: expandPlayerIsland, onBuildIslandItem: buildOnPlayerIsland,
         onStormIsland: stormPlayerIsland, onRepairIslandStructure: repairPlayerIslandStructure,

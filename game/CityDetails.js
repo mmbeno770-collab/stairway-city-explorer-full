@@ -4,7 +4,7 @@ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-run
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { FLOOR_H } from "./world.js";
+import { FLOOR_H, BLOCK, GRID, CITY_HALF } from "./world.js";
 const makeBatches = () => ({ stone: [], metal: [], gold: [], wood: [], glass: [], solar: [], glow: [], windowLight: [], foliage: [], cylinders: [], spheres: [] });
 const put = (list, x, y, z, sx, sy, sz, color, rx = 0, ry = 0, rz = 0) => {
     if (![x, y, z, sx, sy, sz, rx, ry, rz].every(Number.isFinite) || sx <= 0 || sy <= 0 || sz <= 0) return;
@@ -385,6 +385,92 @@ function ExtraFoliage({ trees, windStrength }) {
     if (!trees.length) return null;
     return _jsx("instancedMesh", { ref, args: [undefined, foliageMaterial, trees.length * 3], castShadow: true, receiveShadow: true, children: _jsx("sphereGeometry", { args: [1, 16, 12] }) });
 }
+function RoadProps() {
+    const manholes = useRef(null), grates = useRef(null), reflectors = useRef(null), cones = useRef(null), debris = useRef(null);
+    const positions = useMemo(() => {
+        const groups = { manholes: [], grates: [], reflectors: [], cones: [], debris: [] };
+        let seed = 92711;
+        const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+        for (let axis = 0; axis < 2; axis++) for (let lane = 0; lane <= GRID; lane++) {
+            const center = -CITY_HALF + lane * BLOCK;
+            for (let step = 0; step < 9; step++) {
+                const along = -CITY_HALF + 16 + step * ((CITY_HALF * 2 - 32) / 8);
+                const side = step % 2 === 0 ? 1 : -1;
+                const offset = side * (2.9 + random() * .25);
+                const x = axis === 0 ? center + offset : along;
+                const z = axis === 0 ? along : center + offset;
+                const rotation = random() * Math.PI;
+                if ((lane + step) % 3 === 0) groups.manholes.push([x, .025, z, rotation]);
+                if ((lane + step) % 4 === 0) {
+                    const gx = axis === 0 ? center + side * 3.55 : along + 1.8;
+                    const gz = axis === 0 ? along + 1.8 : center + side * 3.55;
+                    groups.grates.push([gx, .018, gz, axis * Math.PI / 2]);
+                }
+                if ((lane + step) % 5 === 1) {
+                    const cx = axis === 0 ? center + side * 3.55 : along + 4.2;
+                    const cz = axis === 0 ? along + 4.2 : center + side * 3.55;
+                    groups.cones.push([cx, .21, cz, rotation]);
+                }
+                for (let marker = 0; marker < 2; marker++) {
+                    const position = along + marker * 7.8 + (random() - .5) * 1.2;
+                    const reflectX = axis === 0 ? center + (marker ? 3.62 : -3.62) : position;
+                    const reflectZ = axis === 0 ? position : center + (marker ? 3.62 : -3.62);
+                    groups.reflectors.push([reflectX, .038, reflectZ, axis * Math.PI / 2]);
+                    const debrisX = axis === 0 ? center + (random() - .5) * 2.2 : position;
+                    const debrisZ = axis === 0 ? position : center + (random() - .5) * 2.2;
+                    groups.debris.push([debrisX, .035, debrisZ, random() * Math.PI]);
+                }
+            }
+        }
+        return groups;
+    }, []);
+    const geometry = useMemo(() => ({
+        manhole: new THREE.CylinderGeometry(.46, .46, .035, 20),
+        grate: new THREE.BoxGeometry(.68, .025, .38),
+        reflector: new THREE.BoxGeometry(.26, .028, .2),
+        cone: new THREE.ConeGeometry(.22, .42, 8),
+        debris: new THREE.BoxGeometry(.28, .014, .18)
+    }), []);
+    const material = useMemo(() => ({
+        manhole: new THREE.MeshStandardMaterial({ color: "#4b5457", metalness: .48, roughness: .62 }),
+        grate: new THREE.MeshStandardMaterial({ color: "#384246", metalness: .61, roughness: .5 }),
+        reflector: new THREE.MeshStandardMaterial({ color: "#d2c69a", metalness: .22, roughness: .38 }),
+        cone: new THREE.MeshStandardMaterial({ color: "#bf552a", roughness: .75 }),
+        debris: new THREE.MeshStandardMaterial({ color: "#6b6658", roughness: 1 })
+    }), []);
+    useEffect(() => {
+        const object = new THREE.Object3D();
+        const install = (mesh, points, size) => {
+            if (!mesh) return;
+            points.forEach(([x, y, z, yaw], index) => {
+                object.position.set(x, y, z);
+                object.rotation.set(0, yaw || 0, 0);
+                object.scale.set(...size);
+                object.updateMatrix();
+                mesh.setMatrixAt(index, object.matrix);
+            });
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.computeBoundingSphere();
+        };
+        install(manholes.current, positions.manholes, [1, 1, 1]);
+        install(grates.current, positions.grates, [1, 1, 1]);
+        install(reflectors.current, positions.reflectors, [1, 1, 1]);
+        install(cones.current, positions.cones, [1, 1, 1]);
+        install(debris.current, positions.debris, [1, 1, 1]);
+    }, [positions]);
+    useEffect(() => () => {
+        Object.values(geometry).forEach((item) => item.dispose());
+        Object.values(material).forEach((item) => item.dispose());
+    }, [geometry, material]);
+    return _jsxs(_Fragment, { children: [
+        _jsx("instancedMesh", { ref: manholes, args: [geometry.manhole, material.manhole, positions.manholes.length], castShadow: false, receiveShadow: true }),
+        _jsx("instancedMesh", { ref: grates, args: [geometry.grate, material.grate, positions.grates.length], castShadow: false, receiveShadow: true }),
+        _jsx("instancedMesh", { ref: reflectors, args: [geometry.reflector, material.reflector, positions.reflectors.length], castShadow: false, receiveShadow: true }),
+        _jsx("instancedMesh", { ref: cones, args: [geometry.cone, material.cone, positions.cones.length], castShadow: false, receiveShadow: true }),
+        _jsx("instancedMesh", { ref: debris, args: [geometry.debris, material.debris, positions.debris.length], castShadow: false, receiveShadow: true })
+    ] });
+}
+
 export function CityDetails({ buildings, trees, windStrength = 1, nightFactor = 0 }) {
     const batches = useMemo(() => buildBatches(buildings), [buildings]);
     const surfaceTexture = useMemo(() => makeSurfaceTexture(), []);
@@ -421,6 +507,7 @@ export function CityDetails({ buildings, trees, windStrength = 1, nightFactor = 
         _jsx(BoxBatch, { items: batches.foliage, material: materials.foliage }),
         _jsx(CylinderBatch, { items: batches.cylinders, material: materials.hardware }),
         _jsx(SphereBatch, { items: batches.spheres, material: materials.hardware }),
-        _jsx(ExtraFoliage, { trees, windStrength })
+        _jsx(ExtraFoliage, { trees, windStrength }),
+        _jsx(RoadProps, {})
     ] });
 }

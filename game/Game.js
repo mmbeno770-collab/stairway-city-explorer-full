@@ -897,6 +897,52 @@ function UnderwaterAtmosphere({enabled,fogColor,fogNear,fogFar}){
  return null;
 }
 
+function drawRoadSurfaceWear(ctx, to, pixelScale) {
+  let seed = 0x5a31cd17;
+  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  ctx.save();
+  for (let axis = 0; axis < 2; axis++) for (let route = 0; route <= GRID; route++) {
+    const center = -CITY_HALF + route * BLOCK;
+    for (let segment = 0; segment < 17; segment++) {
+      const along = -CITY_HALF + 10 + segment * 23.1 + random() * 2.2;
+      const offset = (random() > .5 ? 1 : -1) * (1.05 + random() * 1.95);
+      const x = axis ? along : center + offset;
+      const z = axis ? center + offset : along;
+      if (Math.hypot(x, z) > mainlandCoastRadius(Math.atan2(z, x)) - 8) continue;
+      const px = to(x), pz = to(z);
+      if (segment % 3 === 0) {
+        ctx.fillStyle = "rgba(24,30,34,.19)";
+        ctx.beginPath();
+        ctx.ellipse(px, pz, (.42 + random() * .34) * pixelScale, (.2 + random() * .14) * pixelScale, random() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(149,151,143,.14)";
+        ctx.lineWidth = .7;
+        ctx.beginPath();
+        ctx.ellipse(px, pz, .48 * pixelScale, .25 * pixelScale, .3, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (segment % 5 === 0) {
+        ctx.fillStyle = "rgba(66,72,75,.25)";
+        ctx.fillRect(px - .7 * pixelScale, pz - .34 * pixelScale, 1.4 * pixelScale, .68 * pixelScale);
+      }
+      if (segment % 2 === 0) {
+        ctx.strokeStyle = "rgba(23,27,29,.23)";
+        ctx.lineWidth = .6 + random() * .35;
+        ctx.beginPath();
+        ctx.moveTo(px, pz);
+        ctx.lineTo(px + (random() - .5) * .7 * pixelScale, pz + (random() - .5) * 1.1 * pixelScale);
+        ctx.lineTo(px + (random() - .5) * 1.1 * pixelScale, pz + (random() - .5) * 1.6 * pixelScale);
+        ctx.stroke();
+      }
+      for (let grit = 0; grit < 4; grit++) {
+        const dx = (random() - .5) * 2.6, dz = (random() - .5) * 3.1;
+        ctx.fillStyle = random() < .7 ? "rgba(174,174,160,.11)" : "rgba(24,28,32,.17)";
+        ctx.fillRect(px + dx * pixelScale, pz + dz * pixelScale, .16 * pixelScale, .1 * pixelScale);
+      }
+    }
+  }
+  ctx.restore();
+}
+
 function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = [], publicSpaces = [] }) {
   const data = useMemo(() => {
     const size = 1536;
@@ -1240,6 +1286,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
     }
     ctx.restore();
     ctx.restore();
+    drawRoadSurfaceWear(ctx, to, p);
     const image = ctx.getImageData(0, 0, size, size);
     for (let i = 0; i < image.data.length; i += 4) {
       const pixel = i / 4, hash = (Math.imul(pixel + 1, 1664525) + 1013904223) >>> 0;

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { CITY_HALF } from "./world.js";
 
@@ -187,11 +187,44 @@ function JetSkiModel({jetSki}){
   React.createElement("mesh",{material:new THREE.MeshStandardMaterial({color:"#f7e3a1",emissive:"#a17b36",emissiveIntensity:.45}),position:[0,.23,1.08]},React.createElement("sphereGeometry",{args:[.12,10,8]}))
  );
 }
-function BoatModel({boat}){
+const boatDetailPaint = new THREE.MeshStandardMaterial({ color: "#eff0e7", metalness: .19, roughness: .38 });
+const boatDetailSteel = new THREE.MeshStandardMaterial({ color: "#b8c4c9", metalness: .81, roughness: .23 });
+const boatDetailBlack = new THREE.MeshStandardMaterial({ color: "#1d2b32", roughness: .72 });
+const boatDetailRed = new THREE.MeshStandardMaterial({ color: "#e6444a", emissive: "#e6444a", emissiveIntensity: .55 });
+const boatDetailGreen = new THREE.MeshStandardMaterial({ color: "#3ed690", emissive: "#3ed690", emissiveIntensity: .55 });
+function BoatDetails({ boat }) {
+ const detailGroup = useRef(null);
+ const { camera } = useThree();
+ useFrame(() => {
+  if (!detailGroup.current) return;
+  const dx = camera.position.x - boat.x, dz = camera.position.z - boat.z;
+  detailGroup.current.visible = dx * dx + dz * dz < 195 * 195;
+ });
+ const mesh = (key, type, args, material, position, rotation = [0, 0, 0]) =>
+  React.createElement("mesh", { key, position, rotation, material, castShadow: true }, React.createElement(type, { args }));
+ return React.createElement("group", { ref: detailGroup },
+  mesh("bow-trim", "boxGeometry", [1.72, .1, .16], boatDetailPaint, [0, .27, 2.2]),
+  mesh("stern-trim", "boxGeometry", [1.62, .06, .16], boatDetailSteel, [0, .08, -2.4]),
+  mesh("console-top", "boxGeometry", [1.38, .095, .48], boatDetailPaint, [0, .67, -.86]),
+  mesh("console-dark", "boxGeometry", [1.31, .08, .42], boatDetailBlack, [0, .47, -.9]),
+  mesh("bow-cleat", "cylinderGeometry", [.095, .11, .2, 12], boatDetailSteel, [0, .84, 2.08]),
+  mesh("antenna", "cylinderGeometry", [.065, .065, .8, 12], boatDetailSteel, [0, .33, -2.69], [Math.PI / 2, 0, 0]),
+  mesh("lifebuoy", "torusGeometry", [.22, .07, 8, 18], boatDetailPaint, [-.76, .46, 1.3], [Math.PI / 2, .3, 0]),
+  mesh("console-foot", "boxGeometry", [.48, .05, .15], boatDetailSteel, [0, .4, -1.62]),
+  mesh("console-post", "cylinderGeometry", [.045, .055, .46, 8], boatDetailSteel, [0, .52, -1.6]),
+  mesh("port-light", "sphereGeometry", [.085, 12, 8], boatDetailRed, [-.96, .62, 2.36]),
+  mesh("starboard-light", "sphereGeometry", [.085, 12, 8], boatDetailGreen, [.96, .62, 2.36]),
+  mesh("bow-cleat-left", "boxGeometry", [.12, .075, .3], boatDetailSteel, [-.72, .32, 2.12]),
+  mesh("bow-cleat-right", "boxGeometry", [.12, .075, .3], boatDetailSteel, [.72, .32, 2.12])
+ );
+}
+
+function BoatModel({boat}) {
  const root=useRef(null),wake=useRef(null),paint=useMemo(()=>new THREE.MeshPhysicalMaterial({color:boat.color,metalness:.46,roughness:.22,clearcoat:1,clearcoatRoughness:.12}),[boat.color]);
  const wakeMaterial=useMemo(()=>new THREE.MeshBasicMaterial({color:"#bdeef2",transparent:true,opacity:.36,depthWrite:false,side:THREE.DoubleSide}),[]);
  useFrame(({clock})=>{if(!root.current)return;root.current.position.set(boat.x,boat.y+Math.sin(clock.elapsedTime*1.8+boat.id)*.045,boat.z);root.current.rotation.y=boat.yaw;root.current.rotation.z=Math.sin(clock.elapsedTime*1.25+boat.id)*.018;root.current.rotation.x=Math.sin(clock.elapsedTime*1.05+boat.id*.7)*.012;const speed=Math.abs(boat.speed||0);if(wake.current){wake.current.visible=speed>1.4;wake.current.scale.z=.55+Math.min(2.2,speed*.13);wakeMaterial.opacity=THREE.MathUtils.clamp(speed*.026,0,.48);}});
- return React.createElement("group",{ref:root,scale:boat.scale||1.42},
+ return React.createElement("group",{ref:root,scale:boat.scale||1.04},
+  React.createElement(BoatDetails, { boat }),
   React.createElement("group",{ref:wake,position:[0,-.27,-3.0]},
    ...[-1,1].map(side=>React.createElement("mesh",{key:"wake-"+side,position:[side*.55,0,-1.45],rotation:[-Math.PI/2,0,side*.09],material:wakeMaterial},React.createElement("planeGeometry",{args:[.62,4.8]}))),
    React.createElement("mesh",{position:[0,.005,-1.15],rotation:[-Math.PI/2,0,0],material:wakeMaterial},React.createElement("planeGeometry",{args:[1.6,2.8]}))

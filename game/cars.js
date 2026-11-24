@@ -40,8 +40,12 @@ function CarModel({ car }) {
     useFrame((_, dt) => {
         if (!root.current) return;
         root.current.position.set(car.x, car.y, car.z); root.current.rotation.y = car.yaw;
-        for (const wheel of wheels.current) if (wheel) wheel.rotation.y += car.speed * dt / .34;
-        for (const wheel of steerWheels.current) if (wheel) wheel.rotation.y = (car.steering || 0) * .48;
+        for (const wheel of wheels.current) if (wheel) {
+            wheel.rotation.y = (wheel.rotation.y - car.speed * dt / (car.kind === "bus" ? .44 : .34)) % (Math.PI * 2);
+        }
+        for (const wheel of steerWheels.current) if (wheel) {
+            wheel.rotation.y = THREE.MathUtils.damp(wheel.rotation.y, THREE.MathUtils.clamp(car.steering || 0, -1, 1) * .48, 10, dt);
+        }
         for (const lamp of brakes.current) if (lamp) lamp.material = car.brake || car.speed < -.1 ? tailOn : tailOff;
         if (busDoor.current) busDoor.current.rotation.y = THREE.MathUtils.damp(busDoor.current.rotation.y, car.doorOpen ? -.82 : 0, 8, dt);
         busPassengers.current.forEach((passenger, index) => { if (passenger) passenger.visible = index < (car.passengerCount || 0); });
@@ -144,7 +148,7 @@ function CarModel({ car }) {
         return _jsxs("group", { ref: root, children: [
             ...[-1, 1].map((side) => _jsxs("group", { position: [side * 1.75, .55, 0], children: [
                 _jsx("mesh", { material: trim, castShadow: true, children: _jsx("boxGeometry", { args: [.48, .9, 5.35] }) }),
-                ...[-2, -1, 0, 1, 2].map((z) => _jsx("mesh", { material: rubber, position: [0, 0, z], children: _jsx("cylinderGeometry", { args: [.33, .33, .5, 16] }) }, z))
+                ...[-2, -1, 0, 1, 2].map((z) => _jsx("mesh", { material: rubber, position: [0, 0, z], "rotation-z": Math.PI / 2, children: _jsx("cylinderGeometry", { args: [.33, .33, .5, 16] }) }, z))
             ] }, side)),
             _jsx("mesh", { material: bodyMat, position: [0, .92, 0], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", { args: [3.45, 1.05, 4.95] }) }),
             _jsx("mesh", { material: bodyMat, position: [0, 1.58, -.25], castShadow: true, children: _jsx("cylinderGeometry", { args: [1.05, 1.2, .48, 18] }) }),

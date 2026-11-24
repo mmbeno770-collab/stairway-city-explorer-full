@@ -34,7 +34,7 @@ function makeCitizenAppearance(index) {
     headwearTrim: "#c5b17b",
     headwear: index % 2 === 0,
     backpack: index % 3 !== 1,
-    scale: .92 + (index % 6) * .025
+    scale: .9 + (index % 9) * .018
   };
 }
 const angleDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
@@ -1823,6 +1823,27 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         rig.root.rotation.set(heli.pitch, heli.yaw, heli.roll, "YXZ");
       }
       poseHuman(rig, { mode: "heli", phase: 0, speed: 0, air: false, t: now + pilot.tOffset, dt });
+    }
+  });
+
+  useFrame(({ clock }, dt) => {
+    const player = playerPositionRef?.current;
+    const now = clock.elapsedTime;
+    for (let index = 0; index < sim.walkers.length; index++) {
+      const person = sim.walkers[index], head = person.rig?.head;
+      if (!head || person.ridingElevator) continue;
+      const near = player && Math.hypot(player.x - person.x, player.z - person.z) < 6.5;
+      let desired = near
+        ? Math.atan2(player.x - person.x, player.z - person.z) - person.yaw
+        : Math.sin(now * .36 + index * 2.79) * .17;
+      desired = THREE.MathUtils.clamp(Math.atan2(Math.sin(desired), Math.cos(desired)), -.5, .5);
+      head.rotation.y = THREE.MathUtils.damp(head.rotation.y, desired, 4, Math.min(.05, dt));
+      head.rotation.x = THREE.MathUtils.damp(
+        head.rotation.x,
+        near ? -.025 + Math.sin(now * .63 + index) * .016 : Math.sin(now * .4 + index) * .012,
+        3,
+        Math.min(.05, dt)
+      );
     }
   });
 

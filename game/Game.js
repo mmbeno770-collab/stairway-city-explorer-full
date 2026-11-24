@@ -179,6 +179,34 @@ function vehicleExitPoint(x, z, yaw, distance, islands, side = -1) {
   }
   return { x: exitX, z: exitZ, island };
 }
+function nearestIslandShore(x, z, islands, maxRadius = 1.14) {
+  let nearest = null, nearestDistance = maxRadius;
+  for (const island of islands || []) {
+    const dx = (x - island.x) / Math.max(1, island.rx * .96);
+    const dz = (z - island.z) / Math.max(1, island.rz * .96);
+    const distance = Math.hypot(dx, dz);
+    if (distance < nearestDistance) {
+      nearest = island;
+      nearestDistance = distance;
+    }
+  }
+  return nearest;
+}
+function islandBeachLandingPoint(island, fromX, fromZ, islands) {
+  let dx = (fromX - island.x) / Math.max(1, island.rx);
+  let dz = (fromZ - island.z) / Math.max(1, island.rz);
+  const length = Math.hypot(dx, dz);
+  if (length < .001) { dx = 0; dz = 1; }
+  else { dx /= length; dz /= length; }
+  for (let radius = 1; radius >= .78; radius -= .01) {
+    const x = island.x + dx * island.rx * radius;
+    const z = island.z + dz * island.rz * radius;
+    if (getIslandAt(x, z, islands) === island) {
+      return { x, z, face: Math.atan2(island.x - x, island.z - z) };
+    }
+  }
+  return { x: island.x, z: island.z, face: Math.atan2(island.x - fromX, island.z - fromZ) };
+}
 const WALK = 6.2, RUN = 10.5, ACCEL = 16, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
 const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", jetSki: "לרכוב באופנוע ים", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
 const SHOP_STORAGE_KEY = "stairway-city-explorer-shop-v1";
@@ -2353,28 +2381,25 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         const islandAtNext = getIslandAt(nx, nz, marine.islands);
         const rememberedDock = boat.dockIsland && boat.speed >= 0
           ? marine.islands.find((item) => item.id === boat.dockIsland &&
-            Math.hypot((boat.x - item.x) / (item.rx * .82), (boat.z - item.z) / (item.rz * .82)) <= 1.16)
+            Math.hypot((boat.x - item.x) / (item.rx * .96), (boat.z - item.z) / (item.rz * .96)) <= 1.18)
           : null;
-        const dockIsland = islandAtNext || rememberedDock;
+        const shoreDock = boat.speed >= 0 ? nearestIslandShore(nx, nz, marine.islands, 1.14) : null;
+        const dockIsland = islandAtNext || rememberedDock || shoreDock;
         if (isMainlandLand(nx, nz) && coastNext < coastNow) { boat.dockIsland = null; boat.speed *= .2; }
         else if (dockIsland) { boat.dockIsland = dockIsland.id; boat.speed *= .18; }
         else { boat.dockIsland = null; boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
         boat.y = getWaterHeight(boat.x, boat.z, s.t);
         p.set(boat.x, boat.y + .36, boat.z);
         if (act && Math.abs(boat.speed) < 1.2) {
-          const island = marine.islands.find((item) => item.id === boat.dockIsland) || getIslandAt(boat.x, boat.z, marine.islands);
+          const island = marine.islands.find((item) => item.id === boat.dockIsland)
+            || getIslandAt(boat.x, boat.z, marine.islands)
+            || nearestIslandShore(boat.x, boat.z, marine.islands, 1.18);
           if (island) {
-            const dx = island.x - boat.x, dz = island.z - boat.z, distance = Math.hypot(dx, dz) || 1;
-            let landingX = boat.x + dx / distance * 7.5, landingZ = boat.z + dz / distance * 7.5;
-            if (!getIslandAt(landingX, landingZ, marine.islands)) {
-              landingX = boat.x + dx / distance * 14;
-              landingZ = boat.z + dz / distance * 14;
-            }
-            if (!getIslandAt(landingX, landingZ, marine.islands)) { landingX = island.x; landingZ = island.z; }
-            p.set(landingX, .28, landingZ);
+            const landing = islandBeachLandingPoint(island, boat.x, boat.z, marine.islands);
+            p.set(landing.x, .28, landing.z);
             col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
-            s.face = Math.atan2(dx, dz); s.onGround = true; s.near = -1;
-            s.mode = "walk"; onMode("walk"); onPrompt("הגעתם אל " + island.name + " · אפשר להמשיך ללכת באי");
+            s.face = landing.face; s.onGround = true; s.near = -1;
+            s.mode = "walk"; onMode("walk"); onPrompt("ירדתם לחוף של " + island.name);
           }
           else if (isMainlandLand(boat.landX, boat.landZ)) { p.set(boat.landX, .2, boat.landZ); s.mode = "walk"; onMode("walk"); onPrompt("ירדתם אל החוף"); }
           else { p.y = -2.7; s.mode = "swim"; onMode("swim"); onPrompt("נכנסתם למים · מצב צלילה הופעל"); }
@@ -2402,16 +2427,42 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         jetSki.yaw += jetSki.steering * 1.12 * Math.min(1, Math.abs(jetSki.speed) / 3.2) * dt * Math.sign(jetSki.speed || 1);
         const nx = THREE.MathUtils.clamp(jetSki.x + Math.sin(jetSki.yaw) * jetSki.speed * dt, -1050, 1050);
         const nz = THREE.MathUtils.clamp(jetSki.z + Math.cos(jetSki.yaw) * jetSki.speed * dt, -1050, 1050);
-        if (!getIslandAt(nx, nz, marine.islands) && !isMainlandLand(nx, nz)) { jetSki.x = nx; jetSki.z = nz; }
-        else jetSki.speed *= .2;
+        const islandAtNext = getIslandAt(nx, nz, marine.islands);
+        const islandShore = islandAtNext || nearestIslandShore(nx, nz, marine.islands, 1.12);
+        if (islandAtNext) {
+          jetSki.dockIsland = islandAtNext.id;
+          jetSki.speed *= .2;
+        } else if (islandShore && !isMainlandLand(nx, nz)) {
+          jetSki.x = nx; jetSki.z = nz;
+          jetSki.dockIsland = islandShore.id;
+          jetSki.speed *= .35;
+        } else if (!isMainlandLand(nx, nz)) {
+          jetSki.x = nx; jetSki.z = nz;
+          jetSki.dockIsland = null;
+        } else {
+          jetSki.dockIsland = null;
+          jetSki.speed *= .2;
+        }
         jetSki.y = getWaterHeight(jetSki.x, jetSki.z, s.t);
         p.set(jetSki.x, jetSki.y + .47, jetSki.z);
         if (act && Math.abs(jetSki.speed) < 1.15) {
-          p.set(jetSki.landX, .2, jetSki.landZ);
+          const island = marine.islands.find((item) => item.id === jetSki.dockIsland)
+            || getIslandAt(jetSki.x, jetSki.z, marine.islands)
+            || nearestIslandShore(jetSki.x, jetSki.z, marine.islands, 1.18);
+          if (island) {
+            const landing = islandBeachLandingPoint(island, jetSki.x, jetSki.z, marine.islands);
+            p.set(landing.x, .28, landing.z);
+            s.face = landing.face;
+            onPrompt("ירדתם לחוף של " + island.name);
+          } else {
+            p.set(jetSki.landX, .2, jetSki.landZ);
+            s.face = jetSki.yaw;
+            onPrompt("ירדתם מאופנוע הים אל החוף");
+          }
           col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
-          s.face = jetSki.yaw; s.onGround = true; s.near = -1;
+          s.onGround = true; s.near = -1;
           s.mode = "walk"; s.target = -1; s.v.set(0, 0, 0);
-          onMode("walk"); onHud(""); onPrompt("ירדתם מאופנוע הים אל החוף");
+          onMode("walk"); onHud("");
         } else {
           temp.e.set(0, jetSki.yaw, 0, "YXZ"); temp.q.setFromEuler(temp.e);
           if (root) { root.position.copy(temp.v.set(0, .57, -.36).applyQuaternion(temp.q).add(new THREE.Vector3(jetSki.x, jetSki.y, jetSki.z))); root.rotation.set(0, jetSki.yaw, 0); }

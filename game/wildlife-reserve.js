@@ -23,8 +23,8 @@ const FLOWER = fur("#e8d6a8");
 
 export const WILDLIFE_MISSIONS = [
   { id: "duck-watch", title: "תצפית על הברווזים", description: "התקרבו בשקט לשפת האגם והתבוננו בברווזים.", location: "האגם בשמורת הטבע", type: "visit", dx: -5, dz: -2, radius: 4.4, points: 120 },
-  { id: "deer-ride", title: "רכיבה על אייל", description: "התקרבו לאייל בזהירות, עלו עליו ורכבו לפחות 8 שניות.", location: "קרחת האיילים בשמורת הטבע", type: "deerRide", points: 400 },
-  { id: "squirrel-catch", title: "תפיסת סנאי", description: "מצאו סנאי על אחד העצים, התגנבו אליו ולחצו F כשהוא קרוב.", location: "העצים שבשמורת הטבע", type: "squirrel", points: 300 },
+  { id: "deer-ride", title: "רכיבה על אייל", description: "התכופפו עם C, התקרבו לאייל בשקט, לחצו F כדי לעלות עליו ורכבו לפחות 8 שניות.", location: "קרחת האיילים בשמורת הטבע", type: "deerRide", points: 400 },
+  { id: "squirrel-catch", title: "תפיסת סנאי", description: "התכופפו עם C, התקרבו לבסיס העץ כשהסנאי נח על ענף, ולחצו F כדי לתפוס אותו בעדינות.", location: "חורשת הסנאים בשמורת הטבע", type: "squirrel", points: 300 },
   { id: "bird-lookout", title: "מצפור הציפורים", description: "עלו למצפור העץ שבקצה השמורה והגיעו לסמן הזהוב.", location: "מצפור העץ בשמורה", type: "visit", dx: 8, dz: 6, radius: 3.8, points: 180 },
   { id: "island", title: "כיבוש אי הדקלים", description: "הגיעו לאי הדקלים, מצאו את הדגל ולחצו F כדי לתבוע בעלות על האי.", location: "אי הדקלים, מצפון לעיר", type: "island", x: 0, z: -470, radius: 7, points: 600 }
 ];
@@ -218,7 +218,11 @@ function CityAnimal({ animal, playerPositionRef, reserveCenter }) {
     ),
     ...legPositions.map((position, i) => h(AnimalLeg, { key: "leg-" + i, position, material: isDuck ? ORANGE : darkCoat, length: legLength, width: legWidth, refValue: (node) => { legs.current[i] = node; } })),
     isRabbit && h("mesh", { position: [0, .48, -.38], material: CREAM, scale: [.105, .1, .09] }, h("sphereGeometry", { args: [1, 14, 10] })),
-    isDeer && h("mesh", { position: [0, 1.02, -.48], material: cream, scale: [.12, .13, .12] }, h("sphereGeometry", { args: [1, 16, 12] }))
+    isDeer && h("mesh", { position: [0, 1.02, -.48], material: cream, scale: [.12, .13, .12] }, h("sphereGeometry", { args: [1, 16, 12] })),
+    isDeer && animal.mounted && h("group", { position: [0, 1.16, -.02] },
+      h("mesh", { position: [0, .035, 0], material: fur("#69482f"), scale: [.28, .055, .38] }, h("sphereGeometry", { args: [1, 18, 12] })),
+      ...[-1, 1].map((side) => h("mesh", { key: "saddle-strap-" + side, position: [side * .19, -.08, .02], rotation: [0, 0, side * -.18], material: fur("#503925") }, h("boxGeometry", { args: [.045, .18, .42] })))
+    )
   );
 }
 
@@ -266,10 +270,11 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
   const notified = useRef(new Set(completedIds));
   const cx = reserve?.x || 0, cz = reserve?.z || 0, reserveScale = 2.05;
   const perches = useMemo(() => [
-    [-25, -23, 2.7], [-7, -25, 2.9], [23, -22, 2.7], [26, -5, 2.9],
-    [-25, 17, 2.8], [-9, 25, 2.7], [10, 25, 2.9], [24, 19, 2.8],
-    [-20, 24, 2.9], [2, -27, 2.8], [14, -24, 2.7], [-22, -25, 2.9]
-  ].map(([x, z, y]) => ({ x: cx + x * reserveScale, z: cz + z * reserveScale, y })), [cx, cz]);
+    [-11.0, -9.0, 2.7], [-8.8, -11.0, 2.9], [-2.5, -10.6, 2.8],
+    [4.8, -10.8, 2.8], [10.7, -8.8, 2.7], [11.0, -1.2, 2.8],
+    [-11.0, 4.4, 2.8], [-9.2, 10.2, 2.7], [-3.8, 11.0, 2.8],
+    [4.7, 10.8, 2.9], [10.6, 9.2, 2.8], [0.8, -11.2, 2.7]
+  ].map(([x, z, y]) => ({ x: cx + x, z: cz + z, y })), [cx, cz]);
   const animals = useMemo(() => {
     if (!reserve) return [];
     const make = (id, type, dx, dz, phase, speed, scale, color, extra = {}) => ({
@@ -283,25 +288,25 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
       { x: perch.x, y: perch.y, z: perch.z, homeX: perch.x, homeY: perch.y, homeZ: perch.z, perches, perchIndex: i }
     ));
     return [
-      make("deer-a", "deer", 7, -19, .2, .22, 1.22, "#986d49", { belly: "#decdb0", dark: "#504034", wanderX: 2.2, wanderZ: 1.6 }),
-      make("deer-b", "deer", 12, -16, 2.4, .19, 1.14, "#aa7a50", { belly: "#e1cfb1", dark: "#51402f", wanderX: 1.8, wanderZ: 1.5 }),
-      make("deer-c", "deer", 2, -22, 4.1, .2, 1.18, "#8e6442", { belly: "#d9c7aa", dark: "#49382b", wanderX: 1.9, wanderZ: 1.4 }),
-      make("deer-d", "deer", 17, -12, 5.3, .18, 1.12, "#b98558", { belly: "#e6d5b8", dark: "#5a4634", wanderX: 1.7, wanderZ: 1.4 }),
-      make("duck-a", "duck", -18, -6, 1.4, .18, 1.0, "#596e48"),
-      make("duck-b", "duck", -15, -7, 3.4, .16, .96, "#70593e"),
-      make("duck-c", "duck", -20, -2, 5.4, .19, 1.0, "#66734f"),
-      make("duck-d", "duck", -13, -3, 6.2, .17, .94, "#9a8a54"),
-      make("rabbit-a", "rabbit", 5, 8, 2.1, .5, .94, "#b9a58e", { belly: "#e0d4c2" }),
-      make("rabbit-b", "rabbit", 11, 13, 4.3, .46, .9, "#857768", { belly: "#d8cabb" }),
-      make("rabbit-c", "rabbit", -2, 14, 3.2, .42, .92, "#d0c5b4", { belly: "#ece2d2" }),
-      make("rabbit-d", "rabbit", 18, 5, 5.1, .44, .9, "#a99783", { belly: "#e4d9c9" }),
-      make("fox-a", "fox", -19, 13, 1.8, .31, 1.0, "#b96c38", { belly: "#ead8c0", dark: "#5b3a28" }),
-      make("fox-b", "fox", 22, 14, 3.8, .28, .96, "#c57b45", { belly: "#f0dfc9", dark: "#5b3a28" }),
-      make("cat-a", "cat", -3, 21, 4.8, .29, .9, "#6c6660", { belly: "#c6c0b5" }),
-      make("dog-a", "dog", 17, 21, .8, .34, .98, "#b88d60", { belly: "#e1d1b5" }),
+      make("deer-a", "deer", 4, -8, .2, .22, 1.22, "#986d49", { belly: "#decdb0", dark: "#504034", wanderX: 1.5, wanderZ: 1.2 }),
+      make("deer-b", "deer", 7, -7, 2.4, .19, 1.14, "#aa7a50", { belly: "#e1cfb1", dark: "#51402f", wanderX: 1.4, wanderZ: 1.1 }),
+      make("deer-c", "deer", 2, -10, 4.1, .2, 1.18, "#8e6442", { belly: "#d9c7aa", dark: "#49382b", wanderX: 1.3, wanderZ: 1.1 }),
+      make("deer-d", "deer", 10, -6, 5.3, .18, 1.12, "#b98558", { belly: "#e6d5b8", dark: "#5a4634", wanderX: 1.2, wanderZ: 1.0 }),
+      make("duck-a", "duck", -5, -1, 1.4, .18, 1.0, "#596e48"),
+      make("duck-b", "duck", -7, -2, 3.4, .16, .96, "#70593e"),
+      make("duck-c", "duck", -4, -3, 5.4, .19, 1.0, "#66734f"),
+      make("duck-d", "duck", -6, 0, 6.2, .17, .94, "#9a8a54"),
+      make("rabbit-a", "rabbit", 4, 5, 2.1, .5, .94, "#b9a58e", { belly: "#e0d4c2" }),
+      make("rabbit-b", "rabbit", 8, 6, 4.3, .46, .9, "#857768", { belly: "#d8cabb" }),
+      make("rabbit-c", "rabbit", -2, 7, 3.2, .42, .92, "#d0c5b4", { belly: "#ece2d2" }),
+      make("rabbit-d", "rabbit", 7, 10, 5.1, .44, .9, "#a99783", { belly: "#e4d9c9" }),
+      make("fox-a", "fox", -8, 5, 1.8, .31, 1.0, "#b96c38", { belly: "#ead8c0", dark: "#5b3a28" }),
+      make("fox-b", "fox", 10, 8, 3.8, .28, .96, "#c57b45", { belly: "#f0dfc9", dark: "#5b3a28" }),
+      make("cat-a", "cat", -6, 10, 4.8, .29, .9, "#6c6660", { belly: "#c6c0b5" }),
+      make("dog-a", "dog", 6, 11, .8, .34, .98, "#b88d60", { belly: "#e1d1b5" }),
       make("pigeon-a", "pigeon", -3, 8, 1.1, .72, .8, "#7b8587", { dark: "#59666b" }),
       make("pigeon-b", "pigeon", 2, 10, 4.1, .68, .76, "#8a9290", { dark: "#687477" }),
-      make("pigeon-c", "pigeon", 8, -14, 2.7, .7, .78, "#8c9897", { dark: "#687477" }),
+      make("pigeon-c", "pigeon", 8, -8, 2.7, .7, .78, "#8c9897", { dark: "#687477" }),
       ...squirrels
     ];
   }, [reserve, cx, cz, perches]);
@@ -332,7 +337,35 @@ export function WildlifeReserve({ reserve, playerPositionRef, wildlifeRef, compl
   return h(React.Fragment, null,
     h("group", { scale: [reserveScale, 1, reserveScale], position: [cx * (1 - reserveScale), 0, cz * (1 - reserveScale)] },
       h("mesh", { position: [cx, .012, cz], rotation: [-Math.PI / 2, 0, 0], material: GRASS, receiveShadow: true },
-        h("planeGeometry", { args: [27.5, 27.5] })
+        h("planeGeometry", { args: [40, 40] })
+      ),
+      h("mesh", { position: [cx + 8, .025, cz - 9], rotation: [-Math.PI / 2, 0, -.18], scale: [9.5, 6.5, 1], material: fur("#9bb873"), receiveShadow: true },
+        h("circleGeometry", { args: [1, 56] })
+      ),
+      h("mesh", { position: [cx + 8, .045, cz - 9], rotation: [-Math.PI / 2, 0, -.18], scale: [2.15, 1.12, 1], material: STONE },
+        h("circleGeometry", { args: [1, 36] })
+      ),
+      h("mesh", { position: [cx + 8, .075, cz - 9], rotation: [-Math.PI / 2, 0, -.18], scale: [1.82, .82, 1], material: WATER },
+        h("circleGeometry", { args: [1, 36] })
+      ),
+      ...[
+        [-14, 13, -8, 6], [-8, 6, -5, -1], [-5, -1, 1, -6],
+        [1, -6, 8, -9], [0, 4, 7, 6], [7, 6, 11, 10], [-1, 8, -5, 9]
+      ].map(([x1, z1, x2, z2], i) => {
+        const dx = x2 - x1, dz = z2 - z1;
+        return h("mesh", {
+          key: "connected-trail-" + i,
+          position: [cx + (x1 + x2) / 2, .022, cz + (z1 + z2) / 2],
+          rotation: [-Math.PI / 2, 0, Math.atan2(dx, dz)],
+          material: PATH
+        }, h("planeGeometry", { args: [1.45, Math.hypot(dx, dz)] }));
+      }),
+      h("group", { position: [cx - 14, .02, cz + 13], rotation: [0, .42, 0] },
+        h("mesh", { position: [0, 1.3, 0], material: WOOD }, h("cylinderGeometry", { args: [.1, .13, 2.6, 8] })),
+        h("mesh", { position: [2.6, 1.3, 0], material: WOOD }, h("cylinderGeometry", { args: [.1, .13, 2.6, 8] })),
+        h("mesh", { position: [1.3, 2.35, 0], material: WOOD }, h("boxGeometry", { args: [2.9, .2, .3] })),
+        h("mesh", { position: [1.3, 1.9, .04], material: fur("#4d7850") }, h("boxGeometry", { args: [2.65, .7, .12] })),
+        h("mesh", { position: [1.3, 1.9, .12], material: FLOWER }, h("circleGeometry", { args: [.18, 18] }))
       ),
       ...[[-17, -14, 7.2, 1.25, 5.5], [18, -17, 8.4, 1.55, 6.5], [-20, 17, 9.5, 1.7, 7.2], [18, 18, 7.8, 1.35, 6.2]].map(([dx, dz, sx, sy, sz], i) =>
         h("mesh", { key: "meadow-hill-" + i, position: [cx + dx, -1.15, cz + dz], scale: [sx, sy, sz], material: fur(i % 2 ? "#91b873" : "#a0c17b"), castShadow: true, receiveShadow: true },

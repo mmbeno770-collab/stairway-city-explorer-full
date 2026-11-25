@@ -805,7 +805,7 @@ function DolphinModel({dolphin}){
   React.createElement("mesh",{material:dolphinBelly,position:[0,-.16,1.69],scale:[.2,.07,.23]},React.createElement("sphereGeometry",{args:[1,14,10]}))
  );
 }
-function DolphinSchool({dolphins,divingRef}){
+function DolphinSchool({dolphins}){
  const root=useRef(null);
  useFrame(({clock})=>{
   if(root.current)root.current.visible=true;
@@ -839,6 +839,6 @@ export function MarineWorld({marine,boats,divingRef,quality="balanced",boatRaceR
   ...(marine.jetSkis||[]).map(jetSki=>React.createElement(JetSkiModel,{key:"jet-ski-"+jetSki.id,jetSki})),
   ...(marine.sleds||[]).map(sled=>React.createElement(SledModel,{key:"sled-"+sled.id,sled})),
   React.createElement(UnderwaterLife,{divingRef,islands:marine.islands,quality}),
-  React.createElement(DolphinSchool,{dolphins:marine.dolphins,divingRef})
+  React.createElement(DolphinSchool,{dolphins:marine.dolphins})
  );
 }

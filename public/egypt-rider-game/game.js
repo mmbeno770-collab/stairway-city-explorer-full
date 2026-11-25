@@ -420,7 +420,7 @@ function update(dt,t){
    const phase=t*herd.speed+herd.phase;
    herd.group.position.x=herd.x+Math.sin(phase)*herd.range;
    herd.group.position.z=herd.z+Math.cos(phase*.72)*herd.range*.65;
-   herd.group.rotation.y=Math.atan2(Math.cos(phase)*herd.range,-Math.sin(phase*.72)*herd.range*.65)+Math.PI;
+   herd.group.rotation.y=Math.atan2(Math.cos(phase)*herd.range,-Math.sin(phase*.72)*herd.range*.65);
    herd.group.position.y=Math.abs(Math.sin(t*2.5+herd.phase))*.025;
   }
   for(const s of scarabs){if(!s.got&&Math.hypot(carrier.position.x-s.x,carrier.position.z-s.z)<2.35){s.got=true;s.group.visible=false;const n=scarabs.filter(x=>x.got).length;$('collected').textContent=n;$('progress-fill').style.width=(n/12*100)+'%';toast('חיפושית זהב נאספה! ✨');if(n===12)toast('כל חיפושיות הזהב נאספו!');}}

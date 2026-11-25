@@ -24,7 +24,6 @@ const sand=mat(0xd7bc89), sand2=mat(0xe8d4aa), stone=mat(0xc7ad7d), darkStone=ma
 const world=new THREE.Group(); scene.add(world);
 const blockers=[];
 const buildingRects=[];
-const climbZones=[];
 function box(parent,x,y,z,w,h,d,material,block=false){
  const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material); o.position.set(x,y+h/2,z); o.castShadow=true; o.receiveShadow=true; parent.add(o);
  if(block)blockers.push({x1:x-w/2-.45,x2:x+w/2+.45,z1:z-d/2-.45,z2:z+d/2+.45});
@@ -49,21 +48,73 @@ function waterRect(x,z,w,d){
  for(const [xx,zz,ww,dd] of [[x-w/2,z,w+.5,.42],[x+w/2,z,w+.5,.42],[x,z-d/2,.42,d+.5],[x,z+d/2,.42,d+.5]])box(world,xx,.0,zz,ww,.48,dd,darkStone);
 }
 waterRect(-30,0,4.5,65);waterRect(17,1.5,7,10);waterRect(38,1.5,7,10);waterRect(39,-27,10,8);
+const pyramidZones=[];
+const pyramidStoneColors=[0xdcc28e,0xd3b77f,0xc9aa70,0xe4d0a2,0xbfa06b];
+function pyramidPoint(a,b,apex,t,s){
+ const base=new THREE.Vector3(...a).lerp(new THREE.Vector3(...b),s);
+ return base.lerp(new THREE.Vector3(...apex),t);
+}
+function addPyramidFace(x,z,size,h,a,b,baseMaterial){
+ const apex=[x,h,z];
+ const A=[x+a[0]*size,0,z+a[1]*size],B=[x+b[0]*size,0,z+b[1]*size];
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute([...A,...B,...apex],3));
+ geometry.computeVertexNormals();
+ const face=new THREE.Mesh(geometry,baseMaterial);
+ face.material.side=THREE.DoubleSide;
+ face.castShadow=true;face.receiveShadow=true;world.add(face);
+ const center=new THREE.Vector3(x,h*.25,z);
+ const faceCenter=new THREE.Vector3((A[0]+B[0]+apex[0])/3,(A[1]+B[1]+apex[1])/3,(A[2]+B[2]+apex[2])/3);
+ const normal=faceCenter.sub(center).normalize();
+ const positions=[],colors=[];
+ const courses=19;
+ for(let row=0;row<courses;row++){
+  const t0=row/courses+.008,t1=(row+1)/courses-.009,avg=(t0+t1)*.5;
+  const blocks=Math.max(1,Math.round((2*size*(1-avg))/1.45));
+  for(let col=0;col<blocks;col++){
+   const s0=col/blocks+.012,s1=(col+1)/blocks-.012;
+   const pts=[pyramidPoint(A,B,apex,t0,s0),pyramidPoint(A,B,apex,t0,s1),pyramidPoint(A,B,apex,t1,s1),pyramidPoint(A,B,apex,t1,s0)];
+   pts.forEach(p=>p.addScaledVector(normal,.035));
+   const shade=.92+Math.random()*.13;
+   const color=new THREE.Color(pyramidStoneColors[Math.floor(Math.random()*pyramidStoneColors.length)]).multiplyScalar(shade);
+   const push=p=>{positions.push(p.x,p.y,p.z);colors.push(color.r,color.g,color.b);};
+   push(pts[0]);push(pts[1]);push(pts[2]);push(pts[0]);push(pts[2]);push(pts[3]);
+  }
+ }
+ const blocksGeometry=new THREE.BufferGeometry();
+ blocksGeometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ blocksGeometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ blocksGeometry.computeVertexNormals();
+ const blocksMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,metalness:0,side:THREE.DoubleSide});
+ const blocksMesh=new THREE.Mesh(blocksGeometry,blocksMaterial);
+ blocksMesh.castShadow=true;blocksMesh.receiveShadow=true;world.add(blocksMesh);
+}
 function pyramid(x,z,size,h){
- const p=new THREE.Mesh(new THREE.ConeGeometry(size,h,4,1),mat(0xd5b77e));p.rotation.y=Math.PI/4;p.position.set(x,h/2,z);p.castShadow=true;p.receiveShadow=true;world.add(p);
- box(world,x,0,z,size*1.4,.4,size*1.4,darkStone);
- // Wide sandstone stairs on one face let every mount climb to the summit.
- const length=size*.72,steps=Math.max(10,Math.ceil(h/.65)),depth=length/steps;
- for(let n=0;n<steps;n++){const level=h*(n+1)/steps,stepZ=z-length+(n+.5)*depth;box(world,x,level-.24,stepZ,3.9,.24,depth+.08,n%2?sand2:stone);}
- climbZones.push({type:'pyramid',x,z,halfWidth:2.35,baseZ:z-length,length,height:h,steps});
+ const base=mat(0xb99c6d,1),faces=[[[-1,-1],[1,-1]],[[1,-1],[1,1]],[[1,1],[-1,1]],[[-1,1],[-1,-1]]];
+ for(const [a,b] of faces)addPyramidFace(x,z,size,h,a,b,base);
+ box(world,x,-.02,z,size*2.04,.42,size*2.04,darkStone);
+ const cap=new THREE.Mesh(new THREE.SphereGeometry(.23,8,6),mat(0xe4d1a6));
+ cap.scale.set(1,.62,1);cap.position.set(x,h-.05,z);cap.castShadow=true;world.add(cap);
+ pyramidZones.push({x,z,size,height:h});
 }
 pyramid(-13,-25,8.3,12);pyramid(2,-25,6.8,9.8);pyramid(15,-23,5.4,7.8);
 const houseColors=[0xd9c294,0xc9b28a,0xe1cda4,0xbfa276];
 function house(x,z,w=5,d=5,h=2.5,i=0){
  const m=mat(houseColors[i%4]);box(world,x,0,z,w,h,d,m,false);
- box(world,x,h,z,w+.18,.22,d+.18,darkStone);
- box(world,x,h+.08,z-d/2+.1,.85,1.5,.12,wood);
- for(const s of [-1,1]){const win=new THREE.Mesh(new THREE.BoxGeometry(.55,.48,.1),mat(0x315d75));win.position.set(x+s*w*.27,h*.58,z+d/2+.08);world.add(win);}
+ box(world,x,h,z,w+.22,.2,d+.22,darkStone);box(world,x,h+.13,z,w-.18,.1,d-.18,sand2);
+ for(const s of [-1,1]){
+  box(world,x+s*(w/2-.13),h+.2,z,.22,.34,d+.18,stone,false);
+  box(world,x,h+.2,z+s*(d/2-.13),w+.18,.34,.22,stone,false);
+ }
+ box(world,x,0,z-d/2-.075,.88,1.62,.12,wood);
+ box(world,x,1.65,z-d/2-.12,1.12,.18,.22,sand2);box(world,x,.08,z-d/2-.5,1.25,.16,.48,stone);
+ for(const s of [-1,1]){
+  box(world,x+s*w*.27,h*.58,z+d/2+.025,.68,.59,.14,stone,false);
+  box(world,x+s*w*.27,h*.58,z+d/2+.11,.48,.39,.035,mat(0x28566c),false);
+  box(world,x+s*w*.27,h*.58-.27,z+d/2+.13,.74,.1,.2,sand2,false);
+  box(world,x+s*w*.27,h*.58,z+d/2+.15,.07,.45,.08,wood,false);
+ }
+ for(let n=-1;n<=1;n++)box(world,x+n*.36,h*.78,z-d/2-.02,.17,.08,.055,darkStone,false);
  buildingRects.push({x,z,w,d,h});
 }
 const clusters=[[-43,-28,3,3],[-42,-8,3,3],[-18,5,3,3],[3,17,3,2],[41,-19,2,3],[42,20,2,3],[-8,29,3,1],[-78,-45,3,3],[-76,22,3,3],[-48,55,3,2],[49,54,3,2],[75,-20,3,3],[73,44,3,2],[-27,-55,3,2],[8,57,4,2]];
@@ -155,12 +206,40 @@ function createMount(i){
  if(i===4){body.scale.set(1.5,.38,.55);head.scale.set(.55,.28,.8);head.position.z=1.15;for(let n=0;n<9;n++){const sc=sphere(g,0,.99,-.95+n*.24,.15,.19,.16,accent);}for(let n=0;n<5;n++)limb(g,[0,.55,-.35-n*.26],[0,.25,-.7-n*.29],.16,coat); }
  if(i!==1&&i!==4){for(let s of [-1,1]){limb(g,[s*.67,.72,.25],[s*.72,.1,.35],.14,coat);limb(g,[s*.68,.72,-.3],[s*.72,.1,-.4],.14,coat);}}
  if(i!==4){const tail=sphere(g,0,.8,-1.25,.16,.16,.75,coat);tail.rotation.x=.38;if(i===3||i===0)sphere(g,0,.65,-1.9,.22,.18,.2,mane);}
+ // Sculpted details: eyes, muzzles, paws and characteristic facial shapes.
+ const eyeY=i===4?1.43:(i===2?1.48:1.34),eyeZ=i===4?1.73:(i===2?1.15:1.12);
+ for(const s of [-1,1]){
+  sphere(g,s*.19,eyeY,eyeZ,.095,.075,.07,mat(0xf7e5bd));
+  sphere(g,s*.205,eyeY,eyeZ+.052,.043,.05,.032,mat(0x1e1915));
+  sphere(g,s*.205,eyeY+.018,eyeZ+.078,.014,.016,.012,mat(0xffffff));
+ }
+ if(i===1){
+  sphere(g,0,.9,.78,.72,.36,.45,mat(0x5a453c));sphere(g,0,1.12,1.38,.27,.19,.14,mat(0x201a18));
+  for(const s of [-1,1])sphere(g,s*.32,.92,1.25,.17,.14,.11,mat(0x776257));
+ }else if(i===2){
+  sphere(g,0,1.16,1.35,.31,.23,.24,mat(0x9b633a));
+  for(const s of [-1,1])sphere(g,s*.12,1.12,1.55,.045,.04,.025,black);
+  sphere(g,0,1.58,.88,.25,.18,.2,accent);
+ }else if(i===4){
+  sphere(g,0,1.04,1.62,.52,.2,.46,coat);
+  for(let n=0;n<7;n++)for(const s of [-1,1])sphere(g,s*.44,.88,-.8+n*.27,.09,.1,.1,accent);
+ }else{
+  sphere(g,0,1.02,1.26,.24,.17,.2,mat(i===0?0x9a5935:0x9a7048));
+  for(const s of [-1,1])sphere(g,s*.33,1.52,.58,.13,.18,.12,mane);
+ }
+ if(i!==4){
+  for(const s of [-1,1])for(const z of [-.4,.4]){
+   sphere(g,s*.72,.13,z,.2,.12,.23,accent);
+   for(let k=-1;k<=1;k++)sphere(g,s*.72+k*.09,.105,z+.12,.045,.055,.06,mat(0x3b2b20));
+  }
+ }
+ const harness=box(g,0,1.05,-.04,.12,.65,1.15,accent);harness.position.y=1.05;
  const saddle=box(g,0,1.28,-.05,1.25,.16,1.15,mat(i===3?0x873b29:0x875b36));saddle.position.y=1.32;
  const boy=makeBoy(g,i===1?1.55:1.52);
  g.visible=i===0;g.userData.boy=boy;g.userData.head=head;g.userData.legs=[];g.userData.index=i;
  mounts.push(g);carrier.add(g);
 }
-const carrier=new THREE.Group();world.add(carrier);carrier.position.set(0,0,-30);
+const carrier=new THREE.Group();world.add(carrier);carrier.position.set(0,0,-68);
 for(let i=0;i<5;i++)createMount(i);
 let active=0;
 function setMount(i){
@@ -190,7 +269,7 @@ updateCitizenHud();
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t.timer);t.timer=setTimeout(()=>t.classList.remove('show'),1500);}
 function start(){running=true;paused=false;$('start-screen').classList.add('hidden');$('pause-screen').classList.add('hidden');$('hud').classList.remove('hidden');}
 function checkWin(){if(citizensCaught>=citizenTotal&&!won){won=true;$('win-title').textContent='לא נשארו מצרים בעיר!';$('win-subtitle').textContent='המסע הושלם — כל התושבים נתפסו באפקט מצויר ולא גרפי.';setTimeout(()=>$('win-screen').classList.remove('hidden'),450);}}
-function reset(){for(const s of scarabs){s.got=false;s.group.visible=true;}$('collected').textContent='0';$('progress-fill').style.width='0%';citizensCaught=0;citizens.forEach(c=>{c.state='idle';c.progress=0;c.caught=false;c.group.visible=true;c.group.scale.setScalar(1);c.group.position.set(c.homeX,0,c.homeZ);});updateCitizenHud();carrier.position.set(0,0,-30);carrier.rotation.y=0;vel.set(0,0,0);jumping=false;climbing=null;won=false;setMount(0);setCameraMode('auto');$('win-screen').classList.add('hidden');running=true;paused=false;$('pause-screen').classList.add('hidden');}
+function reset(){for(const s of scarabs){s.got=false;s.group.visible=true;}$('collected').textContent='0';$('progress-fill').style.width='0%';citizensCaught=0;citizens.forEach(c=>{c.state='idle';c.progress=0;c.caught=false;c.group.visible=true;c.group.scale.setScalar(1);c.group.position.set(c.homeX,0,c.homeZ);});updateCitizenHud();carrier.position.set(0,0,-68);carrier.rotation.y=0;vel.set(0,0,0);jumping=false;climbing=null;won=false;setMount(0);setCameraMode('auto');$('win-screen').classList.add('hidden');running=true;paused=false;$('pause-screen').classList.add('hidden');}
 $('start-btn').onclick=start;
 $('pause-btn').onclick=()=>{paused=!paused;$('pause-screen').classList.toggle('hidden',!paused);};
 $('resume-btn').onclick=()=>{paused=false;$('pause-screen').classList.add('hidden');};
@@ -210,7 +289,10 @@ function blocked(x,z){
 }
 function groundHeight(x,z){
  let height=0;
- for(const r of climbZones){if(Math.abs(x-r.x)<r.halfWidth&&z>=r.baseZ&&z<=r.z+.15){const step=Math.min(r.steps-1,Math.max(0,Math.floor((z-r.baseZ)/r.length*r.steps)));const h=r.height*(step+1)/r.steps;height=Math.max(height,h);}}
+ for(const p of pyramidZones){
+  const dx=Math.abs(x-p.x),dz=Math.abs(z-p.z);
+  if(dx<=p.size&&dz<=p.size){const edge=Math.max(dx/p.size,dz/p.size);height=Math.max(height,p.height*(1-edge));}
+ }
  if(active===1){for(const b of buildingRects){if(x>b.x-b.w/2+.2&&x<b.x+b.w/2-.2&&z>b.z-b.d/2+.2&&z<b.z+b.d/2-.2)height=Math.max(height,b.h+.24);}}
  return height;
 }

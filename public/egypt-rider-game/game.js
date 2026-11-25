@@ -119,7 +119,7 @@ function house(x,z,w=5,d=5,h=2.5,i=0){
 }
 const clusters=[[-43,-28,3,3],[-42,-8,3,3],[-18,5,3,3],[3,17,3,2],[41,-19,2,3],[42,20,2,3],[-8,29,3,1],[-78,-45,3,3],[-76,22,3,3],[-48,55,3,2],[49,54,3,2],[75,-20,3,3],[73,44,3,2],[-27,-55,3,2],[8,57,4,2]];
 let seed=0;
-for(const [cx,cz,cols,rows] of clusters){for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){house(cx+c*6+(Math.random()-.5),cz+r*6+(Math.random()-.5),4+Math.random(),4+Math.random(),2.2+Math.random()*.8,seed++);}}
+for(const [cx,cz,cols,rows] of clusters){for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){house(cx+c*8.3+(Math.random()-.5)*.7,cz+r*8.3+(Math.random()-.5)*.7,4+Math.random(),4+Math.random(),2.2+Math.random()*.8,seed++);}}
  // Expanded neighbourhoods, broad avenues, garden plots and a second branch of the Nile.
  road(-71,-3,5,118);road(69,2,5,118);road(0,52,184,4.5);road(0,-55,184,4.5);road(-72,28,42,4);road(70,-31,45,4);road(0,34,4,90);
  waterRect(86,0,4.5,132);
@@ -200,10 +200,28 @@ function createMount(i){
  const body=sphere(g,0,.75,0,i===4?1.35:1.15,.58,i===4?.55:.72,coat);
  const head=sphere(g,0,1.13,.78,i===4?.47:.43,.42,i===4?.42:.43,coat);
  if(i===0){sphere(g,0,.93,-.08,1.03,.82,.95,mane);sphere(g,0,1.18,1.08,.32,.3,.28,mat(0xb87939));for(let s of [-1,1]){sphere(g,s*.28,1.35,.78,.15,.18,.14,mane);cyl(g,s*.55,1.2,-.1,.09,.02,.46,accent,6);}}
- if(i===1){body.scale.set(1.02,.85,.8);sphere(g,0,1.28,1.05,.44,.48,.4,mane);for(let s of [-1,1]){limb(g,[s*.62,1.1,.25],[s*.92,.6,.62],.22,coat);limb(g,[s*.92,.6,.62],[s*.95,.12,.8],.19,coat);sphere(g,s*.15,1.34,1.39,.08,.08,.04,mat(0xf4d9ae));}}
+ if(i===1){
+  body.scale.set(1.12,.95,.92);sphere(g,0,1.28,1.05,.48,.5,.42,mane);
+  for(let s of [-1,1]){
+   limb(g,[s*.62,1.1,.25],[s*.92,.6,.62],.24,coat);limb(g,[s*.92,.6,.62],[s*.95,.12,.8],.22,coat);
+   sphere(g,s*.15,1.34,1.39,.08,.08,.04,mat(0xf4d9ae));
+   limb(g,[s*.52,.73,-.35],[s*.58,.42,-.58],.2,coat);limb(g,[s*.58,.42,-.58],[s*.58,.12,-.62],.19,coat);
+   sphere(g,s*.58,.1,-.55,.25,.12,.32,accent);
+  }
+  sphere(g,0,1.06,1.42,.32,.2,.24,mat(0x33231d));
+ }
  if(i===2){sphere(g,0,1.3,.88,.44,.44,.47,coat);for(let s of [-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(.15,.72,8),mat(0xe9d7aa));horn.position.set(s*.42,1.63,.83);horn.rotation.z=-s*.6;g.add(horn);}}
  if(i===3){for(let n=0;n<7;n++){const stripe=box(g,(n-3)*.24,1.02,-.2,.07,.62,.75,black);stripe.rotation.z=(n%2?-.24:.24);}for(let s of [-1,1])sphere(g,s*.3,1.38,.92,.12,.1,.11,mat(0xe8d6a8));}
- if(i===4){body.scale.set(1.5,.38,.55);head.scale.set(.55,.28,.8);head.position.z=1.15;for(let n=0;n<9;n++){const sc=sphere(g,0,.99,-.95+n*.24,.15,.19,.16,accent);}for(let n=0;n<5;n++)limb(g,[0,.55,-.35-n*.26],[0,.25,-.7-n*.29],.16,coat); }
+ if(i===4){
+  body.scale.set(1.85,.48,.62);head.scale.set(.56,.3,.88);head.position.z=1.2;
+  sphere(g,0,1.02,2.0,.39,.17,.62,coat);
+  for(const s of [-1,1]){sphere(g,s*.22,1.12,2.36,.055,.05,.065,black);sphere(g,s*.19,1.43,1.72,.085,.06,.065,mat(0xd8c99d));
+   limb(g,[s*.78,.6,.72],[s*.98,.28,.94],.17,coat);limb(g,[s*.98,.28,.94],[s*1.02,.12,1.02],.14,coat);
+   limb(g,[s*.78,.6,-.72],[s*.98,.28,-.9],.18,coat);limb(g,[s*.98,.28,-.9],[s*1.02,.12,-.98],.14,coat);
+  }
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(.48,2.55,10),coat);tail.rotation.x=-Math.PI/2;tail.position.set(0,.66,-1.78);tail.castShadow=true;g.add(tail);
+  for(let n=0;n<11;n++){const sc=sphere(g,0,1.02,-1.3+n*.25,.18,.2,.18,accent);sc.rotation.z=(n%2?-.15:.15);}
+ }
  if(i!==1&&i!==4){for(let s of [-1,1]){limb(g,[s*.67,.72,.25],[s*.72,.1,.35],.14,coat);limb(g,[s*.68,.72,-.3],[s*.72,.1,-.4],.14,coat);}}
  if(i!==4){const tail=sphere(g,0,.8,-1.25,.16,.16,.75,coat);tail.rotation.x=.38;if(i===3||i===0)sphere(g,0,.65,-1.9,.22,.18,.2,mane);}
  // Sculpted details: eyes, muzzles, paws and characteristic facial shapes.
@@ -234,13 +252,28 @@ function createMount(i){
   }
  }
  const harness=box(g,0,1.05,-.04,.12,.65,1.15,accent);harness.position.y=1.05;
- const saddle=box(g,0,1.28,-.05,1.25,.16,1.15,mat(i===3?0x873b29:0x875b36));saddle.position.y=1.32;
- const boy=makeBoy(g,i===1?1.55:1.52);
+ // Broad natural saddle blanket, chest strap and reins.
+ const saddle=box(g,0,1.28,-.05,1.38,.18,1.3,mat(i===3?0x873b29:0x875b36));saddle.position.y=1.32;
+ const saddleTrim=box(g,0,1.39,-.05,1.48,.06,1.4,mat(0xc29a55));saddleTrim.position.y=1.39;
+ for(const s of [-1,1]){const strap=box(g,s*.58,.88,.18,.12,.72,.12,accent);strap.rotation.z=s*.14;}
+ const boy=makeBoy(g,i===1?1.55:1.52);boy.name='rider';
+ // Larger, more natural-sized mounts; the rider stays at a consistent human scale.
+ g.scale.set(1.28,1.2,1.34);boy.scale.set(1/1.28,1/1.2,1/1.34);boy.position.y/=1.2;
  g.visible=i===0;g.userData.boy=boy;g.userData.head=head;g.userData.legs=[];g.userData.index=i;
  mounts.push(g);carrier.add(g);
 }
 const carrier=new THREE.Group();world.add(carrier);carrier.position.set(0,0,-68);
 for(let i=0;i<5;i++)createMount(i);
+// The plague of wild beasts: naturally proportioned herds roam the streets and desert edges.
+const wildHerd=[];
+const herdSpawns=[[-34,-48,0],[-22,-48,1],[-4,-47,3],[18,-47,2],[39,-46,4],[-87,-18,1],[86,-17,3],[-86,18,4],[85,23,0],[-81,54,2],[-47,62,3],[-8,64,4],[34,64,0],[63,58,1],[62,31,2],[52,8,3],[-28,36,4],[8,40,0],[31,43,1],[75,-49,2]];
+for(let n=0;n<herdSpawns.length;n++){
+ const [x,z,type]=herdSpawns[n];
+ const animal=mounts[type].clone(true);animal.visible=true;
+ const rider=animal.getObjectByName('rider');if(rider)rider.visible=false;
+ animal.scale.multiplyScalar(.9);animal.position.set(x,0,z);animal.rotation.y=Math.random()*Math.PI*2;world.add(animal);
+ wildHerd.push({group:animal,x,z,phase:n*1.47,range:2.5+(n%4),speed:.22+(n%5)*.035,baseYaw:animal.rotation.y});
+}
 let active=0;
 function setMount(i){
  active=(i+5)%5;mounts.forEach((m,n)=>m.visible=n===active);
@@ -297,14 +330,14 @@ function groundHeight(x,z){
  return height;
 }
 const clock=new THREE.Clock();const cameraTarget=new THREE.Vector3();
-let cameraMode='auto',cameraYaw=Math.PI,cameraPitch=.53,cameraDistance=29,draggingCamera=false,lastPointerX=0,lastPointerY=0;
+let cameraMode='auto',cameraYaw=Math.PI,cameraYawOffset=0,cameraPitch=.53,cameraDistance=29,draggingCamera=false,lastPointerX=0,lastPointerY=0;
 function setCameraMode(mode){
  if(mode==='manual'&&cameraMode!=='manual'){const dx=camera.position.x-cameraTarget.x,dy=camera.position.y-cameraTarget.y,dz=camera.position.z-cameraTarget.z;cameraDistance=THREE.MathUtils.clamp(Math.hypot(dx,dy,dz),11,52);cameraYaw=Math.atan2(dx,dz);cameraPitch=Math.asin(THREE.MathUtils.clamp(dy/cameraDistance,-1,1));}
- cameraMode=mode;if(cameraMode==='auto'){cameraPitch=.53;cameraDistance=29;}$('camera-mode-btn').textContent=cameraMode==='auto'?'מצלמה: אוטומטית':'מצלמה: ידנית';
+ cameraMode=mode;if(cameraMode==='auto'){cameraPitch=.53;cameraDistance=29;cameraYawOffset=0;}$('camera-mode-btn').textContent=cameraMode==='auto'?'מצלמה: אוטומטית':'מצלמה: ידנית';
 }
 $('camera-mode-btn').addEventListener('click',()=>setCameraMode(cameraMode==='auto'?'manual':'auto'));
-canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;setCameraMode('manual');draggingCamera=true;lastPointerX=e.clientX;lastPointerY=e.clientY;canvas.setPointerCapture(e.pointerId);});
-canvas.addEventListener('pointermove',e=>{if(!draggingCamera)return;const dx=e.clientX-lastPointerX,dy=e.clientY-lastPointerY;lastPointerX=e.clientX;lastPointerY=e.clientY;cameraYaw-=dx*.006;cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.005,.16,1.28);});
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;draggingCamera=true;lastPointerX=e.clientX;lastPointerY=e.clientY;canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointermove',e=>{if(!draggingCamera)return;const dx=e.clientX-lastPointerX,dy=e.clientY-lastPointerY;lastPointerX=e.clientX;lastPointerY=e.clientY;if(cameraMode==='auto')cameraYawOffset-=dx*.006;else cameraYaw-=dx*.006;cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.005,.16,1.28);});
 for(const ev of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(ev,()=>draggingCamera=false);
 canvas.addEventListener('wheel',e=>{e.preventDefault();cameraDistance=THREE.MathUtils.clamp(cameraDistance+e.deltaY*.018,11,52);},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
@@ -318,8 +351,13 @@ function doJump(){
 function update(dt,t){
  scarabs.forEach(s=>{if(!s.got){s.group.rotation.y=t*.85+s.phase;s.group.position.y=.9+Math.sin(t*2+s.phase)*.13;}});
  if(running&&!paused&&!won){
-  let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+touch.x;
-  let dz=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)+touch.z;
+  const inputRight=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+touch.x;
+  const inputForward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)+touch.z;
+  const viewForward=new THREE.Vector3(cameraTarget.x-camera.position.x,0,cameraTarget.z-camera.position.z).normalize();
+  if(viewForward.lengthSq()<.001)viewForward.set(0,0,1);
+  const viewRight=new THREE.Vector3().crossVectors(viewForward,new THREE.Vector3(0,1,0)).normalize();
+  let dx=viewForward.x*inputForward+viewRight.x*inputRight;
+  let dz=viewForward.z*inputForward+viewRight.z*inputRight;
   const len=Math.hypot(dx,dz);if(len>1){dx/=len;dz/=len;}
   if(climbing){
    climbing.progress=Math.min(1,climbing.progress+dt*.78);const eased=climbing.progress*climbing.progress*(3-2*climbing.progress);
@@ -338,6 +376,13 @@ function update(dt,t){
   }
   mounts[active].position.y=Math.sin(t*12)*.035+Math.abs(Math.sin(t*12))*.04;
   mounts[active].rotation.z=THREE.MathUtils.damp(mounts[active].rotation.z,dx*.055,5,dt);
+  for(const herd of wildHerd){
+   const phase=t*herd.speed+herd.phase;
+   herd.group.position.x=herd.x+Math.sin(phase)*herd.range;
+   herd.group.position.z=herd.z+Math.cos(phase*.72)*herd.range*.65;
+   herd.group.rotation.y=Math.atan2(Math.cos(phase)*herd.range,-Math.sin(phase*.72)*herd.range*.65);
+   herd.group.position.y=Math.abs(Math.sin(t*5+herd.phase))*.06;
+  }
   for(const s of scarabs){if(!s.got&&Math.hypot(carrier.position.x-s.x,carrier.position.z-s.z)<2.35){s.got=true;s.group.visible=false;const n=scarabs.filter(x=>x.got).length;$('collected').textContent=n;$('progress-fill').style.width=(n/12*100)+'%';toast('חיפושית זהב נאספה! ✨');if(n===12)toast('כל חיפושיות הזהב נאספו!');}}
   // Citizens flee from the rider; catching one triggers a playful, non-graphic swallow effect.
   for(const citizen of citizens){
@@ -364,7 +409,7 @@ function update(dt,t){
  }
  const p=carrier.position;cameraTarget.set(p.x,1.35+p.y,p.z);
  if(cameraMode==='auto'){
-  const yaw=carrier.rotation.y+Math.PI,desired=new THREE.Vector3(p.x+Math.sin(yaw)*cameraDistance*Math.cos(cameraPitch),cameraTarget.y+cameraDistance*Math.sin(cameraPitch),p.z+Math.cos(yaw)*cameraDistance*Math.cos(cameraPitch));
+  const yaw=carrier.rotation.y+Math.PI+cameraYawOffset,desired=new THREE.Vector3(p.x+Math.sin(yaw)*cameraDistance*Math.cos(cameraPitch),cameraTarget.y+cameraDistance*Math.sin(cameraPitch),p.z+Math.cos(yaw)*cameraDistance*Math.cos(cameraPitch));
   camera.position.lerp(desired,1-Math.exp(-3.8*dt));
  }else{
   const desired=new THREE.Vector3(p.x+Math.sin(cameraYaw)*cameraDistance*Math.cos(cameraPitch),cameraTarget.y+cameraDistance*Math.sin(cameraPitch),p.z+Math.cos(cameraYaw)*cameraDistance*Math.cos(cameraPitch));

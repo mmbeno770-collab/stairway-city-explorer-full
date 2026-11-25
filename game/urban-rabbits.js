@@ -13,10 +13,10 @@ export function UrbanRabbits({ playerPositionRef }) {
   const ears = useRef([]);
   const animals = useMemo(() => {
     const parks = [
-      { x: -126, z: -126 },
-      { x: 162, z: 162 },
-      { x: 108, z: -90 },
-      { x: 72, z: 126 }
+      { x: -144, z: -144 },
+      { x: 144, z: 144 },
+      { x: 108, z: -108 },
+      { x: 72, z: 108 }
     ];
     return Array.from({ length: 10 }, (_, i) => {
       const park = parks[i % parks.length];

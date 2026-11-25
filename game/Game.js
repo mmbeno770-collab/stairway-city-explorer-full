@@ -2018,7 +2018,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: false, t: s.t, dt });
       camTarget.set(p.x, p.y + 1.42, p.z); camDist = 4.8;
       s.hudTimer -= dt;
-      if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("מערה סודית · W/A/S/D לתנועה · F לאיסוף תגלית או יציאה · הפנס פועל"); }
+      if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("מערה סודית · W/A/S/D לתנועה · G להרים תגלית · F לצאת · הפנס פועל"); }
       onPrompt(closestDiscovery ? "G — להרים " + closestDiscovery.name + " ולקחת אותו החוצה" : closestPortal ? "F / פעולה — לצאת למעלה דרך " + closestPortal.name : "חפשו גבישים, מאובנים ומעברים מוארים");
     } else if (s.mode === "elevator") {
       const elevatorCar = elevatorCars[s.elevatorId];

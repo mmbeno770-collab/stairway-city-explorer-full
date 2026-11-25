@@ -207,7 +207,6 @@ const realAnimalAssets=[
 ];
 const realAnimalLoader=new GLTFLoader();
 const animalAssetCache=[];
-const animalAssetCache=[];
 let animalModelsLoaded=0;
 function reportAnimalLoad(label,failed=false){
  animalModelsLoaded++;

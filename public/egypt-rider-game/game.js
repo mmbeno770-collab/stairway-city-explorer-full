@@ -92,9 +92,9 @@ function addPyramidFace(x,z,size,h,a,b,baseMaterial){
 function pyramid(x,z,size,h){
  const base=mat(0xb99c6d,1),faces=[[[-1,-1],[1,-1]],[[1,-1],[1,1]],[[1,1],[-1,1]],[[-1,1],[-1,-1]]];
  for(const [a,b] of faces)addPyramidFace(x,z,size,h,a,b,base);
- box(world,x,-.02,z,size*2.04,.42,size*2.04,darkStone);
- const cap=new THREE.Mesh(new THREE.SphereGeometry(.23,8,6),mat(0xe4d1a6));
- cap.scale.set(1,.62,1);cap.position.set(x,h-.05,z);cap.castShadow=true;world.add(cap);
+ box(world,x,-.12,z,size*2.04,.12,size*2.04,darkStone);
+ const cap=new THREE.Mesh(new THREE.ConeGeometry(.3,.42,4),mat(0xe4d1a6));
+ cap.rotation.y=Math.PI/4;cap.position.set(x,h-.21,z);cap.castShadow=true;cap.receiveShadow=true;world.add(cap);
  pyramidZones.push({x,z,size,height:h});
 }
 pyramid(-13,-25,8.3,12);pyramid(2,-25,6.8,9.8);pyramid(15,-23,5.4,7.8);

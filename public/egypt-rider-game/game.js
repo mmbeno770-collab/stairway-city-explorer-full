@@ -197,70 +197,240 @@ const defs=[
  ['תנין','🐊','שחיין מצוין בתעלות',6.3,4.9,0x456a4a]
 ];
 function createMount(i){
- const g=new THREE.Group();const coat=mat(defs[i][5]),mane=mat(i===0?0x493124:0x272b27),accent=mat(i===3?0x1f1a16:0xa27a45);
- const body=sphere(g,0,.75,0,i===4?1.35:1.15,.58,i===4?.55:.72,coat);
- const head=sphere(g,0,1.13,.78,i===4?.47:.43,.42,i===4?.42:.43,coat);
- if(i===0){sphere(g,0,.93,-.08,1.03,.82,.95,mane);sphere(g,0,1.18,1.08,.32,.3,.28,mat(0xb87939));for(let s of [-1,1]){sphere(g,s*.28,1.35,.78,.15,.18,.14,mane);cyl(g,s*.55,1.2,-.1,.09,.02,.46,accent,6);}}
- if(i===1){
-  body.scale.set(1.12,.95,.92);sphere(g,0,1.28,1.05,.48,.5,.42,mane);
-  for(let s of [-1,1]){
-   limb(g,[s*.62,1.1,.25],[s*.92,.6,.62],.24,coat);limb(g,[s*.92,.6,.62],[s*.95,.12,.8],.22,coat);
-   sphere(g,s*.15,1.34,1.39,.08,.08,.04,mat(0xf4d9ae));
-   limb(g,[s*.52,.73,-.35],[s*.58,.42,-.58],.2,coat);limb(g,[s*.58,.42,-.58],[s*.58,.12,-.62],.19,coat);
-   sphere(g,s*.58,.1,-.55,.25,.12,.32,accent);
+ const g=new THREE.Group();
+ g.userData.limbs=[];
+ g.userData.animatedTails=[];
+ const coat=mat(defs[i][5],.84),darkCoat=mat([0x6d4527,0x30231e,0x51301e,0xb56b2e,0x3b5541][i],.9);
+ const lightCoat=mat([0xc58b48,0x806052,0x9d7044,0xe3a04c,0x71805d][i],.92);
+ const muzzle=mat([0xe0b47b,0x6c5144,0x8b6144,0xd69b65,0x667354][i],.88);
+ const innerEar=mat(0x8b5144),noseMat=mat(0x211a17,.5),eyeWhite=mat(0xf2dfb6,.4),iris=mat(0x9a6b2c,.3),black=mat(0x1e1714,.35),claw=mat(0xd8c8aa,.7);
+ const accent=mat(i===3?0x2a1e18:0x9c7945,.7,.18);
+ const ell=(x,y,z,sx,sy,sz,m)=>sphere(g,x,y,z,sx,sy,sz,m);
+ const addTube=(points,radius,m,segments=20)=>{
+  const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+  const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,segments,radius,8,false),m);
+  mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);return mesh;
+ };
+ const joint=(x,y,z,r,m=coat)=>ell(x,y,z,r,r,r,m);
+ const paw=(x,z,r=.3)=>{
+  ell(x,.19,z,r,.16,r*1.28,coat);
+  for(let k=-1;k<=1;k++){
+   ell(x+k*r*.48,.12,z+r*.78,r*.2,.075,r*.34,claw);
   }
-  sphere(g,0,1.06,1.42,.32,.2,.24,mat(0x33231d));
- }
- if(i===2){sphere(g,0,1.3,.88,.44,.44,.47,coat);for(let s of [-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(.15,.72,8),mat(0xe9d7aa));horn.position.set(s*.42,1.63,.83);horn.rotation.z=-s*.6;g.add(horn);}}
- if(i===3){for(let n=0;n<7;n++){const stripe=box(g,(n-3)*.24,1.02,-.2,.07,.62,.75,black);stripe.rotation.z=(n%2?-.24:.24);}for(let s of [-1,1])sphere(g,s*.3,1.38,.92,.12,.1,.11,mat(0xe8d6a8));}
- if(i===4){
-  body.scale.set(1.85,.48,.62);head.scale.set(.56,.3,.88);head.position.z=1.2;
-  sphere(g,0,1.02,2.0,.39,.17,.62,coat);
-  for(const s of [-1,1]){sphere(g,s*.22,1.12,2.36,.055,.05,.065,black);sphere(g,s*.19,1.43,1.72,.085,.06,.065,mat(0xd8c99d));
-   limb(g,[s*.78,.6,.72],[s*.98,.28,.94],.17,coat);limb(g,[s*.98,.28,.94],[s*1.02,.12,1.02],.14,coat);
-   limb(g,[s*.78,.6,-.72],[s*.98,.28,-.9],.18,coat);limb(g,[s*.98,.28,-.9],[s*1.02,.12,-.98],.14,coat);
+ };
+ const leg4=(x,z,front)=>{
+  const hipY=front?1.18:1.1,kneeY=front?.68:.63,ankleY=.27;
+  const upperEnd=[x*(front?1.06:1.02),kneeY,z+(front?.07:-.08)];
+  limb(g,[x*.82,hipY,z],[...upperEnd],front?.19:.22,coat);
+  limb(g,upperEnd,[x*1.1,ankleY,z+(front?.12:-.12)],front?.14:.16,lightCoat);
+  joint(...upperEnd,front?.2:.23,coat);
+  paw(x*1.1,z+(front?.25:-.22),front?.28:.32);
+ };
+ const eye=(x,y,z,scale=1)=>{
+  ell(x,y,z,.105*scale,.09*scale,.07*scale,eyeWhite);
+  ell(x,y,z+.052*scale,.052*scale,.057*scale,.035*scale,iris);
+  ell(x,y,z+.078*scale,.027*scale,.038*scale,.022*scale,black);
+  ell(x-.012*scale,y+.022*scale,z+.096*scale,.012*scale,.014*scale,.01*scale,eyeWhite);
+ };
+ const ear=(x,y,z,r=.2)=>{
+  ell(x,y,z,r,r*1.15,r*.42,coat);
+  ell(x,y,z+.055,r*.58,r*.7,r*.24,innerEar);
+ };
+ const tail=(points,radii,m,tipMat=m)=>{
+  const group=new THREE.Group();g.add(group);
+  for(let n=0;n<points.length-1;n++){
+   const a=points[n],b=points[n+1],r=radii[n]||radii[radii.length-1];
+   const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=B.clone().sub(A);
+   const part=new THREE.Mesh(new THREE.CylinderGeometry(r*.72,r,dir.length(),9),m);
+   part.position.copy(A).add(B).multiplyScalar(.5);
+   part.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
+   part.castShadow=true;group.add(part);
+   ell.call(null,0,0,0,0,0,0,m); // no-op keeps all generated parts owned by the animal group
   }
-  const tail=new THREE.Mesh(new THREE.ConeGeometry(.48,2.55,10),coat);tail.rotation.x=-Math.PI/2;tail.position.set(0,.66,-1.78);tail.castShadow=true;g.add(tail);
-  for(let n=0;n<11;n++){const sc=sphere(g,0,1.02,-1.3+n*.25,.18,.2,.18,accent);sc.rotation.z=(n%2?-.15:.15);}
- }
- if(i!==1&&i!==4){for(let s of [-1,1]){limb(g,[s*.67,.72,.25],[s*.72,.1,.35],.14,coat);limb(g,[s*.68,.72,-.3],[s*.72,.1,-.4],.14,coat);}}
- if(i!==4){const tail=sphere(g,0,.8,-1.25,.16,.16,.75,coat);tail.rotation.x=.38;if(i===3||i===0)sphere(g,0,.65,-1.9,.22,.18,.2,mane);}
- // Sculpted details: eyes, muzzles, paws and characteristic facial shapes.
- const eyeY=i===4?1.43:(i===2?1.48:1.34),eyeZ=i===4?1.73:(i===2?1.15:1.12);
- for(const s of [-1,1]){
-  sphere(g,s*.19,eyeY,eyeZ,.095,.075,.07,mat(0xf7e5bd));
-  sphere(g,s*.205,eyeY,eyeZ+.052,.043,.05,.032,mat(0x1e1915));
-  sphere(g,s*.205,eyeY+.018,eyeZ+.078,.014,.016,.012,mat(0xffffff));
- }
- if(i===1){
-  sphere(g,0,.9,.78,.72,.36,.45,mat(0x5a453c));sphere(g,0,1.12,1.38,.27,.19,.14,mat(0x201a18));
-  for(const s of [-1,1])sphere(g,s*.32,.92,1.25,.17,.14,.11,mat(0x776257));
+  const last=points[points.length-1];const tuft=new THREE.Mesh(new THREE.SphereGeometry(radii[radii.length-1]*2,10,8),tipMat);
+  tuft.position.set(...last);group.add(tuft);g.userData.animatedTails.push(group);return group;
+ };
+ const torso=(x,y,z,sx,sy,sz,m=coat)=>ell(x,y,z,sx,sy,sz,m);
+ let head;
+ let seatY=1.68;
+ if(i===0){
+  // Lion: muscular feline torso, shoulders, haunches and a separate layered mane.
+  torso(0,1.02,-.03,.68,.57,1.05,coat);
+  torso(0,1.12,.57,.7,.64,.5,lightCoat);
+  torso(0,1.05,-.62,.71,.62,.54,coat);
+  for(const s of [-1,1]){leg4(s*.49,.57,true);leg4(s*.5,-.64,false);}
+  // Mane forms a full collar around the skull, not a ball covering the body.
+  ell(0,1.66,1.0,.76,.82,.66,darkCoat);
+  for(let n=0;n<14;n++){
+   const a=n*Math.PI*2/14;
+   const x=Math.cos(a)*.65,z=1+Math.sin(a)*.56;
+   const tuft=ell(x,1.62+Math.sin(a)*.2,z,.19,.28,.22,mat(n%3===0?0x9c642f:0x674025));
+   tuft.rotation.z=-Math.cos(a)*.35;
+  }
+  head=new THREE.Group();g.add(head);head.position.set(0,1.73,1.27);
+  sphere(head,0,0,.05,.45,.43,.43,coat);
+  sphere(head,0,-.19,.4,.34,.2,.28,muzzle);
+  sphere(head,0,-.12,.6,.19,.11,.13,noseMat);
+  for(const s of [-1,1]){
+   sphere(head,s*.34,.23,.02,.18,.2,.16,darkCoat);
+   sphere(head,s*.34,.23,.12,.1,.12,.055,innerEar);
+   sphere(head,s*.2,.08,.38,.2,.15,.18,lightCoat);
+   sphere(head,s*.2,.17,.38,.105,.085,.08,eyeWhite);
+   sphere(head,s*.2,.17,.45,.052,.06,.04,black);
+   sphere(head,s*.2,-.15,.61,.045,.032,.025,black);
+   for(let n=0;n<3;n++)addTube([[s*.28,-.2,.52],[s*.48,-.2+n*.035,.58],[s*.59,-.16+n*.05,.66]],.009,claw,8);
+  }
+  // Tawny tail with a dark tuft.
+  tail([[0,1.02,-1.0],[0,1.0,-1.42],[.04,.82,-1.8],[.08,.58,-2.05]],[.095,.08,.065],coat,darkCoat);
+  seatY=1.88;
+ }else if(i===1){
+  // Gorilla: broad upright torso, pronounced chest and long articulated arms.
+  torso(0,1.1,-.03,.9,.87,.68,darkCoat);
+  torso(0,1.52,.32,.94,.62,.45,coat);
+  torso(0,1.12,.54,.68,.61,.4,lightCoat);
+  torso(0,1.92,.27,.64,.38,.43,darkCoat);
+  for(const s of [-1,1]){
+   // long arms and large knuckles
+   limb(g,[s*.7,1.75,.2],[s*1.02,1.18,.46],.27,darkCoat);
+   limb(g,[s*1.02,1.18,.46],[s*1.03,.48,.72],.235,coat);
+   joint(s*1.02,1.18,.46,.25,darkCoat);
+   ell(s*1.03,.36,.77,.27,.19,.34,darkCoat);
+   for(let k=-1;k<=2;k++)ell(s*1.03+(k-0.5)*.12,.23,.99,.065,.075,.16,claw);
+   // short powerful legs, wide feet
+   limb(g,[s*.43,.92,-.22],[s*.48,.45,.02],.23,coat);
+   limb(g,[s*.48,.45,.02],[s*.5,.19,.35],.19,darkCoat);
+   paw(s*.5,.52,.33);
+  }
+  // Head with heavy brow, muzzle and cheek pads.
+  head=new THREE.Group();g.add(head);head.position.set(0,2.02,.55);
+  sphere(head,0,0,.06,.47,.48,.43,darkCoat);
+  sphere(head,0,-.19,.38,.32,.24,.28,mat(0x71564b));
+  sphere(head,0,-.07,.58,.19,.14,.12,black);
+  sphere(head,0,-.34,.45,.22,.12,.17,mat(0x382a25));
+  for(const s of [-1,1]){
+   sphere(head,s*.38,.03,.04,.12,.17,.14,mat(0x775b50));
+   sphere(head,s*.18,.1,.39,.15,.115,.11,eyeWhite);
+   sphere(head,s*.18,.1,.47,.07,.075,.05,black);
+   sphere(head,s*.18,.23,.38,.2,.075,.14,darkCoat);
+  }
+  seatY=2.22;
  }else if(i===2){
-  sphere(g,0,1.16,1.35,.31,.23,.24,mat(0x9b633a));
-  for(const s of [-1,1])sphere(g,s*.12,1.12,1.55,.045,.04,.025,black);
-  sphere(g,0,1.58,.88,.25,.18,.2,accent);
- }else if(i===4){
-  sphere(g,0,1.04,1.62,.52,.2,.46,coat);
-  for(let n=0;n<7;n++)for(const s of [-1,1])sphere(g,s*.44,.88,-.8+n*.27,.09,.1,.1,accent);
- }else{
-  sphere(g,0,1.02,1.26,.24,.17,.2,mat(i===0?0x9a5935:0x9a7048));
-  for(const s of [-1,1])sphere(g,s*.33,1.52,.58,.13,.18,.12,mane);
- }
- if(i!==4){
-  for(const s of [-1,1])for(const z of [-.4,.4]){
-   sphere(g,s*.72,.13,z,.2,.12,.23,accent);
-   for(let k=-1;k<=1;k++)sphere(g,s*.72+k*.09,.105,z+.12,.045,.055,.06,mat(0x3b2b20));
+  // Bull: barrel chest, strong shoulders, sloping back, dewlap and curved horns.
+  torso(0,.98,-.06,.78,.7,1.0,coat);
+  torso(0,1.2,.55,.82,.78,.72,lightCoat);
+  torso(0,1.43,.7,.67,.58,.55,coat);
+  torso(0,.55,.88,.32,.48,.26,muzzle);
+  for(const s of [-1,1]){
+   leg4(s*.55,.6,true);leg4(s*.58,-.62,false);
+   ear(s*.62,1.49,.68,.19);
+   // swept horns curl outward and up in a natural arc
+   addTube([[s*.38,1.76,.86],[s*.62,1.88,.93],[s*.91,2.02,.95],[s*1.12,2.27,.88],[s*1.06,2.43,.76]],.105,claw,18);
+   sphere(g,s*.23,1.51,1.05,.12,.09,.1,black);
   }
+  head=new THREE.Group();g.add(head);head.position.set(0,1.53,1.02);
+  sphere(head,0,0,.02,.53,.46,.46,coat);
+  sphere(head,0,-.25,.43,.43,.28,.3,muzzle);
+  sphere(head,0,-.16,.68,.22,.13,.1,noseMat);
+  for(const s of [-1,1]){
+   sphere(head,s*.22,.1,.36,.14,.1,.12,eyeWhite);
+   sphere(head,s*.22,.1,.43,.06,.07,.045,black);
+   sphere(head,s*.35,.25,.1,.16,.12,.16,coat);
+  }
+  seatY=1.97;
+ }else if(i===3){
+  // Tiger: flexible athletic cat, long haunches, clear rosetted stripes and a ringed tail.
+  torso(0,.96,-.04,.62,.49,1.0,coat);
+  torso(0,1.05,.55,.62,.53,.55,lightCoat);
+  torso(0,.96,-.65,.68,.53,.5,coat);
+  for(const s of [-1,1]){leg4(s*.44,.6,true);leg4(s*.48,-.66,false);}
+  head=new THREE.Group();g.add(head);head.position.set(0,1.53,1.04);
+  sphere(head,0,0,.06,.39,.37,.4,coat);
+  sphere(head,0,-.16,.39,.29,.19,.25,lightCoat);
+  sphere(head,0,-.09,.58,.15,.09,.08,noseMat);
+  for(const s of [-1,1]){
+   sphere(head,s*.29,.23,.08,.14,.16,.13,coat);
+   sphere(head,s*.29,.23,.15,.075,.09,.04,innerEar);
+   sphere(head,s*.17,.07,.39,.13,.11,.09,eyeWhite);
+   sphere(head,s*.17,.07,.46,.055,.062,.04,black);
+   addTube([[s*.07,.27,.28],[s*.12,.17,.35],[s*.22,.12,.37]],.025,darkCoat,8);
+   addTube([[s*.23,.27,.2],[s*.3,.13,.31],[s*.31,.02,.38]],.022,darkCoat,8);
+  }
+  // Tiger stripes follow the curved flanks and shoulder.
+  for(const s of [-1,1]){
+   for(let n=0;n<8;n++){
+    const z=-.78+n*.22;
+    addTube([[s*.39,1.34,z-.08],[s*.56,1.22,z-.025],[s*.61,1.02,z+.035],[s*.48,.82,z+.11]],.032,darkCoat,10);
+   }
+  }
+  tail([[0,.94,-1.0],[.03,.84,-1.42],[.11,.72,-1.82],[.16,.69,-2.18]],[.1,.08,.065],coat,black);
+  // Add a few dark rings to the tail itself.
+  for(let n=0;n<5;n++)ell(.12,.72,-1.48-n*.12,.082,.084,.045,black);
+  seatY=1.68;
+ }else{
+  // Crocodile: low long body, armoured back, extended jaws, four splayed legs and tapering tail.
+  torso(0,.69,-.13,.67,.43,1.22,darkCoat);
+  torso(0,.85,-.34,.6,.38,.85,coat);
+  head=new THREE.Group();g.add(head);head.position.set(0,.86,.85);
+  sphere(head,0,.02,.25,.47,.28,.64,coat);
+  sphere(head,0,-.16,.77,.39,.16,.72,lightCoat);
+  sphere(head,0,-.24,.7,.38,.08,.68,muzzle);
+  for(const s of [-1,1]){
+   sphere(head,s*.34,.24,.02,.16,.17,.17,coat);
+   sphere(head,s*.34,.31,.055,.09,.1,.1,mat(0xd2c36e));
+   sphere(head,s*.34,.32,.1,.045,.06,.05,black);
+   // small visible teeth along the jaw
+   for(let n=0;n<5;n++){
+    const tooth=new THREE.Mesh(new THREE.ConeGeometry(.045,.16,5),claw);
+    tooth.position.set(s*(.28+n*.025),-.22,.43+n*.2);tooth.rotation.z=s*.18;head.add(tooth);
+   }
+  }
+  // Raised osteoderm scutes run from shoulders to tail.
+  for(let row=0;row<3;row++){
+   for(let n=0;n<9;n++){
+    const z=.42-n*.24,x=(row-1)*.29;
+    const scute=new THREE.Mesh(new THREE.ConeGeometry(.12,.25,5),accent);
+    scute.position.set(x,1.12-Math.abs(x)*.13,z);scute.rotation.x=.16;g.add(scute);
+   }
+  }
+  // Splayed reptile legs with toes and claws.
+  for(const s of [-1,1]){
+   for(const z of [.55,-.65]){
+    const hip=[s*.48,.7,z],elbow=[s*.76,.42,z+(z>0?.18:-.12)],foot=[s*.88,.16,z+(z>0?.28:-.2)];
+    limb(g,hip,elbow,.17,coat);limb(g,elbow,foot,.13,darkCoat);
+    joint(...elbow,.14,coat);ell(foot[0],.12,foot[2],.22,.1,.31,coat);
+    for(let k=-1;k<=1;k++)ell(foot[0]+k*.12,.09,foot[2]+.24,.055,.06,.15,claw);
+   }
+  }
+  tail([[0,.67,-1.12],[0,.61,-1.56],[0,.5,-2.0],[0,.37,-2.43],[0,.25,-2.78]],[.48,.35,.23,.12],coat,darkCoat);
+  for(let n=0;n<9;n++){
+   const z=-.9-n*.17,r=.34*(1-n/11);
+   for(const s of [-1,1])ell(s*r,.77-r*.18,z,.12,.12,.12,accent);
+  }
+  seatY=1.22;
  }
- const harness=box(g,0,1.05,-.04,.12,.65,1.15,accent);harness.position.y=1.05;
- // Broad natural saddle blanket, chest strap and reins.
- const saddle=box(g,0,1.28,-.05,1.38,.18,1.3,mat(i===3?0x873b29:0x875b36));saddle.position.y=1.32;
- const saddleTrim=box(g,0,1.39,-.05,1.48,.06,1.4,mat(0xc29a55));saddleTrim.position.y=1.39;
- for(const s of [-1,1]){const strap=box(g,s*.58,.88,.18,.12,.72,.12,accent);strap.rotation.z=s*.14;}
- const boy=makeBoy(g,i===1?1.55:1.52);boy.name='rider';
- // Larger, more natural-sized mounts; the rider stays at a consistent human scale.
- g.scale.set(1.28,1.2,1.34);boy.scale.set(1/1.28,1/1.2,1/1.34);boy.position.y/=1.2;
- g.visible=i===0;g.userData.boy=boy;g.userData.head=head;g.userData.legs=[];g.userData.index=i;if(!g.userData.limbs)g.userData.limbs=[];
+ // Fine face details and riding equipment.
+ const brow=mat(i===0?0x55351f:i===1?0x241b18:i===2?0x694324:i===3?0x6a351c:0x354637);
+ if(i!==4){
+  for(const s of [-1,1])addTube([[s*.13,seatY-.25,.25],[s*.17,seatY-.16,.3],[s*.22,seatY-.25,.32]],.024,brow,8);
+ }
+ // A fitted saddle/blanket; keep its height appropriate to each animal's back.
+ const saddleWidth=i===1?1.48:i===4?1.02:1.25;
+ const saddleLength=i===4?1.35:1.16;
+ const saddle=new THREE.Mesh(new THREE.BoxGeometry(saddleWidth,.17,saddleLength),mat(i===3?0x873b29:0x80512e));
+ saddle.position.set(0,seatY-.08,-.12);saddle.castShadow=true;g.add(saddle);
+ const trim=new THREE.Mesh(new THREE.BoxGeometry(saddleWidth+.14,.055,saddleLength+.12),mat(0xc29a55,.55,.25));
+ trim.position.set(0,seatY+.015,-.12);g.add(trim);
+ for(const s of [-1,1]){
+  limb(g,[s*saddleWidth*.42,seatY-.12,.28],[s*saddleWidth*.47,.82,.42],.045,accent);
+ }
+ const boy=makeBoy(g,seatY);
+ boy.name='rider';
+ const scale=[1.17,1.22,1.18,1.12,1.22][i];
+ g.scale.setScalar(scale);
+ boy.scale.setScalar(1/scale);
+ boy.position.y=seatY/scale;
+ g.visible=i===0;
+ g.userData.boy=boy;g.userData.head=head;g.userData.index=i;
  mounts.push(g);carrier.add(g);
 }
 const carrier=new THREE.Group();world.add(carrier);carrier.position.set(0,0,-68);

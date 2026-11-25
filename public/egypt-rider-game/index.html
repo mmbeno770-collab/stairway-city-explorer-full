@@ -12,7 +12,7 @@
 <body>
 <div id="game-wrap">
 <canvas id="game"></canvas>
-<div id="loading" class="screen-panel"><div class="eyebrow">הרפתקה בתלת־ממד</div><h1>רוכבי מצרים העתיקה</h1><div class="loader-ring"></div><p>בונים את העיר ומכינים את החיות לרכיבה…</p></div>
+<div id="loading" class="screen-panel"><div class="eyebrow">הרפתקה בתלת־ממד</div><h1>רוכבי מצרים העתיקה</h1><div class="loader-ring"></div><p>טוענים חיות תלת־ממד מפורטות לעיר…</p></div>
 <div id="start-screen" class="screen-panel hidden"><div class="eyebrow">מסע במדבר</div><h1>רוכבי מצרים העתיקה</h1><p class="intro">מכת ערוב! להקות של אריות, גורילות, שוורים, נמרים ותנינים משוטטות במצרים. רכבו עליהן, מצאו את התושבים וטפסו על הפירמידות.</p><div class="mount-preview-row"><span>🦁 אריה</span><span>🦍 גורילה</span><span>🐂 שור</span><span>🐅 נמר</span><span>🐊 תנין</span></div><button id="start-btn" class="primary-btn">מתחילים לשחק</button><p class="small-hint">WASD / חצים לתנועה לפי כיוון המצלמה · 1–5 להחלפת חיה · רווח לקפיצה</p></div>
 <div id="hud" class="hidden">
 <div class="hud-top">
@@ -31,7 +31,7 @@
 <div id="toast" class="toast"></div>
 </div>
 <div id="pause-screen" class="screen-panel hidden"><div class="eyebrow">עצירה</div><h2>המשחק מושהה</h2><button id="resume-btn" class="primary-btn">חזרה למשחק</button><button id="restart-btn" class="secondary-btn">התחלה מחדש</button></div>
-<div id="help-screen" class="screen-panel hidden"><div class="eyebrow">איך משחקים?</div><h2>הוראות מסע</h2><p>המצלמה עוקבת אוטומטית אחרי הרוכב. גררו את המסך כדי לסובב את זווית המעקב; כפתור המצלמה מאפשר גם לעבור למצב ידני. כיווני WASD והחצים מותאמים לכיוון המצלמה.</p><p>התושבים יברחו כשהרוכב יתקרב. תפסו את כולם בעזרת החיות. איסוף 12 חיפושיות זהב הוא משימת צד.</p><p>חיות הפרא גדולות יותר ומשוטטות בלהקות ברחבי העיר, כמו מכת ערוב. אפשר לרכוב ישירות על הפאה המשופעת של הפירמידה ולטפס עד לקצה העליון בלי מדרגות. בין הבתים יש מעברים רחבים. כשאתם רוכבים על הגורילה, לחצו על רווח ליד בית כדי לטפס לגג.</p><button id="close-help" class="primary-btn">הבנתי!</button></div>
+<div id="help-screen" class="screen-panel hidden"><div class="eyebrow">איך משחקים?</div><h2>הוראות מסע</h2><p>המצלמה עוקבת אוטומטית אחרי הרוכב. גררו את המסך כדי לסובב את זווית המעקב; כפתור המצלמה מאפשר גם לעבור למצב ידני. כיווני WASD והחצים מותאמים לכיוון המצלמה.</p><p>התושבים יברחו כשהרוכב יתקרב. תפסו את כולם בעזרת החיות. איסוף 12 חיפושיות זהב הוא משימת צד.</p><p>חיות הפרא גדולות יותר ומשוטטות בלהקות ברחבי העיר, כמו מכת ערוב. אפשר לרכוב ישירות על הפאה המשופעת של הפירמידה ולטפס עד לקצה העליון בלי מדרגות. בין הבתים יש מעברים רחבים. כשאתם רוכבים על הגורילה, לחצו על רווח ליד בית כדי לטפס לגג.</p><p class="small-hint">קרדיט למודל השור: <a href="https://vinish.dev/free-3d-models/farm-animals" target="_blank" rel="noreferrer">Bull by vinish.dev</a>, ברישיון CC BY 4.0. מודלי האריה, הגורילה, הנמר והתנין מ־<a href="https://3dassets.dev/packs/exotic-wildlife-hd" target="_blank" rel="noreferrer">3DAssets.dev</a>, ברישיון CC0.</p><button id="close-help" class="primary-btn">הבנתי!</button></div>
 <div id="win-screen" class="screen-panel hidden"><div class="eyebrow">כל הכבוד!</div><h1 id="win-title">לא נשארו מצרים בעיר!</h1><p id="win-subtitle">המסע הושלם — כל התושבים נתפסו באפקט מצויר ולא גרפי.</p><button id="play-again-btn" class="primary-btn">לשחק שוב</button></div>
 <div id="webgl-warning" class="screen-panel hidden"><h2>לא ניתן להפעיל תלת־ממד</h2><p>יש לפתוח בדפדפן עדכני עם תמיכה ב־WebGL וחיבור אינטרנט לטעינת מנוע התלת־ממד.</p></div>
 </div>

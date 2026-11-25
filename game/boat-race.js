@@ -1,6 +1,5 @@
 import React, { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { getWaterHeight } from "./marine-world.js";
 
 const h = React.createElement;
 export const BOAT_RACE_COURSE = [
@@ -20,7 +19,7 @@ function RaceBuoy({ point, index, raceRef }) {
     const t = clock.elapsedTime;
     const race = raceRef?.current;
     const active = !!race?.active && race.checkpoint === index;
-    root.current.position.y = getWaterHeight(point.x, point.z, t) + .1 + Math.sin(t * 1.7 + index) * .07;
+    root.current.position.y = -.08 + Math.sin(t * 1.15 + index) * .13 + Math.sin(t * .62 + point.x * .01) * .05;
     root.current.rotation.y = t * .2 + index;
     if (ring.current) ring.current.rotation.z = Math.sin(t * 1.1 + index) * .08;
     if (material.current) {

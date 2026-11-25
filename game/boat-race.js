@@ -1,6 +1,5 @@
 import React, { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import * as THREE from "three";
 import { getWaterHeight } from "./marine-world.js";
 
 const h = React.createElement;
@@ -36,7 +35,7 @@ function RaceBuoy({ point, index, raceRef }) {
       h("sphereGeometry", { args: [.36, 12, 9] })),
     h("mesh", { ref: ring, position: [0, 1.85, 0], rotation: [0, Math.PI / 2, 0] },
       h("torusGeometry", { args: [.82, .1, 8, 20] }),
-      h("meshStandardMaterial", { color: "#f4df9a", emissive: "#b88737", emissiveIntensity: .4, metalness: .35, roughness: .3 })),
+      h("meshStandardMaterial", { ref: material, color: "#f4df9a", emissive: "#b88737", emissiveIntensity: .4, metalness: .35, roughness: .3 })),
     h("mesh", { position: [0, .18, 0], rotation: [-Math.PI / 2, 0, 0] },
       h("torusGeometry", { args: [.62, .045, 6, 22] }),
       h("meshBasicMaterial", { color: "#d9f5f3", transparent: true, opacity: .6, depthWrite: false }))
@@ -45,7 +44,7 @@ function RaceBuoy({ point, index, raceRef }) {
 
 export function BoatRaceCourse({ raceRef }) {
   return h(React.Fragment, null,
-    ...BOAT_RACE_COURSE.slice(0, -1).map((point, index) => h(RaceBuoy, { key: "race-buoy-" + index, point, index: index + 1, raceRef })),
+    ...BOAT_RACE_COURSE.slice(1, -1).map((point, index) => h(RaceBuoy, { key: "race-buoy-" + index, point, index: index + 1, raceRef })),
     h("group", { position: [0, -.05, -232] },
       h("mesh", { position: [-4.2, .7, 0], material: new THREE.MeshStandardMaterial({ color: "#e5e9e0" }) },
         h("cylinderGeometry", { args: [.16, .2, 1.45, 8] })),

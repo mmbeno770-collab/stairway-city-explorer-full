@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { CITY_HALF } from "./world.js";
+import { BoatRaceCourse } from "./boat-race.js";
 
 export const MAINLAND_SHORE = CITY_HALF + 20;
 export function mainlandCoastRadius(angle) {
@@ -12,10 +13,10 @@ export function mainlandCoastRadius(angle) {
 const WATER_LEVEL = -.18;
 export function getWaterHeight(x, z, time = 0) {
  return WATER_LEVEL
-  + Math.sin(x * .013 + time * 1.08) * .19
-  + Math.sin(z * .019 - time * .9) * .12
-  + Math.sin((x + z) * .009 + time * .68) * .07
-  + Math.sin(x * .036 - z * .031 + time * 2.0) * .018;
+  + Math.sin(x * .013 + time * 1.08) * .25
+  + Math.sin(z * .019 - time * .9) * .16
+  + Math.sin((x + z) * .009 + time * .68) * .09
+  + Math.sin(x * .036 - z * .031 + time * 2.0) * .025;
 }
 const seeds = [
  {id:"palm",name:"אי הדקלים",biome:"tropical",x:0,z:-470,rx:84,rz:62,color:"#39864e",sand:"#ead29a",trees:34,animals:["turtle","parrot","monkey","parrot","turtle","crab","toucan","monkey","parrot","turtle","crab","otter","duck","peacock","squirrel","raccoon","seaLion"]},
@@ -91,9 +92,9 @@ void main(){
  float b=p.y*.019-uTime*.9;
  float c=(p.x+p.y)*.009+uTime*.68;
  float d=p.x*.036-p.y*.031+uTime*2.0;
- float wave=sin(a)*.19+sin(b)*.12+sin(c)*.07+sin(d)*.018;
- float slopeX=cos(a)*.013*.19+cos(c)*.009*.07+cos(d)*.036*.018;
- float slopeZ=cos(b)*.019*.12+cos(c)*.009*.07-cos(d)*.031*.018;
+ float wave=sin(a)*.25+sin(b)*.16+sin(c)*.09+sin(d)*.025;
+ float slopeX=cos(a)*.013*.25+cos(c)*.009*.09+cos(d)*.036*.025;
+ float slopeZ=cos(b)*.019*.16+cos(c)*.009*.09-cos(d)*.031*.025;
  p.z=wave;
  vec4 worldPosition=modelMatrix*vec4(p,1.0);
  vWorldPosition=worldPosition.xyz;
@@ -697,7 +698,7 @@ function UnderwaterLife({divingRef,islands,quality}){
  const rayCount=quality==="high"?5:quality==="low"?2:4;
  const coralCount=quality==="high"?9:quality==="low"?4:6;
  const kelpPerIsland=quality==="high"?14:quality==="low"?4:9;
- const fish=useMemo(()=>{const r=randomFrom(8128);return Array.from({length:fishCount},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=38+r()*132;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d,y:-3.5-r()*10,color:fishColors[i%fishColors.length],speed:.48+r()*.78,phase:r()*Math.PI*2,size:.58+r()*.72,school:i%8};});},[islands,fishCount]);
+ const fish=useMemo(()=>{const r=randomFrom(8128);const schools=Array.from({length:Math.ceil(fishCount/8)},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=28+r()*72;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d};});return Array.from({length:fishCount},(_,i)=>{const school=Math.floor(i/8),center=schools[school];return{x:center.x+(r()-.5)*5,z:center.z+(r()-.5)*5,centerX:center.x,centerZ:center.z,y:-3.5-r()*10,color:fishColors[i%fishColors.length],speed:.48+r()*.78,phase:r()*Math.PI*2,size:.58+r()*.72,school};});},[islands,fishCount]);
  const jellies=useMemo(()=>Array.from({length:jellyCount},(_,i)=>({x:-560+(i%7)*185,z:270*Math.sin(i*2.1),y:-5-(i%4)*2.2,phase:i*1.7})),[jellyCount]);
  const horses=useMemo(()=>Array.from({length:horseCount},(_,i)=>({x:-690+i*92,z:320*Math.cos(i*1.4),y:-8-(i%4)*1.5,phase:i*1.1})),[horseCount]);
  const bubbles=useMemo(()=>{const r=randomFrom(5511);return Array.from({length:bubbleCount},(_,i)=>{const island=islands[i%islands.length],a=r()*Math.PI*2,d=24+r()*90;return{x:island.x+Math.cos(a)*d,z:island.z+Math.sin(a)*d,y:-18+r()*13,phase:r()*Math.PI*2,size:.055+r()*.11,speed:.45+r()*.7};});},[islands,bubbleCount]);
@@ -716,8 +717,8 @@ function UnderwaterLife({divingRef,islands,quality}){
   fish.forEach((f,i)=>{
    const n=fishRefs.current[i];if(!n)return;
    const p=t*f.speed+f.phase;
-   n.position.set(f.x+Math.sin(p)*12,f.y+Math.sin(p*1.7)*.9,f.z+Math.cos(p*.72)*8);
-   n.rotation.y=Math.atan2(Math.cos(p*.72)*5.8,Math.cos(p)*12*f.speed);
+   n.position.set(f.centerX+Math.sin(p)*4.4+Math.cos(p*.42)*1.15,f.y+Math.sin(p*1.7)*.65,f.centerZ+Math.cos(p)*3.7+Math.sin(p*.48)*1.1);
+   n.rotation.y=Math.atan2(Math.cos(p)*4.4*f.speed,-Math.sin(p)*3.7*f.speed);
    if(tailRefs.current[i])tailRefs.current[i].rotation.y=Math.sin(p*8)*.58;
   });
   jellies.forEach((f,i)=>{const n=jellyRefs.current[i];if(n){n.position.set(f.x,f.y+Math.sin(t*.8+f.phase)*1.25,f.z);n.rotation.z=Math.sin(t+f.phase)*.1;}});
@@ -781,7 +782,7 @@ function DolphinModel({dolphin}){
  useFrame(({clock})=>{
   if(!root.current)return;
   root.current.visible=!!dolphin.active;
-  root.current.position.set(dolphin.x,dolphin.y+Math.sin(clock.elapsedTime*2.1+dolphin.phase)*.045,dolphin.z);
+  root.current.position.set(dolphin.x,dolphin.y+(dolphin.leapHeight || 0)+Math.sin(clock.elapsedTime*2.1+dolphin.phase)*.045,dolphin.z);
   root.current.rotation.y=dolphin.yaw;
   root.current.rotation.z=Math.sin(clock.elapsedTime*1.7+dolphin.phase)*.035;
   if(tail.current)tail.current.rotation.y=Math.sin(clock.elapsedTime*7.5+dolphin.phase)*.38;
@@ -807,7 +808,7 @@ function DolphinModel({dolphin}){
 function DolphinSchool({dolphins,divingRef}){
  const root=useRef(null);
  useFrame(({clock})=>{
-  if(root.current)root.current.visible=!!divingRef.current;
+  if(root.current)root.current.visible=true;
   const time=clock.elapsedTime;
   dolphins.forEach(d=>{
    if(d.ridden)return;
@@ -817,7 +818,9 @@ function DolphinSchool({dolphins,divingRef}){
    const phase=time*.34+d.phase;
    d.x=d.baseX+Math.sin(phase)*d.rangeX;
    d.z=d.baseZ+Math.sin(phase*.72)*d.rangeZ;
-   d.y=-2.45+Math.sin(phase*1.9)*.22;
+   d.y=-.56+Math.sin(phase*1.9)*.09;
+   const leapPhase=(time*.42+d.phase*1.7)%(Math.PI*2);
+   d.leapHeight=leapPhase>4.8?Math.sin((leapPhase-4.8)/(Math.PI*2-4.8)*Math.PI)*2.45:0;
    const dx=Math.cos(phase)*d.rangeX*.34,dz=Math.cos(phase*.72)*d.rangeZ*.245;
    d.yaw=Math.atan2(dx,dz);
   });
@@ -827,10 +830,11 @@ function DolphinSchool({dolphins,divingRef}){
  );
 }
 
-export function MarineWorld({marine,boats,divingRef,quality="balanced"}){
+export function MarineWorld({marine,boats,divingRef,quality="balanced",boatRaceRef}){
  return React.createElement(React.Fragment,null,
   ...marine.islands.map(island=>React.createElement(IslandModel,{key:island.id,island})),
   React.createElement(OceanSurface,{quality}),
+  React.createElement(BoatRaceCourse,{raceRef:boatRaceRef}),
   ...boats.map(boat=>React.createElement(BoatModel,{key:"boat-"+boat.id,boat})),
   ...(marine.jetSkis||[]).map(jetSki=>React.createElement(JetSkiModel,{key:"jet-ski-"+jetSki.id,jetSki})),
   ...(marine.sleds||[]).map(sled=>React.createElement(SledModel,{key:"sled-"+sled.id,sled})),

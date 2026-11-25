@@ -165,6 +165,7 @@ for(let i=0;i<scarabPos.length;i++){
 function limb(g,a,b,r,material){
  const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=new THREE.Vector3().subVectors(B,A);
  const o=new THREE.Mesh(new THREE.CylinderGeometry(r*.78,r,dir.length(),8),material);o.position.copy(A).add(B).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());o.castShadow=true;g.add(o);
+ if(!g.userData.limbs)g.userData.limbs=[];g.userData.limbs.push(o);
  sphere(g,B.x,B.y,B.z,r*1.08,r*1.08,r*1.08,material);
 }
 function makeBoy(parent,y){
@@ -259,7 +260,7 @@ function createMount(i){
  const boy=makeBoy(g,i===1?1.55:1.52);boy.name='rider';
  // Larger, more natural-sized mounts; the rider stays at a consistent human scale.
  g.scale.set(1.28,1.2,1.34);boy.scale.set(1/1.28,1/1.2,1/1.34);boy.position.y/=1.2;
- g.visible=i===0;g.userData.boy=boy;g.userData.head=head;g.userData.legs=[];g.userData.index=i;
+ g.visible=i===0;g.userData.boy=boy;g.userData.head=head;g.userData.legs=[];g.userData.index=i;if(!g.userData.limbs)g.userData.limbs=[];
  mounts.push(g);carrier.add(g);
 }
 const carrier=new THREE.Group();world.add(carrier);carrier.position.set(0,0,-68);
@@ -376,6 +377,7 @@ function update(dt,t){
   }
   mounts[active].position.y=Math.sin(t*12)*.035+Math.abs(Math.sin(t*12))*.04;
   mounts[active].rotation.z=THREE.MathUtils.damp(mounts[active].rotation.z,dx*.055,5,dt);
+  mounts[active].userData.limbs?.forEach((part,i)=>{part.rotation.x=Math.sin(t*8+i*Math.PI*.5)*.12;});
   for(const herd of wildHerd){
    const phase=t*herd.speed+herd.phase;
    herd.group.position.x=herd.x+Math.sin(phase)*herd.range;

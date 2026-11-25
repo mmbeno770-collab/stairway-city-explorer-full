@@ -3433,7 +3433,7 @@ export default function Game() {
       )
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable" || mode === "park-ride") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    hud && (mode === "cave" || mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable" || mode === "park-ride") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     conversation && h("section", { className: "npc-chat-panel hud-panel", role: "dialog", "aria-label": "שיחה עם תושב" },
       h("div", { className: "npc-chat-header" },
         h("div", null, h("strong", null, "שיחה עם " + conversation.npcName), h("span", null, "התושב עוצר ומקשיב לך")),

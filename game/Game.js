@@ -22,6 +22,9 @@ import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslan
 import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
 import { AdventureMissions, createAdventureMissionColliders, getAdventureMissionLayout } from "./adventure-missions.js";
 import { useGameMultiplayer, MultiplayerAuthPanel, RemotePlayerAvatars, getPlayerIslandLocation } from "./multiplayer.js";
+import { CAVE_ENTRANCES, CAVE_DISCOVERIES, CAVE_FLOOR_Y, CaveSystem } from "./cave-system.js";
+import { UrbanRabbits } from "./urban-rabbits.js";
+import { BOAT_RACE_COURSE } from "./boat-race.js";
 
 const h = React.createElement;
 
@@ -419,7 +422,7 @@ function isNearMainlandShore(x, z) {
   return Math.abs(Math.hypot(x, z) - mainlandCoastRadius(angle)) <= 64;
 }
 const WALK = 6.2, RUN = 10.5, ACCEL = 16, GRAVITY = 24, JUMP = 8, STEP = .35, RAD = .35, HEIGHT = 1.75;
-const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", jetSki: "לרכוב באופנוע ים", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע" };
+const PROMPTS = { sofa: "לשבת", swing: "להתנדנד", slide: "לגלוש במגלשה", weights: "להרים משקולות", treadmill: "להפעיל הליכון", heli: "להיכנס למסוק ולטוס", airVehicle: "להיכנס למטוס או לטסלה המעופפת", door: "לפתוח דלת", elevator: "להזמין מעלית", car: "להיכנס לרכב", boat: "לשוט בסירה", jetSki: "לרכוב באופנוע ים", sled: "לרכוב במזחלת השלג", cable: "לטפס לרציף הרכבל", basement: "לרדת למחסן (קומה -1)", basementExit: "לחזור לקומת הקרקע", caveEntrance: "להיכנס למערה סודית" };
 const SHOP_STORAGE_KEY = "stairway-city-explorer-shop-v1";
 const SHOP_ITEMS = [
   { id: "scout-boots", icon: "🥾", title: "נעלי סייר", price: 600, effect: "מהירות הליכה וריצה +15%", description: "חוצים את העיר והאיים קצת יותר מהר." },
@@ -501,7 +504,7 @@ function normalizeOwnedIsland(raw) {
   };
 }
 function readShopSave() {
-  const empty = { points: 0, ownedItems: [], visitedIslandIds: [], completedMissionIds: [], customIsland: null };
+  const empty = { points: 0, ownedItems: [], visitedIslandIds: [], completedMissionIds: [], caveFindIds: [], customIsland: null };
   try {
     const saved = JSON.parse(window.localStorage.getItem(SHOP_STORAGE_KEY) || "null");
     if (!saved || typeof saved !== "object") return empty;
@@ -513,6 +516,7 @@ function readShopSave() {
       ownedItems: Array.isArray(saved.ownedItems) ? [...new Set(saved.ownedItems.filter((id) => knownIds.has(id)))] : [],
       visitedIslandIds: Array.isArray(saved.visitedIslandIds) ? [...new Set(saved.visitedIslandIds.filter((id) => typeof id === "string"))] : [],
       completedMissionIds: Array.isArray(saved.completedMissionIds) ? [...new Set(saved.completedMissionIds.filter((id) => WILDLIFE_MISSIONS.some((mission) => mission.id === id)))] : [],
+      caveFindIds: Array.isArray(saved.caveFindIds) ? [...new Set(saved.caveFindIds.filter((id) => CAVE_DISCOVERIES.some((item) => item.id === id)))] : [],
       customIsland: normalizeOwnedIsland(saved.customIsland)
     };
   } catch { return empty; }
@@ -637,7 +641,9 @@ function ShopPanel({ points, ownedItems, island, notice, onBuy, onCreateIsland, 
 function getNpcTopic(message, previousTopic = "") {
   const text = String(message || "").toLocaleLowerCase("he");
   const topics = [
-    ["sea", /(בים|במים|חוף|חופים|אי(?:ים)?(?:\s|$|[.,!?])|לאי|לאיים|דגים|דג|צלילה|שחייה|סירה|אלמוג)/],
+    ["sea", /(בים|במים|חוף|חופים|אי(?:ים)?(?:\s|$|[.,!?])|לאי|לאיים|דגים|דג|צלילה|שחייה|סירה|אלמוג|דולפין|גלים)/],
+    ["caves", /(מערה|מערות|עטלפים|אוצר|גביש|מאובן|פנס|מחתרת)/],
+    ["racing", /(תחרות שיט|מרוץ שיט|מירוץ שיט|תחרות|מצופים|מרוץ|מירוץ)/],
     ["vehicles", /(רכב|מכונית|אוטובוס|ג'יפ|חניון|מכוניות|נהיגה|מירוץ)/],
     ["flight", /(מטוס|מסוק|טס|טיסה|מעופפת|רכבל)/],
     ["buildings", /(בניין|קומה|דלת|מדרגות|גג|לובי|חדר|מעלית)/],
@@ -691,7 +697,11 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personal
   if (topic === "flight")
     return pick(["אפשר להיכנס למסוק או למטוס ולראות את העיר מלמעלה. הנוף משם ממש שונה.", "הרכבל מחבר בין תחנות גבוהות, והמסוק נותן מבט רחב על כל האזור.", "אם עוד לא ניסית לטוס, חפש את המסוק או המטוס באזור החניה שלהם."]);
   if (topic === "sea")
-    return pick(["באזור הים אפשר לשוט לאיים, להיכנס למים ולגלות עולם תת־ימי עם דגים ואלמוגים.", "אני אוהב את ההבדל בין האיים — יש אזורים טרופיים, מושלגים, מדבריים ואפילו אי לבה.", "אפשר להגיע לחוף, לקחת כלי שיט, ואז לחקור את האיים ואת מה שנמצא מתחת לפני המים."]);
+    return pick(["באזור הים אפשר לשוט לאיים, להיכנס למים ולגלות עולם תת־ימי עם דגים ואלמוגים. לפעמים גם רואים דולפינים קופצים ליד הסירות.", "אני אוהב את ההבדל בין האיים — יש אזורים טרופיים, מושלגים, מדבריים ואפילו אי לבה. כדאי לשים לב גם לגלים.", "אפשר להגיע לחוף, לקחת כלי שיט, לחפש את להקות הדגים ולצאת למסע בין האיים."]);
+  if (topic === "caves")
+    return pick(["שמעתי שיש פתחים למערות סודיות בכמה מהגנים בעיר. יורדים דרך הפתח, מדליקים את הפנס ומחפשים גבישים ומאובנים.", "במערות יש עטלפים ותגליות קטנות. כדאי לבדוק גם את הפינות המוארות בכחול ובסגול.", "אם אתה מחפש הרפתקה, חפש פתח עגול באחד הגנים. אפשר להיכנס ולצאת מכמה פתחים שונים."]);
+  if (topic === "racing")
+    return pick(["ליד הנמל יש שער זינוק לתחרות שיט. עוצרים לידו ולוחצים F, ואז עוברים דרך המצופים לפי הסדר.", "בתחרות השיט צריך להקיף את המסלול ולעבור בכל המצופים. שווה לשמור על פנייה רחבה ולא לחתוך.", "אני אוהב לצפות בסירות כשהן עוברות סביב החוף. אפשר להתחיל את המרוץ ליד שער הזינוק."]);
   if (topic === "weather")
     return "אפשר לשנות את מזג האוויר ואת השעה בלוח הסביבה. כדאי לראות איך אותה שכונה נראית באור אחר או בגשם.";
   if (topic === "nature")
@@ -1898,7 +1908,7 @@ function isPortablePickup(item) {
     && (item.mass || 0) <= 2.5;
 }
 
-function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk, shopOwned = [] }) {
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk, boatRaceRef, onBoatRaceFinish, onCaveCollect, collectedCaveIds = [], shopOwned = [] }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const pickupItems = useMemo(() => world.interactables.filter((item) => item.type === "pickup"), [world]);
   const rig = useMemo(() => ({}), []);
@@ -1970,7 +1980,46 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     const moveX = axes.x, moveZ = axes.z, steerX = -moveX;
     const shift = keys.has("ShiftLeft") || keys.has("ShiftRight"), sneaking = !!inp.sneak || keys.has("KeyC") || keys.has("ControlLeft") || keys.has("ControlRight"), jump = keys.has("Space") || inp.up;
     let camTarget = new THREE.Vector3(p.x, p.y + 1.5, p.z), camDist = s.dist, followYaw = null;
-    if (s.mode === "elevator") {
+    if (s.mode === "cave") {
+      const move = cameraRelativeMove(moveX, moveZ, s.yaw);
+      const caveSpeed = shift ? WALK * .9 : WALK * .68;
+      s.v.x += (move.x * caveSpeed - s.v.x) * (1 - Math.exp(-9 * dt));
+      s.v.z += (move.z * caveSpeed - s.v.z) * (1 - Math.exp(-9 * dt));
+      p.x = THREE.MathUtils.clamp(p.x + s.v.x * dt, -33.2, 33.2);
+      p.z = THREE.MathUtils.clamp(p.z + s.v.z * dt, -25.2, 25.2);
+      p.y = CAVE_FLOOR_Y + .04;
+      if (Math.hypot(move.x, move.z) > .1) {
+        const target = Math.atan2(move.x, move.z);
+        let delta = target - s.face; delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+        s.face += delta * (1 - Math.exp(-9 * dt)); followYaw = s.face;
+      }
+      let closestDiscovery = null, closestDiscoveryDistance = 2.45;
+      CAVE_DISCOVERIES.forEach((item) => {
+        if (collectedCaveIds.includes(item.id)) return;
+        const distance = Math.hypot(p.x - item.x, p.z - item.z);
+        if (distance < closestDiscoveryDistance) { closestDiscovery = item; closestDiscoveryDistance = distance; }
+      });
+      let closestPortal = null, closestPortalDistance = 2.9;
+      CAVE_ENTRANCES.forEach((entrance) => {
+        const distance = Math.hypot(p.x - entrance.insideX, p.z - entrance.insideZ);
+        if (distance < closestPortalDistance) { closestPortal = entrance; closestPortalDistance = distance; }
+      });
+      if (act && closestDiscovery) {
+        onCaveCollect?.(closestDiscovery); onPrompt("אספת: " + closestDiscovery.name); s.lastPrompt = "";
+      } else if (act && closestPortal) {
+        p.set(closestPortal.x, terrainGround(closestPortal.x, closestPortal.z, 0, .7, RAD), closestPortal.z);
+        col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
+        s.mode = "walk"; s.v.set(0, 0, 0); s.onGround = true; s.lastPrompt = "";
+        onMode("walk"); onHud(""); onPrompt("יצאתם מהמערה דרך " + closestPortal.name);
+      }
+      if (root) { root.position.copy(p); root.rotation.set(0, s.face, 0); }
+      s.phase += Math.hypot(s.v.x, s.v.z) * dt * 1.35;
+      poseHuman(rig, { mode: "walk", phase: s.phase, speed: Math.hypot(s.v.x, s.v.z), air: false, t: s.t, dt });
+      camTarget.set(p.x, p.y + 1.42, p.z); camDist = 4.8;
+      s.hudTimer -= dt;
+      if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("מערה סודית · W/A/S/D לתנועה · F לאיסוף תגלית או יציאה · הפנס פועל"); }
+      onPrompt(closestDiscovery ? "F / פעולה — לאסוף " + closestDiscovery.name : closestPortal ? "F / פעולה — לצאת למעלה דרך " + closestPortal.name : "חפשו גבישים, מאובנים ומעברים מוארים");
+    } else if (s.mode === "elevator") {
       const elevatorCar = elevatorCars[s.elevatorId];
       if (!elevatorCar) {
         s.mode = "walk"; s.elevatorId = -1; onMode("walk"); onPrompt("יצאתם מהמעלית");
@@ -2237,7 +2286,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         s.timer = .14; let best = -1, bestD = Infinity;
         world.interactables.forEach((it, i) => {
           if (it.type === "pickup") return;
-          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "boat" ? 5.5 : it.type === "jetSki" ? 7.4 : it.type === "sled" ? 3.8 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : it.type === "door" ? 2.7 : 1.8;
+          let x = it.x, y = it.y, z = it.z, radius = it.type === "heli" ? 4 : it.type === "boat" ? 5.5 : it.type === "jetSki" ? 7.4 : it.type === "sled" ? 3.8 : it.type === "car" ? 3.5 : it.type === "airVehicle" ? (it.id === "plane" ? 5.2 : 3.8) : it.type === "cable" ? 2.8 : it.type === "caveEntrance" ? 3.6 : (it.type === "basement" || it.type === "basementExit") ? 2.15 : it.type === "door" ? 2.7 : 1.8;
           if (it.type === "heli") { const item = helis[heliIndices.get(i)]; x = item.x; y = item.y; z = item.z; if (!item.grounded) return; }
           if (it.type === "car") { const item = cars[carIndices.get(i)]; x = item.x; y = item.y; z = item.z; }
           if (it.type === "airVehicle") { const item = airVehicles[airVehicleIndices.get(it.id)]; if (!item) return; x = item.x; y = item.y; z = item.z; }
@@ -2375,7 +2424,16 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       }
       if (act && s.near >= 0 && s.onGround && s.mode === "walk") {
         const it = world.interactables[s.near]; s.target = s.near; s.v.set(0, 0, 0); s.lastPrompt = ""; onPrompt("");
-        if (it.type === "sofa" || it.type === "swing") {
+        if (it.type === "caveEntrance") {
+          const entrance = CAVE_ENTRANCES.find((entry) => entry.id === it.entranceId);
+          if (entrance) {
+            p.set(entrance.insideX, CAVE_FLOOR_Y + .04, entrance.insideZ);
+            s.v.set(0, 0, 0); s.mode = "cave"; s.onGround = true; s.lastPrompt = ""; s.hudTimer = 0;
+            onMode("cave"); onHud("מערה סודית · הפנס נדלק · F לאיסוף תגלית או יציאה");
+            onPrompt("נכנסתם למערה שמתחת לעיר. חפשו פריטים זוהרים.");
+          }
+        }
+        else if (it.type === "sofa" || it.type === "swing") {
           p.set(it.x, it.y, it.z); s.sitY = it.y; s.face = it.face ?? 0; s.mode = "sit"; onMode("sit");
           onPrompt(it.type === "swing" ? "F — לרדת מהנדנדה" : "F — לקום");
         }
@@ -2604,7 +2662,30 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         else { boat.dockIsland = null; boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
         boat.y = getWaterHeight(boat.x, boat.z, s.t);
         p.set(boat.x, boat.y + .36, boat.z);
-        if (act && Math.abs(boat.speed) < 1.2) {
+        const race = boatRaceRef?.current;
+        const startPoint = BOAT_RACE_COURSE[0];
+        const nearRaceStart = Math.hypot(boat.x - startPoint.x, boat.z - startPoint.z) < 30;
+        let raceJustStarted = false;
+        if (act && race && !race.active && Math.abs(boat.speed) < 1.2 && nearRaceStart) {
+          race.active = true; race.checkpoint = 1; race.elapsed = 0; raceJustStarted = true;
+          onPrompt("התחלתם תחרות שיט! עברו דרך המצופים לפי הסדר.");
+        }
+        if (race?.active) {
+          race.elapsed += dt;
+          const checkpoint = BOAT_RACE_COURSE[race.checkpoint];
+          if (checkpoint && Math.hypot(boat.x - checkpoint.x, boat.z - checkpoint.z) < 18) {
+            if (race.checkpoint >= BOAT_RACE_COURSE.length - 1) {
+              const finishedTime = race.elapsed;
+              race.active = false; race.checkpoint = 1; race.elapsed = 0;
+              onBoatRaceFinish?.(finishedTime);
+              onPrompt("סיימתם את תחרות השיט! קיבלתם 60 נקודות.");
+            } else {
+              race.checkpoint += 1;
+              onPrompt("מעולה! עברתם מצוף. המשיכו אל המצוף הבא.");
+            }
+          }
+        }
+        if (act && !raceJustStarted && !race?.active && Math.abs(boat.speed) < 1.2) {
           const island = marine.islands.find((item) => item.id === boat.dockIsland)
             || getIslandAt(boat.x, boat.z, marine.islands)
             || nearestIslandShore(boat.x, boat.z, marine.islands, 1.18);
@@ -2630,8 +2711,14 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
           camTarget.set(boat.x, boat.y + 2.1, boat.z); camDist = 8; followYaw = boat.yaw;
           s.hudTimer -= dt;
-          if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("סירה · W/S קדימה ואחורה · A ימינה · D שמאלה · F ירידה בעצירה"); }
-          onPrompt(Math.abs(boat.speed) < 1.2 ? "F / פעולה — לרדת מהסירה" : "עצרו את הסירה כדי לרדת");
+          if (s.hudTimer <= 0) {
+            s.hudTimer = .2;
+            if (race?.active) onHud("תחרות שיט · מצוף " + race.checkpoint + "/" + (BOAT_RACE_COURSE.length - 1) + " · " + Math.floor(race.elapsed) + " שניות · W/A/S/D להיגוי");
+            else onHud("סירה · W/S קדימה ואחורה · A ימינה · D שמאלה · F ירידה בעצירה");
+          }
+          if (race?.active) onPrompt("תחרות שיט פעילה · עברו דרך מצוף " + race.checkpoint);
+          else if (Math.abs(boat.speed) < 1.2 && nearRaceStart) onPrompt("F / פעולה — להתחיל תחרות שיט · או להתרחק כדי לרדת");
+          else onPrompt(Math.abs(boat.speed) < 1.2 ? "F / פעולה — לרדת מהסירה" : "עצרו את הסירה כדי לרדת");
         }
       }
     } else if (s.mode === "jetSki") {
@@ -2882,8 +2969,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     camera.lookAt(camTarget);
     const islandHere = getIslandAt(p.x, p.z, marine.islands);
     const wildlifeHere = world.wildlifeReserve && Math.abs(p.x - world.wildlifeReserve.x) < 15.5 && Math.abs(p.z - world.wildlifeReserve.z) < 15.5;
-    const place = s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "jetSki" ? "רוכבים באופנוע ים" : s.mode === "swim" ? "מתחת למים" : s.mode === "dolphin" ? "רכיבה על דולפין" : islandHere ? islandHere.name : wildlifeHere ? "שמורת הטבע העירונית" : locate(world, p.x, p.y, p.z);
-    const label = s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || s.mode === "dolphin" || islandHere || wildlifeHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
+    const place = s.mode === "cave" ? "במערות שמתחת לעיר" : s.mode === "heli" ? "בטיסה מעל העיר" : s.mode === "airVehicle" ? (airVehicles[s.target]?.id === "plane" ? "בטיסה במטוס" : "בטסלה המעופפת") : s.mode === "cable" ? "ברכבל גבוה מעל העיר" : s.mode === "boat" ? "בדרך לאיים בסירה" : s.mode === "jetSki" ? "רוכבים באופנוע ים" : s.mode === "swim" ? "מתחת למים" : s.mode === "dolphin" ? "רכיבה על דולפין" : islandHere ? islandHere.name : wildlifeHere ? "שמורת הטבע העירונית" : locate(world, p.x, p.y, p.z);
+    const label = s.mode === "cave" || s.mode === "heli" || s.mode === "airVehicle" || s.mode === "cable" || s.mode === "boat" || s.mode === "swim" || s.mode === "dolphin" || islandHere || wildlifeHere ? place : place ? `${place.building} · קומה ${place.floor} · ${place.room}` : "ברחובות העיר";
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
@@ -2931,6 +3018,7 @@ export default function Game() {
       x0: lamp.x - .12, x1: lamp.x + .12, y0: 0, y1: 4.1,
       z0: lamp.z - .12, z1: lamp.z + .12, kind: "collisionOnly", collide: true, noGround: true
     })));
+    city.interactables.push(...CAVE_ENTRANCES.map((entrance) => ({ type: "caveEntrance", x: entrance.x, y: .12, z: entrance.z, entranceId: entrance.id, label: entrance.name })));
     city.interactables.push(...marine.boats.map(boat => ({ ...boat, type: "boat" })));
     city.interactables.push(...(marine.sleds||[]).map(sled => ({ ...sled, type: "sled" })));
     city.interactables.push(...(marine.jetSkis||[]).map(jetSki => ({ ...jetSki, type: "jetSki" })));
@@ -2953,6 +3041,7 @@ export default function Game() {
   const [shopNotice, setShopNotice] = useState("");
   const wildlifeRef = useRef({ animals: [], completedIds: shopSave.completedMissionIds, islandClaimed: shopSave.completedMissionIds.includes("island"), reserveCenter: null });
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
+  const boatRaceRef = useRef({ active: false, checkpoint: 1, elapsed: 0 });
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null);
   const busInfoRef = useRef({ activeBuses: 0, stops: [] });
@@ -2989,6 +3078,22 @@ export default function Game() {
     setWildlifeMission((current) => current.completedIds.includes(missionId) ? current : {
       completedIds: completedMissionIds, points: current.points + mission.points
     });
+  }, []);
+  const awardCaveDiscovery = useCallback((discovery) => {
+    if (!discovery?.id) return;
+    const current = shopSaveRef.current;
+    if ((current.caveFindIds || []).includes(discovery.id)) return;
+    const points = Math.max(0, Number(discovery.points) || 0);
+    const next = { ...current, points: current.points + points, caveFindIds: [...(current.caveFindIds || []), discovery.id] };
+    shopSaveRef.current = next; setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: score.points + points }));
+    setShopNotice("נמצאה תגלית: " + discovery.name + " · +" + points + " נקודות");
+  }, []);
+  const awardBoatRace = useCallback(() => {
+    const reward = 60, current = shopSaveRef.current;
+    const next = { ...current, points: current.points + reward };
+    shopSaveRef.current = next; setShopSave(next);
+    setWildlifeMission((score) => ({ ...score, points: score.points + reward }));
   }, []);
   const awardIslandVisit = useCallback((island) => {
     const islandId = island?.id;
@@ -3203,7 +3308,9 @@ export default function Game() {
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
-        h(MarineWorld, { marine, boats, divingRef, quality }),
+        h(MarineWorld, { marine, boats, divingRef, quality, boatRaceRef }),
+        h(CaveSystem, { playerPositionRef, collectedIds: shopSave.caveFindIds }),
+        h(UrbanRabbits, { playerPositionRef }),
         h(RemotePlayerAvatars, { players: multiplayer.remotePlayers }),
          h(WildlifeReserve, { reserve: world.wildlifeReserve, playerPositionRef, wildlifeRef, completedIds: wildlifeMission.completedIds, onMissionComplete: completeWildlifeMission }),
          h(AdventureMissions, { world, marine, playerPositionRef, completedIds: wildlifeMission.completedIds, onMissionComplete: completeWildlifeMission }),
@@ -3218,7 +3325,7 @@ export default function Game() {
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
         h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
-        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, shopOwned: shopSave.ownedItems })
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, boatRaceRef, onBoatRaceFinish: awardBoatRace, onCaveCollect: awardCaveDiscovery, collectedCaveIds: shopSave.caveFindIds, shopOwned: shopSave.ownedItems })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),

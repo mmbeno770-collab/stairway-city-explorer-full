@@ -54,8 +54,8 @@ function pyramid(x,z,size,h){
  box(world,x,0,z,size*1.4,.4,size*1.4,darkStone);
  // Wide sandstone stairs on one face let every mount climb to the summit.
  const length=size*.72,steps=Math.max(10,Math.ceil(h/.65)),depth=length/steps;
- for(let n=0;n<steps;n++){const level=h*(n+1)/steps,stepZ=z-length+(n+.5)*depth;box(world,x,level-.12,stepZ,3.9,.24,depth+.08,n%2?sand2:stone);}
- climbZones.push({type:'pyramid',x,z,halfWidth:2.35,baseZ:z-length,length,height:h});
+ for(let n=0;n<steps;n++){const level=h*(n+1)/steps,stepZ=z-length+(n+.5)*depth;box(world,x,level-.24,stepZ,3.9,.24,depth+.08,n%2?sand2:stone);}
+ climbZones.push({type:'pyramid',x,z,halfWidth:2.35,baseZ:z-length,length,height:h,steps});
 }
 pyramid(-13,-25,8.3,12);pyramid(2,-25,6.8,9.8);pyramid(15,-23,5.4,7.8);
 const houseColors=[0xd9c294,0xc9b28a,0xe1cda4,0xbfa276];
@@ -210,7 +210,7 @@ function blocked(x,z){
 }
 function groundHeight(x,z){
  let height=0;
- for(const r of climbZones){if(Math.abs(x-r.x)<r.halfWidth&&z>=r.baseZ&&z<=r.z+.15){const h=r.height*THREE.MathUtils.clamp((z-r.baseZ)/r.length,0,1);height=Math.max(height,h);}}
+ for(const r of climbZones){if(Math.abs(x-r.x)<r.halfWidth&&z>=r.baseZ&&z<=r.z+.15){const step=Math.min(r.steps-1,Math.max(0,Math.floor((z-r.baseZ)/r.length*r.steps)));const h=r.height*(step+1)/r.steps;height=Math.max(height,h);}}
  if(active===1){for(const b of buildingRects){if(x>b.x-b.w/2+.2&&x<b.x+b.w/2-.2&&z>b.z-b.d/2+.2&&z<b.z+b.d/2-.2)height=Math.max(height,b.h+.24);}}
  return height;
 }

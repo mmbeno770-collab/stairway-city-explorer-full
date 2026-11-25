@@ -2589,6 +2589,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         boat.steering += (steerX - boat.steering) * (1 - Math.exp(-3.8 * dt));
         boat.yaw += boat.steering * .82 * Math.min(1, Math.abs(boat.speed) / 3.5) * dt * Math.sign(boat.speed || 1);
         const nx = boat.x + Math.sin(boat.yaw) * boat.speed * dt, nz = boat.z + Math.cos(boat.yaw) * boat.speed * dt;
+        const coastNow = Math.max(Math.abs(boat.x), Math.abs(boat.z));
+        const coastNext = Math.max(Math.abs(nx), Math.abs(nz));
         const islandAtNext = getIslandAt(nx, nz, marine.islands);
         const rememberedDock = boat.dockIsland && boat.speed >= 0
           ? marine.islands.find((item) => item.id === boat.dockIsland &&
@@ -2596,7 +2598,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           : null;
         const shoreDock = boat.speed >= 0 ? nearestIslandShore(nx, nz, marine.islands, 1.14) : null;
         const dockIsland = islandAtNext || rememberedDock || shoreDock;
-        if (isMainlandLand(nx, nz)) { boat.dockIsland = null; boat.speed *= .2; }
+        // Keep the boat from pushing inland, but let it travel along the shoreline.
+        if (isMainlandLand(nx, nz) && coastNext < coastNow) { boat.dockIsland = null; boat.speed *= .2; }
         else if (dockIsland) { boat.dockIsland = dockIsland.id; boat.speed *= .18; }
         else { boat.dockIsland = null; boat.x = THREE.MathUtils.clamp(nx, -1050, 1050); boat.z = THREE.MathUtils.clamp(nz, -1050, 1050); }
         boat.y = getWaterHeight(boat.x, boat.z, s.t);

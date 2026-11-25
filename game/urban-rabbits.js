@@ -15,7 +15,7 @@ export function UrbanRabbits({ playerPositionRef }) {
     const parks = [
       { x: -144, z: -144 },
       { x: 144, z: 144 },
-      { x: 108, z: -108 },
+      { x: 72, z: 36 },
       { x: 72, z: 108 }
     ];
     return Array.from({ length: 10 }, (_, i) => {

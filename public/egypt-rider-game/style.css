@@ -6,3 +6,5 @@
 @media(max-height:590px){.mobile-controls{bottom:85px}.mount-btn{height:43px;width:42px}.bottom-hud{bottom:6px}.hud-top{top:6px}}
 
 .citizen-line{font-size:12px;color:#ffe5b2;margin-top:7px}.citizen-line b{color:#fff4d6;font-size:15px}.side-quest{font-size:10px;color:#d7c5a5;margin-top:4px}.camera-mode-btn{pointer-events:auto;min-height:39px;padding:0 13px;border-radius:11px;background:rgba(38,30,22,.82);color:#ffe8bd;border:1px solid rgba(255,236,198,.35);font-size:11px;font-weight:800;white-space:nowrap;backdrop-filter:blur(8px)}.camera-mode-btn:hover{background:rgba(111,76,38,.92)}.quest-card{width:min(310px,42vw)}@media(max-width:760px){.quest-card{width:46vw}.citizen-line{font-size:10px}.citizen-line b{font-size:13px}.side-quest{font-size:9px}.camera-mode-btn{min-height:34px;padding:0 8px;font-size:9px}}
+
+@media(max-width:760px){.hud-top{gap:4px}.quest-card{width:41vw}.mount-card{min-width:92px;flex:1}.camera-mode-btn{position:absolute;top:48px;right:0;min-height:29px;padding:0 9px;font-size:9px;z-index:8}.icon-btn{flex:0 0 32px;width:32px;height:32px}.hud-card{padding:7px 9px}}

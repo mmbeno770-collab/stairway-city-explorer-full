@@ -5,9 +5,9 @@ import * as THREE from "three";
 const h = React.createElement;
 export const CAVE_FLOOR_Y = -36;
 export const CAVE_ENTRANCES = [
-  { id: "north-garden", name: "הגן הצפוני", x: -126, z: -126, insideX: -20, insideZ: -2 },
-  { id: "south-garden", name: "הגן הדרומי", x: 162, z: 162, insideX: 20, insideZ: -2 },
-  { id: "east-garden", name: "גן המזרקה", x: 108, z: -90, insideX: 0, insideZ: -19 }
+  { id: "north-garden", name: "הגן הצפוני", x: -144, z: -144, insideX: -20, insideZ: -2 },
+  { id: "south-garden", name: "הגן הדרומי", x: 144, z: 144, insideX: 20, insideZ: -2 },
+  { id: "east-garden", name: "גן המזרקה", x: 108, z: -108, insideX: 0, insideZ: -19 }
 ];
 export const CAVE_DISCOVERIES = [
   { id: "blue-geode", name: "גביש כחול", kind: "crystal", x: -25, z: -17, points: 20, color: "#63d9ec" },
@@ -189,13 +189,12 @@ function Flashlight({ playerPositionRef }) {
   );
 }
 
-export function CaveSystem({ playerPositionRef, collectedIds = [] }) {
-  const collected = useMemo(() => new Set(collectedIds), [collectedIds]);
+export function CaveSystem({ playerPositionRef }) {
   return h(React.Fragment, null,
     ...CAVE_ENTRANCES.map((entrance, i) => h(SurfaceEntrance, { key: "surface-" + entrance.id, entrance, index: i })),
     h(CaveRoom),
     ...CAVE_ENTRANCES.map(entrance => h(CavePortal, { key: "portal-" + entrance.id, entrance })),
-    ...CAVE_DISCOVERIES.map(item => h(DiscoveryModel, { key: item.id, item, on: !collected.has(item.id) })),
+    ...CAVE_DISCOVERIES.map(item => h(DiscoveryModel, { key: item.id, item, on: false })),
     h(Bats),
     h(Flashlight, { playerPositionRef })
   );

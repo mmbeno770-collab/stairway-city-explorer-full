@@ -28,6 +28,8 @@ jobs:
         run: npm run build
       - name: Apply verified uploaded gameplay upgrade
         run: node scripts/apply-enhanced-site.mjs
+      - name: Validate Egypt rider browser script
+        run: node --check public/egypt-rider-game/game.js
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

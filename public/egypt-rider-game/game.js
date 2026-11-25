@@ -54,8 +54,8 @@ function pyramid(x,z,size,h){
  box(world,x,0,z,size*1.4,.4,size*1.4,darkStone);
  // Wide sandstone stairs on one face let every mount climb to the summit.
  const length=size*.72,steps=Math.max(10,Math.ceil(h/.65)),depth=length/steps;
- for(let n=0;n<steps;n++){const level=h*(n+1)/steps,stepZ=z+length-(n+.5)*depth;box(world,x,level-.12,stepZ,3.9,.24,depth+.08,n%2?sand2:stone);}
- climbZones.push({type:'pyramid',x,z,halfWidth:2.35,baseZ:z+length,length,height:h});
+ for(let n=0;n<steps;n++){const level=h*(n+1)/steps,stepZ=z-length+(n+.5)*depth;box(world,x,level-.12,stepZ,3.9,.24,depth+.08,n%2?sand2:stone);}
+ climbZones.push({type:'pyramid',x,z,halfWidth:2.35,baseZ:z-length,length,height:h});
 }
 pyramid(-13,-25,8.3,12);pyramid(2,-25,6.8,9.8);pyramid(15,-23,5.4,7.8);
 const houseColors=[0xd9c294,0xc9b28a,0xe1cda4,0xbfa276];
@@ -157,7 +157,7 @@ function createMount(i){
  if(i!==4){const tail=sphere(g,0,.8,-1.25,.16,.16,.75,coat);tail.rotation.x=.38;if(i===3||i===0)sphere(g,0,.65,-1.9,.22,.18,.2,mane);}
  const saddle=box(g,0,1.28,-.05,1.25,.16,1.15,mat(i===3?0x873b29:0x875b36));saddle.position.y=1.32;
  const boy=makeBoy(g,i===1?1.55:1.52);
- g.visible=i===0;g.userData.boy=boy;g.userData.legs=[];g.userData.index=i;
+ g.visible=i===0;g.userData.boy=boy;g.userData.head=head;g.userData.legs=[];g.userData.index=i;
  mounts.push(g);carrier.add(g);
 }
 const carrier=new THREE.Group();world.add(carrier);carrier.position.set(0,0,-30);
@@ -210,7 +210,7 @@ function blocked(x,z){
 }
 function groundHeight(x,z){
  let height=0;
- for(const r of climbZones){if(Math.abs(x-r.x)<r.halfWidth&&z<=r.baseZ&&z>=r.z-.15){const h=r.height*THREE.MathUtils.clamp((r.baseZ-z)/r.length,0,1);height=Math.max(height,h);}}
+ for(const r of climbZones){if(Math.abs(x-r.x)<r.halfWidth&&z>=r.baseZ&&z<=r.z+.15){const h=r.height*THREE.MathUtils.clamp((z-r.baseZ)/r.length,0,1);height=Math.max(height,h);}}
  if(active===1){for(const b of buildingRects){if(x>b.x-b.w/2+.2&&x<b.x+b.w/2-.2&&z>b.z-b.d/2+.2&&z<b.z+b.d/2-.2)height=Math.max(height,b.h+.24);}}
  return height;
 }
@@ -218,7 +218,7 @@ const clock=new THREE.Clock();const cameraTarget=new THREE.Vector3();
 let cameraMode='auto',cameraYaw=Math.PI,cameraPitch=.53,cameraDistance=29,draggingCamera=false,lastPointerX=0,lastPointerY=0;
 function setCameraMode(mode){
  if(mode==='manual'&&cameraMode!=='manual'){const dx=camera.position.x-cameraTarget.x,dy=camera.position.y-cameraTarget.y,dz=camera.position.z-cameraTarget.z;cameraDistance=THREE.MathUtils.clamp(Math.hypot(dx,dy,dz),11,52);cameraYaw=Math.atan2(dx,dz);cameraPitch=Math.asin(THREE.MathUtils.clamp(dy/cameraDistance,-1,1));}
- cameraMode=mode;$('camera-mode-btn').textContent=cameraMode==='auto'?'מצלמה: אוטומטית':'מצלמה: ידנית';
+ cameraMode=mode;if(cameraMode==='auto'){cameraPitch=.53;cameraDistance=29;}$('camera-mode-btn').textContent=cameraMode==='auto'?'מצלמה: אוטומטית':'מצלמה: ידנית';
 }
 $('camera-mode-btn').addEventListener('click',()=>setCameraMode(cameraMode==='auto'?'manual':'auto'));
 canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;setCameraMode('manual');draggingCamera=true;lastPointerX=e.clientX;lastPointerY=e.clientY;canvas.setPointerCapture(e.pointerId);});

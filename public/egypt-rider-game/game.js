@@ -245,7 +245,6 @@ function createMount(i){
    part.position.copy(A).add(B).multiplyScalar(.5);
    part.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
    part.castShadow=true;group.add(part);
-   ell.call(null,0,0,0,0,0,0,m); // no-op keeps all generated parts owned by the animal group
   }
   const last=points[points.length-1];const tuft=new THREE.Mesh(new THREE.SphereGeometry(radii[radii.length-1]*2,10,8),tipMat);
   tuft.position.set(...last);group.add(tuft);g.userData.animatedTails.push(group);return group;
@@ -548,6 +547,7 @@ function update(dt,t){
   mounts[active].position.y=Math.sin(t*12)*.035+Math.abs(Math.sin(t*12))*.04;
   mounts[active].rotation.z=THREE.MathUtils.damp(mounts[active].rotation.z,dx*.055,5,dt);
   mounts[active].userData.limbs?.forEach((part,i)=>{part.rotation.x=Math.sin(t*8+i*Math.PI*.5)*.12;});
+  mounts[active].userData.animatedTails?.forEach((tail,n)=>{tail.rotation.x=Math.sin(t*2.4+n)*.12;tail.rotation.y=Math.cos(t*1.8+n)*.1;});
   for(const herd of wildHerd){
    const phase=t*herd.speed+herd.phase;
    herd.group.position.x=herd.x+Math.sin(phase)*herd.range;

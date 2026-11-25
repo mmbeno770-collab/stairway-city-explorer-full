@@ -13,26 +13,26 @@
 <div id="game-wrap">
 <canvas id="game"></canvas>
 <div id="loading" class="screen-panel"><div class="eyebrow">הרפתקה בתלת־ממד</div><h1>רוכבי מצרים העתיקה</h1><div class="loader-ring"></div><p>בונים את העיר ומכינים את החיות לרכיבה…</p></div>
-<div id="start-screen" class="screen-panel hidden"><div class="eyebrow">מסע במדבר</div><h1>רוכבי מצרים העתיקה</h1><p class="intro">צאו למסע בעיר המצרית, החליפו חיות רכיבה ואספו 12 חיפושיות זהב עתיקות.</p><div class="mount-preview-row"><span>🦁 אריה</span><span>🦍 גורילה</span><span>🐂 שור</span><span>🐅 נמר</span><span>🐊 תנין</span></div><button id="start-btn" class="primary-btn">מתחילים לשחק</button><p class="small-hint">WASD / חצים לתנועה · 1–5 להחלפת חיה · רווח לקפיצה</p></div>
+<div id="start-screen" class="screen-panel hidden"><div class="eyebrow">מסע במדבר</div><h1>רוכבי מצרים העתיקה</h1><p class="intro">רכבו ברחבי מצרים, מצאו את התושבים שמסתתרים בעיר, טפסו על הפירמידות ואספו גם חיפושיות זהב.</p><div class="mount-preview-row"><span>🦁 אריה</span><span>🦍 גורילה</span><span>🐂 שור</span><span>🐅 נמר</span><span>🐊 תנין</span></div><button id="start-btn" class="primary-btn">מתחילים לשחק</button><p class="small-hint">WASD / חצים לתנועה · 1–5 להחלפת חיה · רווח לקפיצה</p></div>
 <div id="hud" class="hidden">
 <div class="hud-top">
-<div class="hud-card quest-card"><div class="hud-label">המשימה</div><div class="quest-title">אספו את חיפושיות הזהב</div><div class="progress-line"><span id="progress-fill"></span></div><div class="progress-text"><b id="collected">0</b> / 12 נאספו</div></div>
+<div class="hud-card quest-card"><div class="hud-label">המשימה</div><div class="quest-title">מצאו את כל תושבי העיר</div><div class="citizen-line"><b id="citizens-left">24</b> מצרים נותרו · <b id="citizens-caught">0</b> נתפסו</div><div class="side-quest">אוצרות זהב: <b id="collected">0</b> / 12</div><div class="progress-line"><span id="progress-fill"></span></div><div class="progress-text"><b id="collected">0</b> / 12 נאספו</div></div>
 <div class="hud-card mount-card"><div class="hud-label">החיה הנוכחית</div><div class="mount-current"><span id="mount-icon">🦁</span><b id="mount-name">אריה</b></div><div id="mount-desc" class="mount-desc">רכיבה מאוזנת ומהירה</div></div>
-<button id="help-btn" class="icon-btn" title="עזרה">?</button><button id="pause-btn" class="icon-btn" title="השהיה">Ⅱ</button>
+<button id="camera-mode-btn" class="camera-mode-btn" title="החלפת מצב מצלמה">מצלמה: אוטומטית</button><button id="help-btn" class="icon-btn" title="עזרה">?</button><button id="pause-btn" class="icon-btn" title="השהיה">Ⅱ</button>
 </div>
 <div class="bottom-hud">
 <div class="mount-selector" id="mount-selector">
 <button class="mount-btn active" data-mount="0"><span>🦁</span><small>1</small></button><button class="mount-btn" data-mount="1"><span>🦍</span><small>2</small></button><button class="mount-btn" data-mount="2"><span>🐂</span><small>3</small></button><button class="mount-btn" data-mount="3"><span>🐅</span><small>4</small></button><button class="mount-btn" data-mount="4"><span>🐊</span><small>5</small></button>
 </div>
 <div class="map-card"><canvas id="minimap" width="150" height="110"></canvas><div>מפת העיר</div></div>
-<div class="desktop-hints">WASD / חצים · רווח קפיצה · Shift מהירות · Q / E החלפת חיה</div>
+<div class="desktop-hints">WASD / חצים · גרירה לסיבוב מצלמה · גלגלת לזום · 1–5 להחלפת חיה</div>
 </div>
 <div class="mobile-controls" id="mobile-controls"><div class="dpad"><button data-dir="up">▲</button><div><button data-dir="left">◀</button><button data-dir="down">▼</button><button data-dir="right">▶</button></div></div><button id="jump-btn" class="jump-btn">קפיצה</button></div>
 <div id="toast" class="toast"></div>
 </div>
 <div id="pause-screen" class="screen-panel hidden"><div class="eyebrow">עצירה</div><h2>המשחק מושהה</h2><button id="resume-btn" class="primary-btn">חזרה למשחק</button><button id="restart-btn" class="secondary-btn">התחלה מחדש</button></div>
-<div id="help-screen" class="screen-panel hidden"><div class="eyebrow">איך משחקים?</div><h2>הוראות מסע</h2><p>נועו בעיר עם W A S D או עם החצים. לחצו על אחד מחמשת סמלי החיות כדי להחליף רכיבה. אפשר גם ללחוץ על המקשים 1–5 או Q/E.</p><p>אספו 12 חיפושיות זהב זוהרות ליד הארמון, הפירמידות, השוק והנאות.</p><p>לכל חיה תכונות תנועה שונות: השור מהיר בקו ישר, הנמר זריז, הגורילה קופצת גבוה, האריה מאוזן והתנין שוחה בתעלות.</p><button id="close-help" class="primary-btn">הבנתי!</button></div>
-<div id="win-screen" class="screen-panel hidden"><div class="eyebrow">כל הכבוד!</div><h1>מצאתם את כל האוצרות!</h1><p>הנער והחיות השלימו את המסע בעיר מצרים העתיקה.</p><button id="play-again-btn" class="primary-btn">לשחק שוב</button></div>
+<div id="help-screen" class="screen-panel hidden"><div class="eyebrow">איך משחקים?</div><h2>הוראות מסע</h2><p>נועו עם W A S D או החצים. גררו את המסך או העכבר כדי לסובב את המצלמה, ולחצו על כפתור המצלמה כדי לעבור בין מצב אוטומטי לידני.</p><p>התושבים יברחו כשהרוכב יתקרב. תפסו את כולם בעזרת החיות. איסוף 12 חיפושיות זהב הוא משימת צד.</p><p>לכל חיה תכונות שונות. עלו במדרגות שעל הפירמידות; כשאתם רוכבים על הגורילה, לחצו על רווח ליד בית כדי לטפס לגג.</p><button id="close-help" class="primary-btn">הבנתי!</button></div>
+<div id="win-screen" class="screen-panel hidden"><div class="eyebrow">כל הכבוד!</div><h1 id="win-title">לא נשארו מצרים בעיר!</h1><p id="win-subtitle">המסע הושלם — כל התושבים נתפסו באפקט מצויר ולא גרפי.</p><button id="play-again-btn" class="primary-btn">לשחק שוב</button></div>
 <div id="webgl-warning" class="screen-panel hidden"><h2>לא ניתן להפעיל תלת־ממד</h2><p>יש לפתוח בדפדפן עדכני עם תמיכה ב־WebGL וחיבור אינטרנט לטעינת מנוע התלת־ממד.</p></div>
 </div>
 <script type="module" src="./game.js"></script>

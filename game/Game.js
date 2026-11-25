@@ -713,6 +713,8 @@ function makeNpcReply(name, message, turnCount = 0, previousTopic = "", personal
 
   if (followUp && previousTopic === "buildings") return "כמו שאמרתי, כדאי להתחיל מהכניסה ולחקור את הלובי, המדרגות והקומות בהדרגה.";
   if (followUp && previousTopic === "vehicles") return "אפשר להתקרב לכלי הרכב, להיכנס בעזרת F, ואז לנהוג עם W/A/S/D.";
+  if (followUp && previousTopic === "caves") return "במערה חפש פריטים זוהרים. מתקרבים ולוחצים G כדי להרים אותם, ואפשר לקחת אותם דרך אחד הפתחים בחזרה לגנים.";
+  if (followUp && previousTopic === "racing") return "המסלול עובר דרך המצופים ממזרח לדרום, אחר כך מערבה, ולבסוף חוזרים לשער הזינוק.";
   if (followUp && previousTopic) return pick(["מעניין אותי להמשיך לגלות את זה יחד. מה בדיוק תרצה לדעת?", "יש בזה עוד כמה פרטים. על איזה חלק אתה רוצה שאספר?", "אני לא רוצה לנחש סתם — איזה פרט מסקרן אותך?"]);
 
   const previousPlayerLine = [...history].reverse().find((entry) => entry.from === "player")?.text;
@@ -1729,7 +1731,7 @@ function DiverSuit({ rig }) {
   );
 }
 
-function PickupProps({ items, heldItemRef, playerPositionRef }) {
+function PickupProps({ items, heldItemRef, playerPositionRef, collectedIds = [] }) {
   const nodes = useRef({});
   const impactNodes = useRef({});
   const impactSeen = useRef({});
@@ -1792,26 +1794,27 @@ function PickupProps({ items, heldItemRef, playerPositionRef }) {
   return h(React.Fragment, null, items.map((item) => {
     const size = item.size || { width: .72, height: .58, depth: .64 };
     const width = size.width, height = size.height, depth = size.depth;
+    if (item.caveDiscoveryId && collectedIds.includes(item.caveDiscoveryId) && !item.carried) return null;
+    const visual = item.caveDiscoveryId
+      ? item.discoveryKind === "crystal"
+        ? h("mesh", { position: [0, height * .58, 0], scale: [.68, .9, .68], castShadow: true }, h("octahedronGeometry", { args: [.72, 1] }), h("meshStandardMaterial", { color: item.color, emissive: item.color, emissiveIntensity: .8, roughness: .24, metalness: .12 }))
+        : item.discoveryKind === "fossil"
+          ? h("group", { position: [0, height * .45, 0] }, h("mesh", { material: new THREE.MeshStandardMaterial({ color: item.color, roughness: .8 }), scale: [1, .24, .7] }, h("torusGeometry", { args: [.48, .12, 7, 16] })), h("mesh", { position: [0, .08, 0], material: new THREE.MeshStandardMaterial({ color: item.color }), scale: [.12, .12, 1] }, h("cylinderGeometry", { args: [.12, .12, 1.35, 8] })))
+          : item.discoveryKind === "compass"
+            ? h("group", { position: [0, height * .52, 0] }, h("mesh", { material: new THREE.MeshStandardMaterial({ color: "#c89a44", metalness: .65, roughness: .3 }) }, h("cylinderGeometry", { args: [.36, .36, .12, 20] })), h("mesh", { position: [0, .12, 0], material: new THREE.MeshStandardMaterial({ color: "#f4e7b8" }) }, h("coneGeometry", { args: [.13, .42, 4] })))
+            : item.discoveryKind === "map"
+              ? h("group", { position: [0, height * .48, 0] }, h("mesh", { material: new THREE.MeshStandardMaterial({ color: "#e8d7b3" }), rotation: [-.12, 0, .04] }, h("boxGeometry", { args: [.78, .07, .62] })), h("mesh", { position: [0, .06, 0], material: new THREE.MeshStandardMaterial({ color: "#9d7d54" }) }, h("boxGeometry", { args: [.5, .025, .035] })))
+              : h("group", { position: [0, height * .45, 0] }, h("mesh", { position: [0, .2, 0], material: new THREE.MeshStandardMaterial({ color: item.color, emissive: item.color, emissiveIntensity: .6 }) }, h("sphereGeometry", { args: [.34, 12, 10] })), h("mesh", { position: [0, -.03, 0], material: new THREE.MeshStandardMaterial({ color: "#b4a17e" }) }, h("cylinderGeometry", { args: [.2, .25, .25, 9] })))
+      : h("group", null,
+          h("mesh", { position: [0, height * .5, 0], castShadow: true, receiveShadow: true }, h("boxGeometry", { args: [width, height, depth] }), h("meshStandardMaterial", { color: item.color || "#9b7750", roughness: .82 })),
+          h("mesh", { position: [0, height * .78, 0], castShadow: true }, h("boxGeometry", { args: [width + .025, .055, depth + .025] }), h("meshStandardMaterial", { color: "#c4a16e", roughness: .78 })),
+          ...[-1, 1].map((side) => h("mesh", { key: "crate-band-" + side, position: [side * (width * .31), height * .48, depth * .5 + .006], castShadow: true }, h("boxGeometry", { args: [.045, height * .78, .018] }), h("meshStandardMaterial", { color: "#dfc18a", roughness: .8 })))
+        );
     return h("group", {
       key: item.id,
       ref: (node) => { nodes.current[item.id] = node; }
     },
-      h("mesh", { position: [0, height * .5, 0], castShadow: true, receiveShadow: true },
-        h("boxGeometry", { args: [width, height, depth] }),
-        h("meshStandardMaterial", { color: item.color || "#9b7750", roughness: .82 })
-      ),
-      h("mesh", { position: [0, height * .78, 0], castShadow: true },
-        h("boxGeometry", { args: [width + .025, .055, depth + .025] }),
-        h("meshStandardMaterial", { color: "#c4a16e", roughness: .78 })
-      ),
-      ...[-1, 1].map((side) => h("mesh", {
-        key: "crate-band-" + side,
-        position: [side * (width * .31), height * .48, depth * .5 + .006],
-        castShadow: true
-      },
-        h("boxGeometry", { args: [.045, height * .78, .018] }),
-        h("meshStandardMaterial", { color: "#dfc18a", roughness: .8 })
-      )),
+      visual,
       ...Array.from({ length: 8 }, (_, index) => h("mesh", {
         key: "impact-particle-" + index,
         ref: (node) => {
@@ -2004,9 +2007,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         const distance = Math.hypot(p.x - entrance.insideX, p.z - entrance.insideZ);
         if (distance < closestPortalDistance) { closestPortal = entrance; closestPortalDistance = distance; }
       });
-      if (act && closestDiscovery) {
-        onCaveCollect?.(closestDiscovery); onPrompt("אספת: " + closestDiscovery.name); s.lastPrompt = "";
-      } else if (act && closestPortal) {
+      if (act && closestPortal) {
         p.set(closestPortal.x, terrainGround(closestPortal.x, closestPortal.z, 0, .7, RAD), closestPortal.z);
         col.resolve(p, p.y + STEP, p.y + HEIGHT, RAD);
         s.mode = "walk"; s.v.set(0, 0, 0); s.onGround = true; s.lastPrompt = "";
@@ -2018,7 +2019,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
       camTarget.set(p.x, p.y + 1.42, p.z); camDist = 4.8;
       s.hudTimer -= dt;
       if (s.hudTimer <= 0) { s.hudTimer = .35; onHud("מערה סודית · W/A/S/D לתנועה · F לאיסוף תגלית או יציאה · הפנס פועל"); }
-      onPrompt(closestDiscovery ? "F / פעולה — לאסוף " + closestDiscovery.name : closestPortal ? "F / פעולה — לצאת למעלה דרך " + closestPortal.name : "חפשו גבישים, מאובנים ומעברים מוארים");
+      onPrompt(closestDiscovery ? "G — להרים " + closestDiscovery.name + " ולקחת אותו החוצה" : closestPortal ? "F / פעולה — לצאת למעלה דרך " + closestPortal.name : "חפשו גבישים, מאובנים ומעברים מוארים");
     } else if (s.mode === "elevator") {
       const elevatorCar = elevatorCars[s.elevatorId];
       if (!elevatorCar) {
@@ -2246,7 +2247,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         onPrompt("זרקת את " + item.label + " · אפשר להרים שוב עם G");
         s.lastPrompt = "";
       }
-      if (pickupAction && s.mode === "walk" && s.onGround) {
+      if (pickupAction && (s.mode === "walk" || s.mode === "cave") && (s.mode === "cave" || s.onGround)) {
         if (s.heldItem) {
           const item = s.heldItem, size = item.size || { width: .72, height: .58, depth: .64 };
           const drop = {
@@ -2254,7 +2255,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
             z: p.z + Math.cos(s.face) * (.86 + size.depth * .5)
           };
           const radius = Math.max(size.width, size.depth) * .5;
-          const ground = col.groundAt(drop.x, drop.z, p.y, STEP, radius);
+          const ground = s.mode === "cave" ? CAVE_FLOOR_Y : col.groundAt(drop.x, drop.z, p.y, STEP, radius);
           col.resolve(drop, ground + .03, ground + size.height + .03, radius);
           const support = pickupSupportHeight(drop.x, drop.z, item, pickupItems, ground, ground + 2.35, p.y + .95);
           col.resolve(drop, support + .03, support + size.height + .03, radius);
@@ -2267,7 +2268,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         } else {
           let nearest = null, nearestDistance = 1.75;
           for (const item of pickupItems) {
-            if (item.carried || item.thrown || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) continue;
+            if (item.carried || item.thrown || (item.caveDiscoveryId && collectedCaveIds.includes(item.caveDiscoveryId)) || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) continue;
             const distance = Math.hypot(p.x - item.x, p.z - item.z);
             if (distance < nearestDistance) { nearest = item; nearestDistance = distance; }
           }
@@ -2276,6 +2277,10 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
             s.heldItem = nearest;
             s.v.x = 0; s.v.z = 0;
             if (heldItemRef) heldItemRef.current = nearest;
+            if (nearest.caveDiscoveryId) {
+              const discovery = CAVE_DISCOVERIES.find((entry) => entry.id === nearest.caveDiscoveryId);
+              if (discovery) onCaveCollect?.(discovery);
+            }
             onPrompt("הרמת " + nearest.label + " · G להנחה");
           }
         }
@@ -2297,7 +2302,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         });
         let nearestPickup = -1, nearestPickupD = 1.82;
         if (!s.heldItem) pickupItems.forEach((item, index) => {
-          if (item.carried || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) return;
+          if (item.carried || (item.caveDiscoveryId && collectedCaveIds.includes(item.caveDiscoveryId)) || !isPortablePickup(item) || Math.abs(p.y - item.y) > .9) return;
           const distance = Math.hypot(p.x - item.x, p.z - item.z);
           if (distance < nearestPickupD) { nearestPickup = index; nearestPickupD = distance; }
         });
@@ -2840,7 +2845,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         if(act){
           dolphin.ridden=true; dolphin.active=true;
           s.target=nearestDolphin; s.mode="dolphin"; s.face=dolphin.yaw;
-          p.set(dolphin.x,dolphin.y+1.05,dolphin.z); s.v.set(0,0,0);
+          p.set(dolphin.x,dolphin.y+(dolphin.leapHeight || 0)+1.05,dolphin.z); s.v.set(0,0,0);
           onMode("dolphin"); onHud("רכיבה על דולפין · W קדימה · S אחורה · A ימינה · D שמאלה · F לרדת");
           onPrompt("עליתם על הדולפין! אפשר לכוון אותו עם W A S D");
         }
@@ -2881,8 +2886,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           dolphin.x=THREE.MathUtils.clamp(nx,-1050,1050);
           dolphin.z=THREE.MathUtils.clamp(nz,-1050,1050);
         } else dolphin.speed*=.2;
-        dolphin.y=-2.45+(jump?Math.sin(s.t*8)*.28:0);
-        p.set(dolphin.x,dolphin.y+1.05,dolphin.z); s.face=dolphin.yaw;
+        dolphin.y=getWaterHeight(dolphin.x,dolphin.z,s.t)-.38+(jump?Math.sin(s.t*8)*.18:0);
+        p.set(dolphin.x,dolphin.y+(dolphin.leapHeight || 0)+1.05,dolphin.z); s.face=dolphin.yaw;
         if(root){root.position.set(dolphin.x,dolphin.y+.48,dolphin.z);root.rotation.set(0,dolphin.yaw,0);}
         poseHuman(rig,{mode:"car",phase:0,speed:0,air:false,t:s.t,dt});
         camTarget.set(p.x,p.y+.25,p.z); camDist=6.3; followYaw=dolphin.yaw;
@@ -3019,6 +3024,7 @@ export default function Game() {
       z0: lamp.z - .12, z1: lamp.z + .12, kind: "collisionOnly", collide: true, noGround: true
     })));
     city.interactables.push(...CAVE_ENTRANCES.map((entrance) => ({ type: "caveEntrance", x: entrance.x, y: .12, z: entrance.z, entranceId: entrance.id, label: entrance.name })));
+    city.interactables.push(...CAVE_DISCOVERIES.map((item) => ({ type: "pickup", id: "cave-find-" + item.id, caveDiscoveryId: item.id, discoveryKind: item.kind, x: item.x, y: CAVE_FLOOR_Y + .03, z: item.z, label: item.name, color: item.color, mass: .65, size: { width: .72, height: .78, depth: .72 }, carried: false, thrown: false })));
     city.interactables.push(...marine.boats.map(boat => ({ ...boat, type: "boat" })));
     city.interactables.push(...(marine.sleds||[]).map(sled => ({ ...sled, type: "sled" })));
     city.interactables.push(...(marine.jetSkis||[]).map(jetSki => ({ ...jetSki, type: "jetSki" })));
@@ -3309,7 +3315,7 @@ export default function Game() {
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
         h(MarineWorld, { marine, boats, divingRef, quality, boatRaceRef }),
-        h(CaveSystem, { playerPositionRef, collectedIds: shopSave.caveFindIds }),
+        h(CaveSystem, { playerPositionRef }),
         h(UrbanRabbits, { playerPositionRef }),
         h(RemotePlayerAvatars, { players: multiplayer.remotePlayers }),
          h(WildlifeReserve, { reserve: world.wildlifeReserve, playerPositionRef, wildlifeRef, completedIds: wildlifeMission.completedIds, onMissionComplete: completeWildlifeMission }),
@@ -3323,7 +3329,7 @@ export default function Game() {
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
-        h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef }),
+        h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef, collectedIds: shopSave.caveFindIds }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
         h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, boatRaceRef, onBoatRaceFinish: awardBoatRace, onCaveCollect: awardCaveDiscovery, collectedCaveIds: shopSave.caveFindIds, shopOwned: shopSave.ownedItems })
       )

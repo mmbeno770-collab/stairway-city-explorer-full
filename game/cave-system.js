@@ -7,7 +7,7 @@ export const CAVE_FLOOR_Y = -36;
 export const CAVE_ENTRANCES = [
   { id: "north-garden", name: "הגן הצפוני", x: -144, z: -144, insideX: -20, insideZ: -2 },
   { id: "south-garden", name: "הגן הדרומי", x: 144, z: 144, insideX: 20, insideZ: -2 },
-  { id: "east-garden", name: "גן המזרקה", x: 108, z: -108, insideX: 0, insideZ: -19 }
+  { id: "east-garden", name: "גן המזרקה", x: 72, z: 36, insideX: 0, insideZ: -19 }
 ];
 export const CAVE_DISCOVERIES = [
   { id: "blue-geode", name: "גביש כחול", kind: "crystal", x: -25, z: -17, points: 20, color: "#63d9ec" },

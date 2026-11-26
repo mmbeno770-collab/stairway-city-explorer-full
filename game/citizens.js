@@ -66,7 +66,9 @@ const ROUTINE_PROFILES = [
   { id: "social", pace: .94, pauseChance: .12, pauseMin: 1.8, pauseMax: 2.8, cooldownMin: 13, cooldownMax: 21, socialRate: 1.55, visitMin: 22, visitMax: 36, look: "look" },
   { id: "busy", pace: 1.18, pauseChance: .07, pauseMin: 1.2, pauseMax: 2.0, cooldownMin: 17, cooldownMax: 25, socialRate: .62, visitMin: 13, visitMax: 23, look: "inspect" },
   { id: "observer", pace: .88, pauseChance: .28, pauseMin: 2.7, pauseMax: 4.6, cooldownMin: 10, cooldownMax: 17, socialRate: .82, visitMin: 24, visitMax: 39, look: "inspect" },
-  { id: "wanderer", pace: 1.04, pauseChance: .16, pauseMin: 1.7, pauseMax: 3.0, cooldownMin: 11, cooldownMax: 19, socialRate: 1.05, visitMin: 18, visitMax: 31, look: "scan" }
+  { id: "wanderer", pace: 1.04, pauseChance: .16, pauseMin: 1.7, pauseMax: 3.0, cooldownMin: 11, cooldownMax: 19, socialRate: 1.05, visitMin: 18, visitMax: 31, look: "scan" },
+  { id: "shopper", pace: .92, pauseChance: .27, pauseMin: 2.0, pauseMax: 4.0, cooldownMin: 8, cooldownMax: 14, socialRate: 1.22, visitMin: 14, visitMax: 24, look: "scan" },
+  { id: "commuter", pace: 1.16, pauseChance: .08, pauseMin: 1.0, pauseMax: 1.8, cooldownMin: 15, cooldownMax: 24, socialRate: .72, visitMin: 11, visitMax: 20, look: "inspect" }
 ];
 
 function randomRange(person, min, max) {
@@ -907,14 +909,14 @@ function pedestrianPathObstacleClearance(person, direction, lookAhead, collider,
 function makeCitizens(world, cars, helis, airVehicles, collider) {
   const walkers = [];
   const buildings = world.buildings || [];
-  const walkerCount = Math.min(84, buildings.length);
+  const walkerCount = Math.min(100, buildings.length + 14);
   for (let i = 0; i < walkerCount; i++) {
     const building = buildings[(i * 5 + 3) % buildings.length];
     const route = makeWalkRoute(building);
     const point = route[(i * 3) % route.length];
     const routineProfile = ROUTINE_PROFILES[i % ROUTINE_PROFILES.length];
     walkers.push({
-      id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length], personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
+      id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length] + (i >= WALKER_NAMES.length ? " " + (Math.floor(i / WALKER_NAMES.length) + 1) : ""), personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
       appearance: makeCitizenAppearance(i), appearanceRoot: null,
       routineProfile, routineCooldown: 4 + (i % 7) * 2.4, routineTimer: 0, routineDuration: 0,
       routineAction: routineProfile.look, routineStartYaw: i * .71, routineTurn: 0,

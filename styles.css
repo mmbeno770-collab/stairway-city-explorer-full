@@ -1079,3 +1079,22 @@ body { background: #b7e8ff; }
   border-color: rgba(130, 211, 220, .62);
   box-shadow: 0 10px 34px rgba(0,0,0,.32), 0 0 0 1px rgba(130,211,220,.1);
 }
+
+
+/* Expandable full-screen city map */
+.game-tool-panel.is-expanded {
+  inset: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: auto;
+  max-height: none;
+  background: rgba(9, 29, 39, .97);
+}
+.game-tool-panel.is-expanded .map-panel-body { padding: 14px; }
+.game-tool-panel.is-expanded .world-map-svg { width: min(100%, 76vh); margin: 0 auto; }
+.map-expand-toggle {
+  width: 30px; height: 28px; border-radius: 8px;
+  border: 1px solid rgba(228,196,126,.34);
+  color: #f2e4c3; background: rgba(119,177,187,.14);
+  font-size: 17px; cursor: pointer;
+}

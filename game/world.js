@@ -1153,17 +1153,20 @@ export function generateWorld(seed = 7) {
             addZebraCrossing("z", columnWest + BLOCK - 4.2, boundaryZ);
         }
     }
-    const carCols = ["#c0392b", "#2e86c1", "#f4d03f", "#ecf0f1", "#27ae60", "#34495e"];
+    const carCols = ["#c0392b", "#2e86c1", "#d9dfe0", "#f4f0e6", "#365b6e", "#34495e", "#a6a9a4", "#c9a56c"];
+    const streetVehicleKinds = ["sedan", "suv", "pickup", "minivan", "hatchback", "van", "taxi"];
     for (let i = 0; i < GRID * 6; i++) {
         const road = Math.floor(r() * (GRID - 1)) + 1, along = -CITY_HALF + 10 + r() * (GRID * BLOCK - 20), horiz = r() > .5, rx = -CITY_HALF + road * BLOCK + (r() > .5 ? 2.2 : -2.2), color = carCols[i % carCols.length], [x, z] = horiz ? [along, rx] : [rx, along], [hx, hz] = horiz ? [2.1, .9] : [.9, 2.1], face = horiz ? (r() > .5 ? Math.PI / 2 : -Math.PI / 2) : (r() > .5 ? 0 : Math.PI);
-        const driveable = i % 4 === 0;
+        const driveable = i % 3 === 0;
         const detailedParked = !driveable && i % 5 === 1;
+        const kind = driveable
+            ? streetVehicleKinds[(i * 5 + 2) % streetVehicleKinds.length]
+            : detailedParked ? (i % 10 === 1 ? "suv" : "sedan") : "sedan";
         if (driveable || detailedParked) {
             inter.push({
-                type: "car", x, y: .12, z, face, vehicleId: i, color,
-                kind: detailedParked ? (i % 10 === 1 ? "jeep" : "sedan") : "sedan",
+                type: "car", x, y: .12, z, face, vehicleId: i, color, kind,
                 parking: detailedParked,
-                npcControlled: driveable && [4, 12, 20, 28, 36, 44, 52, 60].includes(i)
+                npcControlled: driveable && [0, 12, 24, 36, 48, 60].includes(i)
             });
         } else {
             add(x - hx, .3, z - hz, x + hx, 1, z + hz, color);

@@ -92,6 +92,7 @@ export function createIslandCollisionBoxes(islands){
    boxes.push({x0:island.x-half,x1:island.x+half,y0:-1.9,y1:.28,z0,z1,color:island.color,kind:"marine-collider",collide:true,noGround:false});
   }
   if(island.isResidential){
+   boxes.push({x0:126,x1:184,y0:-1.9,y1:.28,z0:13.6,z1:22.4,kind:"marine-collider",collide:true,noGround:false});
    for(const home of island.homes||[]){
     const x=home.x,z=home.z,halfX=4.55,halfZ=4.05,t=.24,wallTop=3.55;
     boxes.push(
@@ -674,6 +675,17 @@ function ResidentFerryMotion({boats,hour=14}){
  });
  return null;
 }
+const causewayDeck = new THREE.MeshStandardMaterial({color:"#9b927f",roughness:.92});
+const causewayRail = new THREE.MeshStandardMaterial({color:"#4d6267",metalness:.38,roughness:.52});
+function ResidentialCauseway(){
+ return React.createElement("group",null,
+  React.createElement("mesh",{position:[155,.12,18],material:causewayDeck,receiveShadow:true},React.createElement("boxGeometry",{args:[58,.42,8.8]})),
+  ...[-1,1].flatMap(side=>[
+   React.createElement("mesh",{key:"causeway-rail-"+side,position:[155,.78,18+side*4.15],material:causewayRail},React.createElement("boxGeometry",{args:[58,.12,.12]})),
+   ...Array.from({length:12},(_,index)=>React.createElement("mesh",{key:"causeway-post-"+side+"-"+index,position:[128+index*4.9,.48,18+side*4.15],material:causewayRail},React.createElement("boxGeometry",{args:[.12,.7,.12]})))
+  ])
+ );
+}
 function IslandModel({island}){
  const base=useMemo(()=>islandShape(island,1.06,true),[island]);
  const top=useMemo(()=>islandShape(island,.86,false),[island]);
@@ -689,6 +701,7 @@ function IslandModel({island}){
   React.createElement("mesh",{geometry:beach,position:[island.x,.285,island.z],material:beachMat,receiveShadow:true}),
   React.createElement("mesh",{geometry:top,position:[island.x,.29,island.z],material:grassMat,receiveShadow:true}),
   React.createElement(IslandFoam,{island}),
+  island.isResidential && React.createElement(ResidentialCauseway),
   !island.isPlayerIsland && !island.isResidential && React.createElement(IslandLandmark,{island}),
   island.isPlayerIsland && React.createElement(OwnedIslandSign,{island}),
   island.isPlayerIsland && (island.shieldStrength || 0) > 0 && React.createElement("group",{position:[island.x,.34,island.z]},

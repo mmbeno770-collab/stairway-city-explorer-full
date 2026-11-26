@@ -48,18 +48,30 @@ function FastGameBoot() {
   }, [GameComponent, loading]);
 
   useEffect(() => {
+    let active = true;
+    const preload = () => {
+      setLoading(true);
+      loadGameModule()
+        .then((module) => { if (active) setGameComponent(() => module.default); })
+        .catch((error) => {
+          if (!active) return;
+          setLoading(false);
+          setLoadError(String(error?.message || error || "שגיאה לא ידועה"));
+        });
+    };
     let idleId = null;
     let timerId = null;
     if (typeof window.requestIdleCallback === "function") {
-      idleId = window.requestIdleCallback(startLoading, { timeout: 1400 });
+      idleId = window.requestIdleCallback(preload, { timeout: 1400 });
     } else {
-      timerId = window.setTimeout(startLoading, 550);
+      timerId = window.setTimeout(preload, 550);
     }
     return () => {
+      active = false;
       if (idleId !== null) window.cancelIdleCallback?.(idleId);
       if (timerId !== null) window.clearTimeout(timerId);
     };
-  }, [startLoading]);
+  }, []);
 
   if (GameComponent) return React.createElement(GameComponent);
 

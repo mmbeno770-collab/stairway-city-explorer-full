@@ -28,6 +28,68 @@ import { BOAT_RACE_COURSE } from "./boat-race.js";
 
 const h = React.createElement;
 
+function PolicePursuitVisual({ wantedRef }) {
+  const roots = useRef([]);
+  const redLights = useRef([]);
+  const blueLights = useRef([]);
+
+  useFrame(({ clock }) => {
+    const chase = wantedRef?.current;
+    for (let index = 0; index < 2; index++) {
+      const root = roots.current[index];
+      const unit = chase?.active ? chase.units?.[index] : null;
+      if (!root) continue;
+      root.visible = !!unit;
+      if (unit) {
+        root.position.set(unit.x, unit.y, unit.z);
+        root.rotation.y = unit.yaw;
+      }
+      const pulse = Math.sin(clock.elapsedTime * 12 + index * 1.35) > 0;
+      if (redLights.current[index]) redLights.current[index].emissiveIntensity = pulse ? 2.4 : .06;
+      if (blueLights.current[index]) blueLights.current[index].emissiveIntensity = pulse ? .06 : 2.4;
+    }
+  });
+
+  return h(React.Fragment, null, ...[0, 1].map((index) => h("group", {
+    key: "police-unit-" + index,
+    ref: (node) => { roots.current[index] = node; },
+    visible: false
+  },
+    h("mesh", { position: [0, .62, 0], castShadow: true },
+      h("boxGeometry", { args: [2.08, .68, 4.55] }),
+      h("meshStandardMaterial", { color: "#f0f0e9", roughness: .58, metalness: .2 })
+    ),
+    h("mesh", { position: [0, 1.09, -.08], castShadow: true },
+      h("boxGeometry", { args: [1.62, .72, 2.25] }),
+      h("meshStandardMaterial", { color: "#263c59", roughness: .34, metalness: .45 })
+    ),
+    h("mesh", { position: [0, .93, 1.33] },
+      h("boxGeometry", { args: [2.01, .28, .82] }),
+      h("meshStandardMaterial", { color: "#243a57", roughness: .5, metalness: .28 })
+    ),
+    h("mesh", { position: [0, 1.48, -.04] },
+      h("boxGeometry", { args: [.94, .12, .34] }),
+      h("meshStandardMaterial", { color: "#252b33", metalness: .4, roughness: .32 })
+    ),
+    h("mesh", { position: [-.29, 1.5, -.04] },
+      h("sphereGeometry", { args: [.16, 12, 10] }),
+      h("meshStandardMaterial", { ref: (node) => { redLights.current[index] = node; }, color: "#f33b43", emissive: "#ff1e2f", emissiveIntensity: .1 })
+    ),
+    h("mesh", { position: [.29, 1.5, -.04] },
+      h("sphereGeometry", { args: [.16, 12, 10] }),
+      h("meshStandardMaterial", { ref: (node) => { blueLights.current[index] = node; }, color: "#368cff", emissive: "#176dff", emissiveIntensity: .1 })
+    ),
+    ...[-1, 1].flatMap((side) => [-1.42, 1.42].map((z) => h("mesh", {
+      key: "wheel-" + side + "-" + z,
+      position: [side * 1.02, .37, z],
+      rotation: [0, 0, Math.PI / 2]
+    },
+      h("cylinderGeometry", { args: [.36, .36, .2, 10] }),
+      h("meshStandardMaterial", { color: "#202326", roughness: .95 })
+    )))
+  )));
+}
+
 function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) {
   const [player, setPlayer] = useState({ x: 0, z: 0 });
   useEffect(() => {
@@ -1951,7 +2013,7 @@ function isPortablePickup(item) {
     && (item.mass || 0) <= 2.5;
 }
 
-function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, environment, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk, boatRaceRef, onBoatRaceFinish, onCaveCollect, collectedCaveIds = [], shopOwned = [] }) {
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, wantedRef, input, onLoc, onPrompt, onMode, onHud, onPoliceStatus, onNpcSpeak, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, environment, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk, boatRaceRef, onBoatRaceFinish, onCaveCollect, collectedCaveIds = [], shopOwned = [] }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const pickupItems = useMemo(() => world.interactables.filter((item) => item.type === "pickup"), [world]);
   const rig = useMemo(() => ({}), []);
@@ -2497,7 +2559,49 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           onPrompt("האימון התחיל · F לסיום");
         }
         else if (it.type === "heli") { s.target = heliIndices.get(s.near); s.mode = "heli"; onMode("heli"); }
-        else if (it.type === "car") { s.target = carIndices.get(s.near); s.mode = "car"; onMode("car"); onPrompt("F — לצאת מהרכב (רק בעצירה)"); }
+        else if (it.type === "car") {
+          const vehicleIndex = carIndices.get(s.near);
+          const vehicle = cars[vehicleIndex];
+          s.target = vehicleIndex; s.mode = "car"; onMode("car");
+          if (vehicle && vehicle.kind !== "bus" && vehicle.kind !== "tank" && !vehicle.stolen && !wantedRef?.current?.active) {
+            let witness = null, witnessDistance = 27;
+            for (const person of citizensRef?.current || []) {
+              if (person.hidden || Math.abs((person.y || 0) - (vehicle.y || 0)) > 3.2) continue;
+              const distance = Math.hypot(person.x - vehicle.x, person.z - vehicle.z);
+              if (distance < witnessDistance) { witness = person; witnessDistance = distance; }
+            }
+            const ownerName = witness?.name || vehicle.ownerName || "תושב העיר";
+            const alertLine = "היי! זה הרכב שלי! עצור! אני מזעיק משטרה!";
+            vehicle.ownerName = ownerName;
+            vehicle.stolen = true;
+            if (witness) {
+              witness.wait = Math.max(witness.wait || 0, 1.4);
+              witness.yaw = Math.atan2(vehicle.x - witness.x, vehicle.z - witness.z);
+              witness.bubbleText = alertLine;
+              witness.bubbleUntil = s.t + 4.1;
+            }
+            onNpcSpeak?.(witness || { id: "walker-7" }, alertLine);
+            const forwardX = Math.sin(vehicle.yaw), forwardZ = Math.cos(vehicle.yaw);
+            const policeUnits = [-1, 1].map((side, index) => {
+              const policeX = vehicle.x - forwardX * 34 + Math.cos(vehicle.yaw) * side * 5.2;
+              const policeZ = vehicle.z - forwardZ * 34 - Math.sin(vehicle.yaw) * side * 5.2;
+              const police = makeCar(policeX, vehicle.y, policeZ, vehicle.yaw, "#f0f0e9", "suv");
+              police.isPolice = true;
+              police.sirenIndex = index;
+              return police;
+            });
+            wantedRef.current = {
+              active: true, elapsed: 0, farTimer: 0, caughtTimer: 0,
+              units: policeUnits, victimCar: vehicle, ownerName
+            };
+            onPoliceStatus?.("🚨 " + ownerName + " צעק: " + alertLine + " המשטרה בדרך!");
+            onPrompt(alertLine);
+          } else {
+            onPrompt(wantedRef?.current?.active
+              ? "🚨 המשטרה עדיין בעקבותיך · התרחק מהניידות"
+              : "F — לצאת מהרכב (רק בעצירה)");
+          }
+        }
         else if (it.type === "boat") { s.target = boatIndices.get(s.near); s.mode = "boat"; s.v.set(0, 0, 0); onMode("boat"); onPrompt("הסירה מוכנה · W קדימה · S אחורה · A ימינה · D שמאלה"); }
         else if (it.type === "jetSki") { s.target = jetSkiIndices.get(s.near); s.mode = "jetSki"; s.v.set(0, 0, 0); onMode("jetSki"); onPrompt("אופנוע הים מוכן · W קדימה · S אחורה · A ימינה · D שמאלה"); }
         else if (it.type === "sled") { s.target = sledIndices.get(s.near); s.mode = "sled"; s.v.set(0, 0, 0); onMode("sled"); onHud("מזחלת שלג · W קדימה · S אחורה · A ימינה · D שמאלה · F ירידה בעצירה"); onPrompt("עליתם על המזחלת · סעו בזהירות בשלג"); }
@@ -2990,6 +3094,53 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         }
       }
     }
+    const chase = wantedRef?.current;
+    if (chase?.active) {
+      chase.elapsed += dt;
+      for (const police of chase.units || []) {
+        const dx = p.x - police.x, dz = p.z - police.z;
+        const distance = Math.hypot(dx, dz);
+        const desiredYaw = Math.atan2(dx, dz);
+        const steering = clamp(angleDiff(desiredYaw, police.yaw) * 1.75, -1, 1);
+        stepCar(police, { throttle: distance > 5 ? .94 : .28, steer: steering, brake: false }, dt, carEnv);
+      }
+      let nearestPolice = Infinity, nearestHeight = Infinity;
+      for (const police of chase.units || []) {
+        const distance = Math.hypot(p.x - police.x, p.z - police.z);
+        if (distance < nearestPolice) {
+          nearestPolice = distance;
+          nearestHeight = Math.abs(p.y - police.y);
+        }
+      }
+      const captureRange = s.mode === "car" ? 6.1 : 3.8;
+      if (nearestPolice < captureRange && nearestHeight < 4.2) chase.caughtTimer += dt;
+      else chase.caughtTimer = Math.max(0, chase.caughtTimer - dt * 1.5);
+
+      if (chase.caughtTimer > 1.05) {
+        const pursuedCar = cars[s.target];
+        if (s.mode === "car" && pursuedCar) {
+          const exit = vehicleExitPoint(pursuedCar.x, pursuedCar.z, pursuedCar.yaw, 1.65, marine.islands, -1);
+          p.set(exit.x, 0, exit.z);
+          p.y = terrainGround(p.x, p.z, pursuedCar.y + .4, .7, RAD);
+          pursuedCar.speed = 0;
+          pursuedCar.stolen = false;
+        }
+        s.mode = "walk"; s.target = -1; s.near = -1; s.v.set(0, 0, 0); s.onGround = true;
+        chase.active = false; chase.units = []; chase.victimCar = null;
+        onMode("walk"); onHud("");
+        onPrompt("🚔 המשטרה תפסה אותך! הרכב הוחזר לבעליו.");
+        onPoliceStatus?.("🚔 תפסו אותך! הרכב הוחזר לבעליו.");
+      } else {
+        chase.farTimer = nearestPolice > 72 ? chase.farTimer + dt : Math.max(0, chase.farTimer - dt * .7);
+        if (chase.farTimer > 5.2 || chase.elapsed > 65) {
+          chase.active = false; chase.units = [];
+          onHud("");
+          onPrompt("המרדף הסתיים — הצלחת להתרחק מהמשטרה!");
+          onPoliceStatus?.("✅ הצלחת להתחמק מהמשטרה!");
+        }
+      }
+    }
+
     helis.forEach((heli, i) => { if (!(s.mode === "heli" && i === s.target) && heli.rotor > 0) stepHeli(heli, { fwd: 0, turn: 0, lift: 0, piloted: false }, dt, heliEnv); });
     airVehicles.forEach((vehicle, i) => { if (!(s.mode === "airVehicle" && i === s.target)) stepAirVehicle(vehicle, { throttle: 0, steer: 0, lift: 0, piloted: false }, dt, airEnv); });
     if (followYaw !== null && performance.now() / 1000 - inp.lastDrag > 1.2) { let d = followYaw - s.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); s.yaw += d * (1 - Math.exp(-2.5 * dt)); }
@@ -3027,6 +3178,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
 
 export default function Game() {
   const playerPositionRef = useRef({ x: 0, y: 0, z: 0 });
+  const wantedRef = useRef({ active: false, units: [] });
   const [shopSave, setShopSave] = useState(readShopSave);
   const shopSaveRef = useRef(shopSave);
   const multiplayer = useGameMultiplayer({ playerPositionRef, island: shopSave.customIsland });
@@ -3076,6 +3228,7 @@ export default function Game() {
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false);
   const [dockOpen, setDockOpen] = useState(false), [activeDockPanel, setActiveDockPanel] = useState(null), [mapExpanded, setMapExpanded] = useState(false);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
+  const [policeStatus, setPoliceStatus] = useState("");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(true), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
@@ -3267,11 +3420,12 @@ export default function Game() {
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
   const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => Object.assign(makeHeli(item.x, item.y, item.z, item.face, item.scale || 1, item.padSize || 6), { npcControlled: !!item.npcControlled })), [world]);
-  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled, busRouteId: item.busRouteId, passengerCount: item.passengerCount || 0, doorOpen: false })), [world]);
+  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled, parking: !!item.parking, busRouteId: item.busRouteId, passengerCount: item.passengerCount || 0, doorOpen: false, stolen: false })), [world]);
   const airVehicles = useMemo(() => (world.parkingVehicles || []).map(makeAirVehicle), [world]);
   const activeVehicleRef = useRef({ mode: "walk", target: -1 });
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
   const toggleDoor = useCallback((index) => { const next = { ...doorRef.current, [index]: !doorRef.current[index] }; doorRef.current = next; setDoorStates(next); }, []);
+  const ambientVoiceClockRef = useRef(0);
   const speakNpc = useCallback((person, message) => {
     if (typeof window === "undefined" || !window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== "function") return;
     const synthesis = window.speechSynthesis;
@@ -3287,6 +3441,12 @@ export default function Game() {
     synthesis.cancel();
     synthesis.speak(utterance);
   }, []);
+  const speakAmbientNpc = useCallback((person, message) => {
+    const now = Date.now();
+    if (now - ambientVoiceClockRef.current < 8500) return;
+    ambientVoiceClockRef.current = now;
+    speakNpc(person, message);
+  }, [speakNpc]);
   const beginConversation = useCallback((person) => {
     const greeting = "שלום, אני " + person.name + ". " + String(person.personality || "אוהב לגלות מקומות חדשים").split(",")[0] + ". נחמד שנפגשנו — מה מעניין אותך היום?";
     person.bubbleText = "שלום! מה שלומך?";
@@ -3387,10 +3547,10 @@ export default function Game() {
         h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, homes: world.homes, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
-        h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
+        h(Helicopters, { helis }), h(Cars, { cars }), h(PolicePursuitVisual, { wantedRef }), h(ParkingModels, { airVehicles }),
         h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef, collectedIds: shopSave.caveFindIds }),
-        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
-        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, environment, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, boatRaceRef, onBoatRaceFinish: awardBoatRace, onCaveCollect: awardCaveDiscovery, collectedCaveIds: shopSave.caveFindIds, shopOwned: shopSave.ownedItems })
+        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, onAmbientSpeak: speakAmbientNpc, hour, weather, busInfoRef }),
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, wantedRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, onPoliceStatus: setPoliceStatus, onNpcSpeak: speakNpc, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, environment, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, boatRaceRef, onBoatRaceFinish: awardBoatRace, onCaveCollect: awardCaveDiscovery, collectedCaveIds: shopSave.caveFindIds, shopOwned: shopSave.ownedItems })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),
@@ -3459,7 +3619,8 @@ export default function Game() {
             h("li", null, h("b", null, "G"), " — להרים ארגז קטן או להניח חפץ שמחזיקים."),
             h("li", null, h("b", null, "H"), " — לזרוק ארגז קדימה."),
             h("li", null, "רכבל: F ליד הסולם ואז מחזיקים ↑ / W לטיפוס. עולים לקרונית בלחיצה על F."),
-            h("li", null, "כלי רכב: F כדי להיכנס. W/S לתנועה ו־A/D להיגוי. רווח או Shift לפי סוג הכלי."),
+            h("li", null, "כלי רכב: F כדי להיכנס. לקיחת רכב של תושב תפעיל מרדף משטרתי; התרחק מהניידות כדי לסיים אותו."),
+             h("li", null, "בזמן מרדף, ניידות ינסו להתקרב אליך. אם הן תופסות אותך, הרכב מוחזר לבעליו."),
             h("li", null, "סירות: F ליד הסירה, W/S לשוט, A/D להיגוי ו־F לרדת בעצירה."),
             h("li", null, "צלילה: W/A/S/D לשחות, רווח לעלות ו־Shift להעמיק. F ליד דולפין כדי לעלות עליו."),
             h("li", null, "חיות: התגנבו עם C והתקרבו לאיילים ולסנאים בזהירות."),
@@ -3493,7 +3654,8 @@ export default function Game() {
       )
     ),
     prompt && !elevatorMenu && h("button", { className: "hud-panel interaction-prompt", onClick: () => { input.current.action = true; } }, prompt),
-    hud && (mode === "cave" || mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable" || mode === "park-ride") && h("div", { className: "hud-panel vehicle-hud" }, hud),
+    policeStatus && started && h("div", { className: "hud-panel", role: "status", style: { position: "absolute", top: "76px", right: "16px", zIndex: 40, maxWidth: "min(460px, calc(100% - 32px))", padding: "10px 14px", border: "1px solid rgba(255,255,255,.22)", borderRadius: "12px", background: "rgba(24,32,42,.9)", color: "#fff", direction: "rtl", textAlign: "right", fontWeight: 700 } }, policeStatus),
+     hud && (mode === "cave" || mode === "heli" || mode === "car" || mode === "boat" || mode === "swim" || mode === "dolphin" || mode === "airVehicle" || mode === "lift" || mode === "treadmill" || mode === "cable" || mode === "park-ride") && h("div", { className: "hud-panel vehicle-hud" }, hud),
     conversation && h("section", { className: "npc-chat-panel hud-panel", role: "dialog", "aria-label": "שיחה עם תושב" },
       h("div", { className: "npc-chat-header" },
         h("div", null, h("strong", null, "שיחה עם " + conversation.npcName), h("span", null, "התושב עוצר ומקשיב לך")),

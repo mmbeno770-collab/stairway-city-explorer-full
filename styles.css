@@ -1098,3 +1098,35 @@ body { background: #b7e8ff; }
   color: #f2e4c3; background: rgba(119,177,187,.14);
   font-size: 17px; cursor: pointer;
 }
+
+
+/* Compact live vehicle speedometer */
+.speedometer {
+  position: absolute;
+  z-index: 12;
+  right: max(14px, env(safe-area-inset-right));
+  top: 52%;
+  transform: translateY(-50%);
+  width: 108px;
+  padding: 10px 11px 11px;
+  display: grid;
+  gap: 3px;
+  text-align: center;
+  direction: rtl;
+  background: linear-gradient(155deg, rgba(20,43,52,.91), rgba(7,20,29,.92));
+  border: 1px solid rgba(219,190,132,.42);
+  border-radius: 15px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+.speedometer-label { color: #e7d4aa; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+.speedometer-readout { display: flex; align-items: baseline; justify-content: center; gap: 4px; direction: ltr; }
+.speedometer-value { color: #f7f5ec; font-size: 30px; line-height: 1.05; font-weight: 900; font-variant-numeric: tabular-nums; }
+.speedometer-unit { color: #c5d7d4; font-size: 10px; font-weight: 700; }
+.speedometer-track { width: 100%; height: 4px; margin-top: 3px; overflow: hidden; border-radius: 20px; background: rgba(255,255,255,.13); }
+.speedometer-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #72cbd6, #e4c47e); transition: width .12s linear; }
+@media (max-width: 700px) {
+  .speedometer { right: max(9px, env(safe-area-inset-right)); width: 88px; padding: 8px 8px 9px; top: 48%; }
+  .speedometer-value { font-size: 25px; }
+}

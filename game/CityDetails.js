@@ -289,8 +289,8 @@ function buildBatches(buildings, homes = []) {
             // A sofa, cushion and low coffee table create a visible living room.
             put(b.wood, home.cx - 1.55, baseY + .38, frontZ + 4.35, 1.55, .42, .62, "#527f83");
             put(b.wood, home.cx - 1.55, baseY + .77, frontZ + 4.05, 1.55, .34, .2, "#7caaa6");
-            put(b.glass, home.cx - 2.22, baseY + .77, frontZ + 4.35, .16, .23, .38, "#d9e8e4");
-            put(b.glass, home.cx - .88, baseY + .77, frontZ + 4.35, .16, .23, .38, "#d9e8e4");
+            put(b.stone, home.cx - 2.22, baseY + .77, frontZ + 4.35, .16, .23, .38, "#d9e8e4");
+            put(b.stone, home.cx - .88, baseY + .77, frontZ + 4.35, .16, .23, .38, "#d9e8e4");
             put(b.wood, home.cx + .7, baseY + .48, frontZ + 3.2, .72, .11, .58, "#9b7653");
             for (const legX of [-.48, .48]) for (const legZ of [-.36, .36]) {
                 put(b.metal, home.cx + .7 + legX, baseY + .23, frontZ + 3.2 + legZ, .055, .46, .055, "#6b7472");
@@ -305,7 +305,7 @@ function buildBatches(buildings, homes = []) {
             if (floor > 0 || home.style === "villa") {
                 const bedX = home.cx + 1.45, bedZ = frontZ + 2.25;
                 put(b.wood, bedX, baseY + .28, bedZ, 1.05, .42, 1.48, "#8c6d55");
-                put(b.glass, bedX, baseY + .53, bedZ, .96, .16, 1.34, "#d6e7e5");
+                put(b.stone, bedX, baseY + .53, bedZ, .96, .16, 1.34, "#d6e7e5");
                 put(b.wood, bedX, baseY + .75, bedZ - .65, 1.08, .32, .18, "#f0e9d8");
                 for (const side of [-1, 1]) {
                     put(b.wood, bedX + side * 1.35, baseY + .32, bedZ - .56, .32, .64, .34, "#8c7156");

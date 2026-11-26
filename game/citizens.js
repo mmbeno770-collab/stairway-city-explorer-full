@@ -918,7 +918,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
   const buildings = world.buildings || [];
   const walkerCount = Math.min(112, buildings.length + 26);
   for (let i = 0; i < walkerCount; i++) {
-    const building = buildings[(i * 5 + 3) % buildings.length];
+    const building = buildings[i % buildings.length];
     const route = makeWalkRoute(building);
     const point = route[(i * 3) % route.length];
     const routineProfile = ROUTINE_PROFILES[i % ROUTINE_PROFILES.length];
@@ -927,7 +927,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
       appearance: makeCitizenAppearance(i), appearanceRoot: null,
       routineProfile, routineCooldown: 4 + (i % 7) * 2.4, routineTimer: 0, routineDuration: 0,
       routineAction: routineProfile.look, routineStartYaw: i * .71, routineTurn: 0,
-      building, homeBuilding: building, homeName: WALKER_NAMES[i % WALKER_NAMES.length], route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
+      building, homeBuilding: building, homeName: WALKER_NAMES[i % WALKER_NAMES.length] + (i >= WALKER_NAMES.length ? " " + (Math.floor(i / WALKER_NAMES.length) + 1) : ""), route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
       visitTarget: null, followPlayer: false, ridingElevator: false, elevatorId: -1, elevatorTrip: null, elevatorDestination: 0,
       doorIndex: findBuildingDoor(world, building),
       routeDirection: i % 2 === 0 ? 1 : -1,

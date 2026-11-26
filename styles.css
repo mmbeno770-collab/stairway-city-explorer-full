@@ -1414,3 +1414,83 @@ body { background: #b7e8ff; }
   .quick-home-progress span { animation:none; }
   .quick-home-button,.quick-home-shop-button { transition:none; }
 }
+
+
+/* Cozy pre-game lobby: real upgrades and missions before loading the 3D world. */
+.start-lobby-overlay {
+  z-index: 60; align-items: flex-start; justify-content: center; overflow-y: auto;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  background: radial-gradient(circle at 8% 8%, rgba(255,205,222,.8), transparent 30%),
+    radial-gradient(circle at 94% 18%, rgba(193,238,219,.8), transparent 29%),
+    linear-gradient(145deg,#fff5ec 0%,#f5f1ff 48%,#e9f8f1 100%);
+  color:#514866; backdrop-filter:none;
+}
+.start-lobby { width:min(1060px,100%); margin:auto; color:#514866; font-family:"Rubik",system-ui,sans-serif; user-select:auto; }
+.lobby-topbar { display:flex; align-items:center; gap:13px; justify-content:space-between; margin:0 0 13px; padding:9px 4px; }
+.lobby-brand { display:flex; align-items:center; gap:10px; min-width:0; }
+.lobby-brand-mark { display:grid; place-items:center; flex:0 0 38px; width:38px; height:38px; border-radius:14px; color:#fff; background:linear-gradient(145deg,#ffb8c8,#c9b6ec); box-shadow:0 5px 13px rgba(166,130,190,.18); font-size:21px; }
+.lobby-brand strong { display:block; color:#675674; font-size:12px; letter-spacing:.1em; }.lobby-brand small { display:block; margin-top:2px; color:#9a8da6; font-size:10px; }
+.lobby-player,.lobby-wallet { display:flex; align-items:center; justify-content:center; gap:8px; min-height:39px; padding:6px 12px; border:1px solid rgba(201,177,211,.52); border-radius:999px; color:#736282; background:rgba(255,255,255,.68); box-shadow:0 3px 10px rgba(110,91,133,.05); font-size:11px; font-weight:800; }
+.lobby-player-avatar { display:grid; place-items:center; width:25px; height:25px; border-radius:50%; background:#fff0cf; font-size:15px; }
+.lobby-wallet { gap:6px; border-color:#f2dba5; color:#9b753e; background:#fff9e9; }.lobby-wallet>span { color:#e6b34e; font-size:16px; }.lobby-wallet strong { font-size:15px; }.lobby-wallet small { color:#ad9a78; font-size:9px; }
+.lobby-hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,.88fr); min-height:260px; overflow:hidden; border:1px solid #e8d9ec; border-radius:26px; background:rgba(255,255,255,.82); box-shadow:0 11px 35px rgba(123,100,143,.1),inset 0 1px 0 #fff; }
+.lobby-hero-copy { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding:clamp(19px,3.5vw,32px); }
+.lobby-welcome-pill { padding:7px 12px; border:1px solid #f5d5df; border-radius:999px; color:#b46f87; background:#fff0f4; font-size:11px; font-weight:900; }
+.lobby-hero-copy h1 { margin:12px 0 8px; color:#665174; font-size:clamp(27px,4.5vw,43px); line-height:1.12; letter-spacing:-.035em; }
+.lobby-hero-copy>p { max-width:460px; margin:0; color:#887d96; font-size:13px; line-height:1.75; }
+.lobby-connection { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-top:14px; color:#8d8298; font-size:10px; font-weight:700; }
+.lobby-connection-dot { width:8px; height:8px; border-radius:50%; background:#e8bf79; box-shadow:0 0 0 4px rgba(232,191,121,.16); }.lobby-connection-dot.online { background:#71c99a; box-shadow:0 0 0 4px rgba(113,201,154,.16); }
+.lobby-connection button { padding:3px 8px; border:1px solid #d9cce5; border-radius:999px; color:#8a709e; background:#fbf7ff; font-size:9px; cursor:pointer; }
+.lobby-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+.lobby-start-button,.lobby-shop-button { min-height:45px; padding:10px 17px; border-radius:13px; cursor:pointer; font:inherit; font-size:12px; font-weight:900; transition:transform .16s,box-shadow .16s; }
+.lobby-start-button { border:0; color:#fff; background:linear-gradient(135deg,#f39fb9,#d69edc 56%,#a9c7ee); box-shadow:0 6px 17px rgba(206,145,193,.25); }
+.lobby-shop-button { border:1px solid #e4d4eb; color:#806b93; background:#fff; box-shadow:0 3px 10px rgba(110,91,133,.06); }
+.lobby-start-button:hover:not(:disabled),.lobby-shop-button:hover { transform:translateY(-2px); }.lobby-start-button:disabled { opacity:.65; cursor:wait; }
+.lobby-scene { position:relative; min-height:260px; overflow:hidden; isolation:isolate; background:linear-gradient(180deg,#dff4f0 0%,#eaf2ff 65%,#f6dfe8 100%); }
+.lobby-scene::before { content:""; position:absolute; z-index:1; inset:auto -8% 15% -8%; height:40%; border-radius:50% 50% 0 0; background:linear-gradient(145deg,#a8dec3,#7fc7b4); transform:rotate(-5deg); }
+.lobby-scene::after { content:""; position:absolute; z-index:2; bottom:0; left:-8%; width:116%; height:25%; border-radius:50% 50% 0 0; background:linear-gradient(180deg,#8cd0cd,#74b9c2); }
+.lobby-sun { position:absolute; top:12%; right:19%; width:52px; height:52px; border-radius:50%; background:#ffe6a8; box-shadow:0 0 0 10px rgba(255,230,168,.22),0 0 32px rgba(255,222,157,.55); }
+.lobby-cloud { position:absolute; z-index:2; width:77px; height:18px; border-radius:30px; background:rgba(255,255,255,.9); box-shadow:0 3px 8px rgba(118,157,160,.07); }.lobby-cloud::before,.lobby-cloud::after { content:""; position:absolute; bottom:5px; border-radius:50%; background:inherit; }.lobby-cloud::before { left:13px; width:29px; height:29px; }.lobby-cloud::after { right:13px; width:25px; height:25px; }
+.lobby-cloud-one { top:24%; left:12%; }.lobby-cloud-two { top:39%; right:10%; transform:scale(.7); }
+.lobby-island-shape { position:absolute; z-index:4; right:7%; bottom:18%; width:31%; height:20%; border-radius:50%; background:#b4dfa9; border:5px solid #f7dfb0; box-shadow:0 7px 0 rgba(83,160,147,.15); }
+.lobby-water-shape { position:absolute; z-index:5; right:14%; bottom:21%; width:19%; height:5px; border-radius:50%; background:rgba(255,255,255,.55); transform:rotate(-7deg); }
+.lobby-city-buildings { position:absolute; z-index:4; left:8%; bottom:23%; display:flex; align-items:flex-end; gap:4px; height:42%; }.lobby-city-buildings span { display:block; position:relative; width:24px; border:2px solid rgba(255,255,255,.8); border-bottom:0; border-radius:6px 6px 0 0; background:linear-gradient(160deg,#c6b5e8,#a6a7d6); box-shadow:3px 0 0 rgba(129,112,164,.12); }
+.lobby-city-buildings span::after { content:""; position:absolute; inset:8px 5px 5px; background:repeating-linear-gradient(0deg,transparent 0 10px,#fff1c8 10px 13px),repeating-linear-gradient(90deg,transparent 0 9px,rgba(255,255,255,.7) 9px 12px); }
+.lobby-city-buildings span:nth-child(1){height:50%}.lobby-city-buildings span:nth-child(2){height:78%;background:linear-gradient(160deg,#ffc2d1,#df9bb5)}.lobby-city-buildings span:nth-child(3){height:64%;background:linear-gradient(160deg,#a4d8ca,#75bda9)}.lobby-city-buildings span:nth-child(4){height:100%;background:linear-gradient(160deg,#b7c9ef,#829fd2)}.lobby-city-buildings span:nth-child(5){height:58%;background:linear-gradient(160deg,#f4d8a2,#dbb67f)}
+.lobby-scene-emoji { position:absolute; z-index:7; filter:drop-shadow(0 4px 4px rgba(81,111,109,.16)); }.lobby-tree { right:9%; bottom:30%; font-size:32px; }.lobby-palm { right:36%; bottom:27%; font-size:34px; }.lobby-boat { right:50%; bottom:9%; font-size:30px; }.lobby-animal { right:73%; bottom:23%; font-size:28px; animation:lobby-bob 3.4s ease-in-out infinite; }
+.lobby-scene-caption { position:absolute; z-index:9; left:13px; top:13px; padding:6px 10px; border:1px solid rgba(255,255,255,.75); border-radius:999px; color:#72928d; background:rgba(255,255,255,.66); font-size:9px; font-weight:900; }
+@keyframes lobby-bob { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-7px) rotate(3deg)} }
+.lobby-progress-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.lobby-stat-card { display:flex; align-items:center; gap:11px; min-width:0; padding:12px 14px; border:1px solid #e9dfef; border-radius:16px; background:rgba(255,255,255,.78); box-shadow:0 3px 12px rgba(116,98,134,.05); }
+.lobby-stat-icon { display:grid; place-items:center; width:37px; height:37px; flex:0 0 37px; border-radius:12px; background:#f5eafa; font-size:19px; }.lobby-stat-card:nth-child(2) .lobby-stat-icon { background:#e6f7ec; }.lobby-stat-card:nth-child(3) .lobby-stat-icon { background:#fff1dc; }
+.lobby-stat-card strong { display:block; color:#6e5a7f; font-size:18px; line-height:1.1; }.lobby-stat-card small { display:block; margin-top:4px; color:#9a8da4; font-size:9px; }
+.lobby-section { margin-top:19px; }.lobby-section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin:0 3px 10px; }
+.lobby-section-kicker { color:#b08bb7; font-size:9px; font-weight:900; letter-spacing:.11em; }.lobby-section-heading h2 { margin:4px 0 0; color:#655274; font-size:clamp(17px,2.8vw,22px); }
+.lobby-text-button { padding:6px 9px; border:1px solid #e5d7ed; border-radius:10px; color:#8c70a0; background:#fff; font-size:10px; font-weight:900; cursor:pointer; }
+.lobby-upgrade-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.lobby-upgrade-card { display:flex; flex-direction:column; min-width:0; padding:14px; border:1px solid #e8dfee; border-radius:17px; background:rgba(255,255,255,.86); box-shadow:0 4px 14px rgba(116,98,134,.055); transition:transform .16s,box-shadow .16s; }
+.lobby-upgrade-card:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(116,98,134,.1); }.lobby-upgrade-card.is-owned { border-color:#c8e9d2; background:linear-gradient(145deg,#fff,#f0fff5); }
+.lobby-upgrade-icon { display:grid; place-items:center; width:43px; height:43px; border-radius:14px; background:#fff2dc; font-size:24px; }.lobby-upgrade-card:nth-child(2) .lobby-upgrade-icon { background:#e7f6ed; }.lobby-upgrade-card:nth-child(3) .lobby-upgrade-icon { background:#f0eaff; }
+.lobby-upgrade-name { margin-top:9px; color:#665474; font-size:13px; font-weight:900; }.lobby-upgrade-card p { margin:5px 0 0; color:#93889d; font-size:10px; line-height:1.55; }.lobby-upgrade-effect { margin-top:8px; color:#8c729b; font-size:9px; font-weight:800; }
+.lobby-upgrade-buyrow { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:auto; padding-top:12px; color:#ae8749; font-size:10px; }.lobby-upgrade-buyrow button { min-height:31px; padding:6px 9px; border:0; border-radius:9px; color:#fff; background:linear-gradient(135deg,#d69cda,#a8bde8); font-size:10px; font-weight:900; cursor:pointer; }.lobby-upgrade-buyrow button:disabled { color:#839b8b; background:#e6f5e9; cursor:default; }
+.lobby-missions-section { margin-bottom:4px; }.lobby-mission-hint { color:#9c90a7; font-size:9px; }.lobby-mission-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.lobby-mission-card { display:grid; grid-template-columns:36px 1fr; align-items:center; gap:8px; min-width:0; padding:11px; border:1px solid #e7dfee; border-radius:15px; text-align:right; color:#655474; background:rgba(255,255,255,.82); cursor:pointer; transition:transform .16s,border-color .16s; }
+.lobby-mission-card:hover { transform:translateY(-2px); }.lobby-mission-card.is-selected { border-color:#d3a8df; background:#fff8ff; box-shadow:0 0 0 2px rgba(211,168,223,.14); }.lobby-mission-card.is-done { border-color:#c5e6d0; background:#f3fff6; }
+.lobby-mission-icon { display:grid; place-items:center; width:35px; height:35px; border-radius:11px; background:#fff0e2; font-size:19px; }.lobby-mission-copy { min-width:0; }.lobby-mission-copy strong { display:block; font-size:11px; }.lobby-mission-copy small { display:-webkit-box; overflow:hidden; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-top:4px; color:#988da1; font-size:9px; line-height:1.45; }
+.lobby-mission-reward { grid-column:2; color:#b08a4f; font-size:9px; font-weight:900; }.lobby-footer { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:15px 3px 2px; color:#a79baa; font-size:9px; }.lobby-footer a { color:#927aa5; text-decoration:none; }
+.lobby-auth-wrap { margin-top:13px; }
+.lobby-loading-card { display:flex; flex-direction:column; align-items:center; justify-content:center; width:min(420px,92vw); padding:34px 25px; border:1px solid #ead9ed; border-radius:26px; text-align:center; color:#6b5a78; background:rgba(255,255,255,.95); box-shadow:0 18px 60px rgba(96,78,113,.16); }
+.lobby-loading-orbit { display:grid; place-items:center; width:68px; height:68px; margin-bottom:13px; border-radius:50%; background:#e9f8ef; font-size:34px; animation:lobby-bob 1.4s ease-in-out infinite; }
+.lobby-loading-card h1 { margin:9px 0 4px; color:#6b587b; font-size:25px; }.lobby-loading-card p { margin:5px 0 14px; color:#93869d; font-size:12px; line-height:1.7; }.lobby-loading-card small { margin-top:12px; color:#a398ac; font-size:9px; }
+.lobby-loading-track { width:100%; height:7px; overflow:hidden; border-radius:99px; background:#f0e8f2; }.lobby-loading-track span { display:block; width:38%; height:100%; border-radius:inherit; background:linear-gradient(90deg,#f3b1c5,#c9a9e6,#9bd9bf); animation:lobby-loading 1.3s ease-in-out infinite; }
+@keyframes lobby-loading { from{transform:translateX(260%)} to{transform:translateX(-260%)} }
+@media (max-width:760px) {
+  .start-lobby-overlay { padding:max(9px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom)); }
+  .lobby-topbar { gap:6px; margin-bottom:9px; }.lobby-brand strong { font-size:10px; }.lobby-brand small { font-size:8px; }.lobby-player { font-size:9px; padding:5px 8px; }.lobby-wallet { padding:5px 9px; }
+  .lobby-hero { grid-template-columns:1fr; }.lobby-scene { grid-row:1; min-height:170px; }.lobby-hero-copy { padding:17px; }.lobby-hero-copy h1 { font-size:29px; }.lobby-hero-copy>p { font-size:11px; }
+  .lobby-progress-row { gap:6px; }.lobby-stat-card { padding:9px 7px; gap:6px; }.lobby-stat-icon { width:29px;height:29px;flex-basis:29px;font-size:16px;border-radius:10px; }.lobby-stat-card strong { font-size:15px; }.lobby-stat-card small { font-size:8px; }
+  .lobby-upgrade-grid { grid-template-columns:1fr; }.lobby-upgrade-card { display:grid; grid-template-columns:48px 1fr; column-gap:10px; padding:10px; }.lobby-upgrade-icon { grid-row:span 4; }.lobby-upgrade-name { margin-top:1px; }.lobby-upgrade-card p,.lobby-upgrade-effect { margin-top:3px; }.lobby-upgrade-buyrow { grid-column:2; padding-top:7px; }
+  .lobby-mission-grid { grid-template-columns:1fr; }.lobby-mission-card { padding:9px; }.lobby-section-heading { align-items:flex-start; }.lobby-mission-hint { max-width:130px; text-align:left; line-height:1.5; }.lobby-footer { font-size:8px; }
+}
+@media (max-width:390px) { .lobby-brand-mark { flex-basis:32px;width:32px;height:32px; }.lobby-brand strong { font-size:9px; }.lobby-player { gap:4px; font-size:8px; }.lobby-wallet { gap:4px; font-size:9px; }.lobby-actions { width:100%; }.lobby-start-button,.lobby-shop-button { flex:1 1 100%; } }
+@media (prefers-reduced-motion:reduce) { .lobby-animal,.lobby-loading-orbit,.lobby-loading-track span { animation:none; }.lobby-upgrade-card,.lobby-mission-card,.lobby-start-button,.lobby-shop-button { transition:none; } }

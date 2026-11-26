@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { CITY_HALF } from "./world.js";
@@ -26,7 +27,8 @@ const seeds = [
  {id:"lava",name:"אי הלבה",biome:"volcanic",x:620,z:440,rx:82,rz:68,color:"#765044",sand:"#a87959",trees:13,animals:["lizard","lizard","goat","ibex","lizard","fox","ibex","goat","lizard","eagle","wildBoar","mountainGoat","vulture","gecko"]},
  {id:"dune",name:"אי הדיונות",biome:"desert",x:-650,z:-420,rx:67,rz:56,color:"#c7a25e",sand:"#e4c78e",trees:15,animals:["fox","lizard","rabbit","camel","fennec","camel","lizard","fox","eagle","fennec","scorpion","desertOwl","jerboa","gazelle","vulture"]},
  {id:"crystal",name:"אי הקריסטלים",biome:"crystal",x:-690,z:400,rx:74,rz:100,color:"#70a9ad",sand:"#a8c9cc",trees:19,animals:["fox","parrot","rabbit","owl","deer","fox","parrot","rabbit","ibex","owl","peacock","mountainGoat","squirrel","badger","eagle"]},
- {id:"lagoon",name:"אי הלגונה",biome:"lagoon",x:395,z:-700,rx:115,rz:70,color:"#5b9d78",sand:"#f0d9a7",trees:34,animals:["turtle","parrot","turtle","parrot","flamingo","crab","turtle","parrot","crab","flamingo","monkey","otter","duck","seaLion","seagull","ray","pelican"]}
+ {id:"lagoon",name:"אי הלגונה",biome:"lagoon",x:395,z:-700,rx:115,rz:70,color:"#5b9d78",sand:"#f0d9a7",trees:34,animals:["turtle","parrot","turtle","parrot","flamingo","crab","turtle","parrot","crab","flamingo","monkey","otter","duck","seaLion","seagull","ray","pelican"]},
+ {id:"residential",name:"אי המגורים",biome:"residential",x:275,z:18,rx:108,rz:82,color:"#668e69",sand:"#ead6a5",trees:9,animals:[],isResidential:true}
 ];
 function randomFrom(seed){let v=seed>>>0;return()=>{v=(v*1664525+1013904223)>>>0;return v/4294967296;};}
 function outlineFor(seed){const r=randomFrom(seed);return Array.from({length:18},(_,i)=>{const a=i/18*Math.PI*2;const d=.88+r()*.16+Math.sin(a*3+seed)*.045;return[Math.cos(a)*d,Math.sin(a)*d];});}
@@ -46,6 +48,22 @@ export function createMarineWorld(){
   if(side===2){x=t;z=d;yaw=0;ix=0;iz=-1;}
   if(side===3){x=-d;z=t;yaw=-Math.PI/2;ix=1;iz=0;}
   boats.push({id:boats.length,type:"boat",x,y:WATER_LEVEL,z,yaw,speed:0,steering:0,color:colors[(i+side*2)%colors.length],landX:x+ix*6.8,landZ:z+iz*6.8,length:7.4,width:3.3,scale:1.28});
+ }
+
+ const residential=islands.find(island=>island.isResidential);
+ const residentNames=["אורי","דוד","יונתן","משה","אליהו","יעקב","נחום","שמואל","בנימין","אלעד","אריאל","נעם","אבישי","עמיחי","מתניה","איתן","יהודה","הלל","רפאל","אברהם"];
+ if(residential){
+  const xOffsets=[-48,-24,0,24,48],zOffsets=[-39,-13,13,39];
+  residential.homes=residentNames.map((name,index)=>({id:"island-home-"+index,name,x:residential.x+xOffsets[index%xOffsets.length],z:residential.z+zOffsets[Math.floor(index/xOffsets.length)],color:["#e8dfc8","#d8e7df","#e8d5bb","#d6e0e8"][index%4],roofColor:["#d7d2c4","#b8c5bd","#c7c5bb"][index%3]}));
+  for(let i=0;i<24;i++){
+   const angle=i/24*Math.PI*2,rx=residential.rx+25,rz=residential.rz+20;
+   const x=residential.x+Math.cos(angle)*rx,z=residential.z+Math.sin(angle)*rz;
+   boats.push({id:boats.length,type:"boat",x,y:WATER_LEVEL,z,yaw:angle+Math.PI/2,speed:0,steering:0,color:colors[i%colors.length],length:7.4,width:3.3,scale:1.08,decorative:true,islandFleet:true});
+  }
+  boats.push(
+   {id:boats.length,type:"boat",x:132,y:WATER_LEVEL,z:residential.z-9,yaw:Math.PI/2,speed:0,steering:0,color:"#e9eee9",length:9,width:3.8,scale:1.32,decorative:true,residentFerry:true,ferryOffset:0,startX:132,startZ:residential.z-9,endX:residential.x-34,endZ:residential.z-9},
+   {id:boats.length+1,type:"boat",x:132,y:WATER_LEVEL,z:residential.z+9,yaw:Math.PI/2,speed:0,steering:0,color:"#397c9c",length:9,width:3.8,scale:1.32,decorative:true,residentFerry:true,ferryOffset:18,startX:132,startZ:residential.z+9,endX:residential.x-34,endZ:residential.z+9}
+  );
  }
  const dolphins = [
   {id:0,x:0,y:-2.5,z:-270,yaw:0,speed:0,phase:.2,scheduleOffset:0,baseX:0,baseZ:-278,rangeX:34,rangeZ:42,active:false,ridden:false},
@@ -623,6 +641,39 @@ function OwnedIslandStructure({structure}) {
  if(["fountain","bench","pool","playground","ice-cream-stand","clock-tower","sculpture","garden-lantern","greenhouse","dock","mini-boat","crystal","mini-island","golden-fountain","display-tank"].includes(structure.type)) return React.createElement(OwnedIslandDecor, { structure });
  return null;
 }
+
+const residentHouseWall = new THREE.MeshStandardMaterial({color:"#e8dfc8",roughness:.86});
+const residentHouseRoof = new THREE.MeshStandardMaterial({color:"#687b72",roughness:.78});
+const residentHouseTrim = new THREE.MeshStandardMaterial({color:"#d8c59a",roughness:.72});
+const residentHouseGlass = new THREE.MeshPhysicalMaterial({color:"#8fcbd8",transparent:true,opacity:.64,roughness:.14});
+function IslandHomeModel({home}){
+ return React.createElement("group",{position:[home.x,.29,home.z]},
+  React.createElement("mesh",{position:[0,1.72,0],material:residentHouseWall,castShadow:true,receiveShadow:true},React.createElement("boxGeometry",{args:[9.1,3.05,8.1]})),
+  React.createElement("mesh",{position:[0,3.32,0],material:residentHouseRoof,castShadow:true},React.createElement("boxGeometry",{args:[9.55,.24,8.55]})),
+  React.createElement("mesh",{position:[0,.93,4.08],material:residentHouseTrim},React.createElement("boxGeometry",{args:[1.18,1.85,.09]})),
+  ...[-1,1].map(side=>React.createElement("mesh",{key:"front-window-"+side,position:[side*2.55,2.05,4.09],material:residentHouseGlass},React.createElement("boxGeometry",{args:[1.45,1.05,.065]}))),
+  ...[-1,1].map(side=>React.createElement("mesh",{key:"side-window-"+side,position:[side*4.56,2.02,-.6],material:residentHouseGlass},React.createElement("boxGeometry",{args:[.065,1.05,1.6]}))),
+  React.createElement("mesh",{position:[0,.28,5.15],material:residentHouseTrim},React.createElement("boxGeometry",{args:[2.5,.12,1.9]})),
+  React.createElement(Html,{position:[0,2.3,4.17],center:true,distanceFactor:10,occlude:false},
+   React.createElement("div",{className:"resident-home-sign"},home.name)
+  )
+ );
+}
+function ResidentFerryMotion({boats,hour=14}){
+ useFrame(({clock})=>{
+  const daytime=hour>=6&&hour<20;
+  for(const boat of boats||[]){
+   if(!boat.residentFerry)continue;
+   if(!daytime){boat.x=boat.startX;boat.z=boat.startZ;boat.speed=0;boat.yaw=Math.PI/2;continue;}
+   const phase=((clock.elapsedTime+boat.ferryOffset)%42)/42;
+   const progress=phase<.5?phase*2:(1-phase)*2;
+   boat.x=boat.startX+(boat.endX-boat.startX)*progress;
+   boat.z=boat.startZ+(boat.endZ-boat.startZ)*progress;
+   boat.y=WATER_LEVEL+.06;boat.yaw=phase<.5?Math.PI/2:-Math.PI/2;boat.speed=2.5;
+  }
+ });
+ return null;
+}
 function IslandModel({island}){
  const base=useMemo(()=>islandShape(island,1.06,true),[island]);
  const top=useMemo(()=>islandShape(island,.86,false),[island]);
@@ -638,7 +689,7 @@ function IslandModel({island}){
   React.createElement("mesh",{geometry:beach,position:[island.x,.285,island.z],material:beachMat,receiveShadow:true}),
   React.createElement("mesh",{geometry:top,position:[island.x,.29,island.z],material:grassMat,receiveShadow:true}),
   React.createElement(IslandFoam,{island}),
-  !island.isPlayerIsland && React.createElement(IslandLandmark,{island}),
+  !island.isPlayerIsland && !island.isResidential && React.createElement(IslandLandmark,{island}),
   island.isPlayerIsland && React.createElement(OwnedIslandSign,{island}),
   island.isPlayerIsland && (island.shieldStrength || 0) > 0 && React.createElement("group",{position:[island.x,.34,island.z]},
    React.createElement("mesh",{scale:[island.rx*.88,20+(island.shieldStrength||0)*.16,island.rz*.88],material:islandShieldMaterial,renderOrder:3},React.createElement("sphereGeometry",{args:[1,36,24,0,Math.PI*2,0,Math.PI/2]})),
@@ -646,6 +697,7 @@ function IslandModel({island}){
   ),
   ...(island.rocks||[]).map((rock,i)=>React.createElement(IslandRock,{key:"rock-"+i,rock,island})),
   ...(island.trees||[]).map((tree,i)=>React.createElement(IslandTree,{key:"tree-"+i,tree})),
+  ...(island.homes||[]).map(home=>React.createElement(IslandHomeModel,{key:home.id,home})),
   ...(island.animals||[]).map((animal,i)=>React.createElement(IslandAnimal,{key:"animal-"+i,animal})),
   ...(island.fields||[]).map((field,i)=>React.createElement(OwnedIslandField,{key:field.id||"field-"+i,field})),
   ...(island.structures||[]).map((structure,i)=>React.createElement(React.Fragment,{key:structure.id||"structure-"+i},
@@ -848,11 +900,12 @@ function DolphinSchool({dolphins}){
  );
 }
 
-export function MarineWorld({marine,boats,divingRef,quality="balanced",boatRaceRef}){
+export function MarineWorld({marine,boats,divingRef,quality="balanced",boatRaceRef,hour=14}){
  return React.createElement(React.Fragment,null,
   ...marine.islands.map(island=>React.createElement(IslandModel,{key:island.id,island})),
   React.createElement(OceanSurface,{quality}),
   React.createElement(BoatRaceCourse,{raceRef:boatRaceRef}),
+  React.createElement(ResidentFerryMotion,{boats,hour}),
   ...boats.map(boat=>React.createElement(BoatModel,{key:"boat-"+boat.id,boat})),
   ...(marine.jetSkis||[]).map(jetSki=>React.createElement(JetSkiModel,{key:"jet-ski-"+jetSki.id,jetSki})),
   ...(marine.sleds||[]).map(sled=>React.createElement(SledModel,{key:"sled-"+sled.id,sled})),

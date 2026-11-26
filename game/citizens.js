@@ -2128,7 +2128,7 @@ function CitizenSpeechBubble({ person, playerPositionRef }) {
     const ratio = Math.max(0, Math.min(1, (person.health ?? maximum) / maximum));
     const player = playerPositionRef?.current;
     const nearby = !!player && !person.hidden && Math.hypot(player.x - person.x, player.z - person.z) < 16;
-    if (healthTrack.current) healthTrack.current.style.display = nearby ? "block" : "none";
+    if (healthTrack.current) healthTrack.current.style.display = nearby ? "flex" : "none";
     if (healthFill.current) healthFill.current.style.width = (ratio * 100) + "%";
     if (livesLabel.current) livesLabel.current.textContent = "♥ " + (person.lives ?? 3);
   });

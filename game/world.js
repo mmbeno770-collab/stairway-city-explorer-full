@@ -1189,6 +1189,41 @@ function furnish(add, inter, r, theme, x0, x1, z0, z1, y, ground) {
     const rug = (ax, az, bx, bz, col) => add(ax, y, az, bx, y + .02, bz, col, "solid", false);
     const clearFront = (x, z) => ground && Math.abs(x - cx) < 2 && z < z0 + 5;
     switch (theme) {
+        case "luxuryLobby":
+            rug(cx - 4.0, z0 + 1.0, cx + 4.0, z0 + 7.2, "#28434d");
+            add(cx - 3.3, y, z1 - 2.0, cx + 3.3, y + .88, z1 - 1.05, "#d5c8aa", "solid", false);
+            add(cx - 3.0, y + .88, z1 - 1.92, cx + 3.0, y + 1.03, z1 - 1.12, "#c3a66a", "solid", false);
+            add(cx - 2.7, y + .34, z1 - 1.03, cx + 2.7, y + .47, z1 - .98, "#73c7cb", "glow", false);
+            add(cx - 4.15, y + 2.1, z0 + 1.0, cx + 4.15, y + 2.22, z0 + 1.16, "#c5a86e", "solid", false);
+            for (const side of [-1, 1]) {
+                add(cx + side * 2.25 - 1.0, y + .34, z0 + 4.0, cx + side * 2.25 + 1.0, y + .82, z0 + 4.65, "#4c7b83", "solid", false);
+                add(cx + side * 2.25 - 1.0, y + .82, z0 + 4.0, cx + side * 2.25 + 1.0, y + 1.36, z0 + 4.18, "#6f9da0", "solid", false);
+                inter.push({ type: "sofa", x: cx + side * 2.25, y, z: z0 + 4.5, face: Math.PI });
+                plant(cx + side * (W / 2 - 1.1), z0 + 2.1);
+                add(cx + side * 3.35 - .28, y, z0 + 5.7, cx + side * 3.35 + .28, y + 1.05, z0 + 6.25, "#9b8059", "solid", false);
+                add(cx + side * 3.35 - .18, y + 1.05, z0 + 5.8, cx + side * 3.35 + .18, y + 1.9, z0 + 6.15, "#f0dca8", "glow", false);
+            }
+            for (let light = 0; light < 5; light++) {
+                const lx = cx - 3.0 + light * 1.5;
+                add(lx, y + 3.55, z0 + 3.0, lx + .9, y + 3.63, z0 + 3.16, "#d8c083", "glow", false);
+            }
+            break;
+        case "luxurySuite":
+            rug(cx - 3.7, z0 + 1.0, cx + 3.7, z0 + 6.6, "#b9a77e");
+            add(cx - 1.1, y + .22, z0 + 2.8, cx + 1.1, y + .62, z0 + 5.2, "#896a50", "solid", false);
+            add(cx - 1.0, y + .62, z0 + 2.95, cx + 1.0, y + .84, z0 + 5.05, "#d9e5e0", "solid", false);
+            add(cx - 1.05, y + .85, z0 + 2.95, cx + 1.05, y + 1.18, z0 + 3.45, "#f0eadb", "solid", false);
+            for (const side of [-1, 1]) {
+                add(cx + side * 1.55 - .32, y + .28, z0 + 3.1, cx + side * 1.55 + .32, y + .88, z0 + 3.75, "#987b5e", "solid", false);
+                add(cx + side * 1.55 - .13, y + .88, z0 + 3.1, cx + side * 1.55 + .13, y + .96, z0 + 3.75, "#d9c18a", "glow", false);
+            }
+            add(cx - 3.4, y + .35, z1 - 1.55, cx - .7, y + .78, z1 - 1.18, "#517d83", "solid", false);
+            add(cx - 3.4, y + .78, z1 - 1.5, cx - .7, y + 1.28, z1 - 1.25, "#79a6a4", "solid", false);
+            inter.push({ type: "sofa", x: cx - 2.1, y, z: z1 - 1.35, face: 0 });
+            add(cx + 1.2, y + .82, z0 + 1.2, cx + 3.2, y + 2.15, z0 + 1.36, "#364f58", "solid", false);
+            add(cx + 1.55, y + 1.02, z0 + 1.38, cx + 2.85, y + 1.94, z0 + 1.42, "#75bec6", "glow", false);
+            plant(cx + W * .34, z1 - 1.3);
+            break;
         case "innovationLobby":
             rug(cx - 4.1, z0 + 1.0, cx + 4.1, z0 + 7.0, "#263d49");
             add(cx - 3.2, y, z1 - 2.2, cx + 3.2, y + .95, z1 - 1.15, "#314852", "solid", false);

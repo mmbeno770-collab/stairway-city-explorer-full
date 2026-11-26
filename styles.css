@@ -1147,6 +1147,14 @@ body { background: #b7e8ff; }
   text-shadow: 0 1px 2px rgba(0,0,0,.8);
   pointer-events: none;
 }
+.citizen-vitals {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 8px;
+  background: rgba(15, 28, 34, .72);
+}
 .citizen-health-track {
   width: 40px;
   height: 5px;
@@ -1175,4 +1183,11 @@ body { background: #b7e8ff; }
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.citizen-lives {
+  color: #ffd7d7;
+  font: 800 9px/1 system-ui, sans-serif;
+  text-shadow: 0 1px 3px rgba(0,0,0,.8);
+  white-space: nowrap;
 }

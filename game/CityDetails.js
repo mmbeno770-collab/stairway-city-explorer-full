@@ -73,7 +73,7 @@ function addBench(b, x, z, yaw) {
         local(side, 0.48, -0.19, 0.055, 0.06, 0.42, "#343a3d", b.metal);
     }
 }
-function buildBatches(buildings) {
+function buildBatches(buildings, homes = []) {
     const b = makeBatches();
     for (const building of buildings) {
         const { x0, x1, z0, z1, id } = building, width = x1 - x0, depth = z1 - z0, cx = (x0 + x1) / 2;
@@ -248,6 +248,19 @@ function buildBatches(buildings) {
             put(b.spheres, dishX, roofY + 0.68, dishZ, 0.62, 0.11, 0.62, "#aab5b4", -0.26, 0.18, 0);
             put(b.cylinders, dishX, roofY + 0.8, dishZ, 0.34, 0.045, 0.045, "#c0c5bd", 0, 0, Math.PI / 4);
         }
+        if (building.district === "luxury") {
+            // Distinct pearl-and-gold facade rhythm for the premium waterfront quarter.
+            for (let floor = 0; floor < building.floors.length; floor++) {
+                const level = floor * FLOOR_H + 3.82;
+                put(b.gold, cx, level + .1, z0 - .22, width - .7, .045, .09, "#d9bd7a");
+                put(b.gold, cx, level + .1, z1 + .22, width - .7, .045, .09, "#d9bd7a");
+            }
+            for (const sideX of [x0 + .45, x1 - .45]) {
+                put(b.stone, sideX, roofY / 2, z0 - .16, .32, roofY - .2, .18, "#e5e0d2");
+                put(b.gold, sideX, roofY / 2, z0 - .27, .045, roofY - .3, .05, "#c8a96e");
+            }
+            put(b.glass, cx, roofY + .1, (z0 + z1) / 2, width * .34, .08, depth * .34, "#9edbe0");
+        }
         for (let vent = 0; vent < 3; vent++) {
             const vx = x0 + 4.8 + vent * 1.45, vz = z0 + 2.25;
             put(b.metal, vx, roofY + 0.34, vz, 0.62, 0.62, 0.58, "#6e7e83");
@@ -264,6 +277,48 @@ function buildBatches(buildings) {
         put(b.gold, antennaX, roofY + 3.2, antennaZ, 0.2, 0.12, 0.2, "#d0ac68");
         put(b.metal, antennaX, roofY + 2.25, antennaZ, 1.0, 0.055, 0.055, "#7d8c8f");
         put(b.glass, tankX, roofY + 0.08, tankZ + 1.25, 1.0, 0.04, 0.08, "#9bd5df");
+    }
+    // Furnished home interiors are visual-only and can be seen through the front windows.
+    for (const home of homes || []) {
+        const frontZ = home.cz - home.depth / 2;
+        const floorCount = Math.max(1, home.floors || 1);
+        for (let floor = 0; floor < floorCount; floor++) {
+            const baseY = floor === 0 ? .36 : 3.98;
+            const rugZ = frontZ + 3.35;
+            put(b.wood, home.cx, baseY + .025, rugZ, home.width * .28, .035, 1.35, floor ? "#c6d6d0" : "#b9a27a");
+            // A sofa, cushion and low coffee table create a visible living room.
+            put(b.wood, home.cx - 1.55, baseY + .38, frontZ + 4.35, 1.55, .42, .62, "#527f83");
+            put(b.wood, home.cx - 1.55, baseY + .77, frontZ + 4.05, 1.55, .34, .2, "#7caaa6");
+            put(b.glass, home.cx - 2.22, baseY + .77, frontZ + 4.35, .16, .23, .38, "#d9e8e4");
+            put(b.glass, home.cx - .88, baseY + .77, frontZ + 4.35, .16, .23, .38, "#d9e8e4");
+            put(b.wood, home.cx + .7, baseY + .48, frontZ + 3.2, .72, .11, .58, "#9b7653");
+            for (const legX of [-.48, .48]) for (const legZ of [-.36, .36]) {
+                put(b.metal, home.cx + .7 + legX, baseY + .23, frontZ + 3.2 + legZ, .055, .46, .055, "#6b7472");
+            }
+            // Kitchen counter and cabinet are set toward the back, away from the entry.
+            put(b.wood, home.cx + home.width * .28, baseY + .48, frontZ + 6.7, .45, .88, 1.12, "#d7d2c3");
+            put(b.stone, home.cx + home.width * .28, baseY + .94, frontZ + 6.7, .5, .08, 1.18, "#c8d7d4");
+            put(b.glass, home.cx + home.width * .28, baseY + 1.04, frontZ + 6.7, .32, .055, .88, "#a7d9dc");
+            // A small indoor plant adds a lived-in touch without cluttering the room.
+            put(b.wood, home.cx - home.width * .3, baseY + .16, frontZ + 6.6, .34, .3, .34, "#9a795a");
+            put(b.foliage, home.cx - home.width * .3, baseY + .75, frontZ + 6.6, .38, .78, .38, "#54875b");
+            if (floor > 0 || home.style === "villa") {
+                const bedX = home.cx + 1.45, bedZ = frontZ + 2.25;
+                put(b.wood, bedX, baseY + .28, bedZ, 1.05, .42, 1.48, "#8c6d55");
+                put(b.glass, bedX, baseY + .53, bedZ, .96, .16, 1.34, "#d6e7e5");
+                put(b.wood, bedX, baseY + .75, bedZ - .65, 1.08, .32, .18, "#f0e9d8");
+                for (const side of [-1, 1]) {
+                    put(b.wood, bedX + side * 1.35, baseY + .32, bedZ - .56, .32, .64, .34, "#8c7156");
+                    put(b.glass, bedX + side * 1.35, baseY + .66, bedZ - .56, .16, .08, .16, "#e3c98d");
+                }
+            }
+        }
+        // Clear glazing fills the window openings while keeping the room visible.
+        for (const side of [-1, 1]) {
+            const windowX = home.cx + side * home.width * .28;
+            put(b.glass, windowX, 1.9, frontZ + .12, 1.28, 1.18, .035, "#a9d9df");
+            if (home.style === "villa") put(b.glass, windowX, 5.2, frontZ + .12, 1.16, 1.02, .035, "#a9d9df");
+        }
     }
     addBench(b, -6, 0, Math.PI / 2); addBench(b, 6, 0, -Math.PI / 2);
     addBench(b, 0, -6, 0); addBench(b, 0, 6, Math.PI);
@@ -471,8 +526,8 @@ function RoadProps() {
     ] });
 }
 
-export function CityDetails({ buildings, trees, windStrength = 1, nightFactor = 0 }) {
-    const batches = useMemo(() => buildBatches(buildings), [buildings]);
+export function CityDetails({ buildings, trees, homes = [], windStrength = 1, nightFactor = 0 }) {
+    const batches = useMemo(() => buildBatches(buildings, homes), [buildings, homes]);
     const surfaceTexture = useMemo(() => makeSurfaceTexture(), []);
     const windowLight = useMemo(() => new THREE.MeshBasicMaterial({
         color: "#fff4d8", toneMapped: false, transparent: true, opacity: 0.025, depthWrite: false, side: THREE.DoubleSide

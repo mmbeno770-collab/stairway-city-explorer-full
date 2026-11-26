@@ -3101,7 +3101,8 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         const dx = p.x - police.x, dz = p.z - police.z;
         const distance = Math.hypot(dx, dz);
         const desiredYaw = Math.atan2(dx, dz);
-        const steering = clamp(angleDiff(desiredYaw, police.yaw) * 1.75, -1, 1);
+        const yawDifference = Math.atan2(Math.sin(desiredYaw - police.yaw), Math.cos(desiredYaw - police.yaw));
+        const steering = Math.max(-1, Math.min(1, yawDifference * 1.75));
         stepCar(police, { throttle: distance > 5 ? .94 : .28, steer: steering, brake: false }, dt, carEnv);
       }
       let nearestPolice = Infinity, nearestHeight = Infinity;

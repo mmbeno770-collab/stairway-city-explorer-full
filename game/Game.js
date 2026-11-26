@@ -27,6 +27,13 @@ import { UrbanRabbits } from "./urban-rabbits.js";
 import { BOAT_RACE_COURSE } from "./boat-race.js";
 
 const h = React.createElement;
+const EMPTY_MARINE = { islands: [], boats: [], dolphins: [], sleds: [], jetSkis: [] };
+const EMPTY_WORLD = {
+  spawn: [0, .12, 0], boxes: [], buildings: [], trees: [], lamps: [],
+  interactables: [], parkingVehicles: [], hills: [], landmarks: [],
+  busRoutes: [], curvedRoads: [], alleyways: [], publicSpaces: [],
+  homes: [], wildlifeReserve: null, elevators: []
+};
 
 function PolicePursuitVisual({ wantedRef }) {
   const roots = useRef([]);
@@ -3195,9 +3202,10 @@ export default function Game() {
   const shopSaveRef = useRef(shopSave);
   const multiplayer = useGameMultiplayer({ playerPositionRef, island: shopSave.customIsland });
   const [playersPanelOpen, setPlayersPanelOpen] = useState(false);
-  const baseMarine = useMemo(() => createMarineWorld(), []);
+  const [started, setStarted] = useState(false);
+  const baseMarine = useMemo(() => started ? createMarineWorld() : EMPTY_MARINE, [started]);
   const localIsland = useMemo(() => {
-    if (!shopSave.customIsland) return null;
+    if (!started || !shopSave.customIsland) return null;
     const position = getPlayerIslandLocation(multiplayer.userId || "guest");
     return {
       ...shopSave.customIsland,
@@ -3208,13 +3216,15 @@ export default function Game() {
       x: position.x,
       z: position.z
     };
-  }, [shopSave.customIsland, multiplayer.userId, multiplayer.nickname]);
+  }, [started, shopSave.customIsland, multiplayer.userId, multiplayer.nickname]);
   const marine = useMemo(() => {
+    if (!started) return EMPTY_MARINE;
     const islands = [...baseMarine.islands, ...multiplayer.remoteIslands];
     if (localIsland) islands.push(localIsland);
     return { ...baseMarine, islands };
-  }, [baseMarine, multiplayer.remoteIslands, localIsland]);
+  }, [started, baseMarine, multiplayer.remoteIslands, localIsland]);
   const world = useMemo(() => {
+    if (!started) return EMPTY_WORLD;
     const city = generateWorld(7);
     city.islands = marine.islands;
     city.boxes.push(...createIslandCollisionBoxes(marine.islands));
@@ -3243,11 +3253,11 @@ export default function Game() {
     city.interactables.push(...(marine.sleds||[]).map(sled => ({ ...sled, type: "sled" })));
     city.interactables.push(...(marine.jetSkis||[]).map(jetSki => ({ ...jetSki, type: "jetSki" })));
     return city;
-  }, [marine]);
+  }, [started, marine]);
   const boats = marine.boats;
   const cableCurve = useMemo(() => makeCableCurve(), []);
   const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false, throw: false, sneak: false });
-  const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false);
+  const [loc, setLoc] = useState("ברחובות העיר");
   const [dockOpen, setDockOpen] = useState(false), [activeDockPanel, setActiveDockPanel] = useState(null), [mapExpanded, setMapExpanded] = useState(false);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [policeStatus, setPoliceStatus] = useState("");
@@ -3551,7 +3561,7 @@ export default function Game() {
   const joyEnd = () => { input.current.joy = { x: 0, y: 0 }; setKnob({ x: 0, y: 0 }); };
   return h("div", { id: "scene-root", className: "game-root", dir: "rtl" },
     h("div", { className: "game-canvas", onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel: (e) => { input.current.zoom += e.deltaY * .005; } },
-      h(Canvas, { shadows: quality === "high", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.4) : quality === "balanced" ? Math.min(window.devicePixelRatio || 1, 1.15) : Math.min(window.devicePixelRatio || 1, 1), camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: true, powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); } },
+      started && h(Canvas, { shadows: quality === "high", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.4) : quality === "balanced" ? Math.min(window.devicePixelRatio || 1, 1.15) : Math.min(window.devicePixelRatio || 1, 1), camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: true, powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); } },
         h("color", { attach: "background", args: [environment.skyColor] }), h("fog", { attach: "fog", args: [environment.fogColor, environment.fogNear, environment.fogFar] }),
          h(UnderwaterAtmosphere, { enabled: mode === "swim" || mode === "dolphin", fogColor: environment.fogColor, fogNear: environment.fogNear, fogFar: environment.fogFar }),
         h(Sky, { sunPosition: environment.sunPosition, turbidity: environment.turbidity, rayleigh: 1.2 + environment.daylight * .5, mieCoefficient: weather === "fog" ? .012 : .004 }),

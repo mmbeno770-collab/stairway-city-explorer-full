@@ -3195,7 +3195,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
   );
 }
 
-export default function Game() {
+export default function Game({ initialShopOpen = false } = {}) {
   const playerPositionRef = useRef({ x: 0, y: 0, z: 0 });
   const wantedRef = useRef({ active: false, units: [] });
   const [shopSave, setShopSave] = useState(readShopSave);
@@ -3273,7 +3273,7 @@ export default function Game() {
     completedIds: shopSave.completedMissionIds,
     points: shopSave.points
   }));
-  const [shopOpen, setShopOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(() => Boolean(initialShopOpen));
   const [shopNotice, setShopNotice] = useState("");
   const wildlifeRef = useRef({ animals: [], completedIds: shopSave.completedMissionIds, islandClaimed: shopSave.completedMissionIds.includes("island"), reserveCenter: null });
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);

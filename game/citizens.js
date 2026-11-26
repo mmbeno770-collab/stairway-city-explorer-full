@@ -978,8 +978,8 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
       tOffset: 80 + index * .71,
       visiting: false, followPlayer: false, ridingElevator: false, seated: false,
       seatTarget: null, seatChatPartner: null, socialPairPartnerId: null,
-      socialPairRole: "", socialPairPartnerId: null,
-      waitingForBus: false, onBus: false, hidden: true
+      socialPairRole: "",
+      waitingForBus: false, onBus: false
     };
     walkers.push(resident);
   }

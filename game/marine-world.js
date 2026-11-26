@@ -666,7 +666,14 @@ function ResidentFerryMotion({boats,hour=14}){
   const daytime=hour>=6&&hour<20;
   for(const boat of boats||[]){
    if(!boat.residentFerry)continue;
-   if(!daytime){boat.x=boat.startX;boat.z=boat.startZ;boat.speed=0;boat.yaw=Math.PI/2;continue;}
+   if(!daytime){
+    const dockAtIsland=boat.ferryOffset===0;
+    boat.x=dockAtIsland?boat.endX:boat.startX;
+    boat.z=dockAtIsland?boat.endZ:boat.startZ;
+    boat.speed=0;
+    boat.yaw=dockAtIsland?-Math.PI/2:Math.PI/2;
+    continue;
+   }
    const phase=((clock.elapsedTime+boat.ferryOffset)%42)/42;
    const progress=phase<.5?phase*2:(1-phase)*2;
    boat.x=boat.startX+(boat.endX-boat.startX)*progress;

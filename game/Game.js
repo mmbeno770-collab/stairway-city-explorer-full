@@ -2562,8 +2562,11 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
         else if (it.type === "car") {
           const vehicleIndex = carIndices.get(s.near);
           const vehicle = cars[vehicleIndex];
+          if (vehicle?.isPolice && vehicle.officerPresent) {
+            onPrompt("🚔 השוטר עדיין בניידת. אפשר להיכנס רק אחרי שהוא יוצא.");
+          } else {
           s.target = vehicleIndex; s.mode = "car"; onSpeedChange?.(0); onMode("car");
-          if (vehicle && vehicle.kind !== "bus" && vehicle.kind !== "tank" && !vehicle.stolen && !wantedRef?.current?.active) {
+          if (vehicle && !vehicle.isPolice && vehicle.kind !== "bus" && vehicle.kind !== "tank" && !vehicle.stolen && !wantedRef?.current?.active) {
             let witness = null, witnessDistance = 27;
             for (const person of citizensRef?.current || []) {
               if (person.hidden || Math.abs((person.y || 0) - (vehicle.y || 0)) > 3.2) continue;
@@ -2600,6 +2603,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
             onPrompt(wantedRef?.current?.active
               ? "🚨 המשטרה עדיין בעקבותיך · התרחק מהניידות"
               : "F — לצאת מהרכב (רק בעצירה)");
+          }
           }
         }
         else if (it.type === "boat") { s.target = boatIndices.get(s.near); s.mode = "boat"; s.v.set(0, 0, 0); onSpeedChange?.(0); onMode("boat"); onPrompt("הסירה מוכנה · W קדימה · S אחורה · A ימינה · D שמאלה"); }
@@ -3224,7 +3228,17 @@ export default function Game() {
     })));
     city.interactables.push(...CAVE_ENTRANCES.map((entrance) => ({ type: "caveEntrance", x: entrance.x, y: .12, z: entrance.z, entranceId: entrance.id, label: entrance.name })));
     city.interactables.push(...CAVE_DISCOVERIES.map((item) => ({ type: "pickup", id: "cave-find-" + item.id, caveDiscoveryId: item.id, discoveryKind: item.kind, x: item.x, y: CAVE_FLOOR_Y + .03, z: item.z, label: item.name, color: item.color, mass: .65, size: { width: .72, height: .78, depth: .72 }, carried: false, thrown: false })));
-    city.interactables.push(...marine.boats.map(boat => ({ ...boat, type: "boat" })));
+    const patrolPosts = [
+      { x: -90, z: -78, face: 0 }, { x: -30, z: -90, face: Math.PI / 2 },
+      { x: 36, z: -30, face: Math.PI }, { x: 90, z: 36, face: -Math.PI / 2 },
+      { x: 0, z: 90, face: 0 }, { x: -78, z: 36, face: Math.PI / 2 }
+    ];
+    city.interactables.push(...patrolPosts.map((post, index) => ({
+      type: "car", x: post.x, y: .12, z: post.z, face: post.face,
+      color: "#f2f1e9", kind: "suv", npcControlled: true, parking: false,
+      isPolice: true, officerPresent: true, ownerName: "משטרת העיר", patrolIndex: index
+    })));
+    city.interactables.push(...marine.boats.filter(boat => !boat.decorative).map(boat => ({ ...boat, type: "boat" })));
     city.interactables.push(...(marine.sleds||[]).map(sled => ({ ...sled, type: "sled" })));
     city.interactables.push(...(marine.jetSkis||[]).map(jetSki => ({ ...jetSki, type: "jetSki" })));
     return city;
@@ -3432,7 +3446,7 @@ export default function Game() {
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
   const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => Object.assign(makeHeli(item.x, item.y, item.z, item.face, item.scale || 1, item.padSize || 6), { npcControlled: !!item.npcControlled })), [world]);
-  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled, parking: !!item.parking, busRouteId: item.busRouteId, passengerCount: item.passengerCount || 0, doorOpen: false, stolen: false })), [world]);
+  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled, parking: !!item.parking, busRouteId: item.busRouteId, passengerCount: item.passengerCount || 0, doorOpen: false, stolen: false, isPolice: !!item.isPolice, officerPresent: !!item.isPolice, health: 100, maxHealth: 100, ownerName: item.ownerName || "" })), [world]);
   const airVehicles = useMemo(() => (world.parkingVehicles || []).map(makeAirVehicle), [world]);
   const activeVehicleRef = useRef({ mode: "walk", target: -1 });
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
@@ -3545,7 +3559,7 @@ export default function Game() {
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
         h(RollingHills, { hills: world.hills }),
-        h(MarineWorld, { marine, boats, divingRef, quality, boatRaceRef }),
+        h(MarineWorld, { marine, boats, divingRef, quality, boatRaceRef, hour }),
         h(CaveSystem, { playerPositionRef }),
         h(UrbanRabbits, { playerPositionRef }),
         h(RemotePlayerAvatars, { players: multiplayer.remotePlayers }),
@@ -3561,7 +3575,7 @@ export default function Game() {
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(PolicePursuitVisual, { wantedRef }), h(ParkingModels, { airVehicles }),
         h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef, collectedIds: shopSave.caveFindIds }),
-        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, onAmbientSpeak: speakAmbientNpc, hour, weather, busInfoRef }),
+        h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, onAmbientSpeak: speakAmbientNpc, hour, weather, busInfoRef, islandHomes: marine.islands.find(island => island.isResidential)?.homes || [] }),
         h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, wantedRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, onPoliceStatus: setPoliceStatus, onNpcSpeak: speakNpc, onSpeedChange: reportSpeed, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, environment, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, boatRaceRef, onBoatRaceFinish: awardBoatRace, onCaveCollect: awardCaveDiscovery, collectedCaveIds: shopSave.caveFindIds, shopOwned: shopSave.ownedItems })
       )
     ),

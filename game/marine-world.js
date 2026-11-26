@@ -45,7 +45,7 @@ export function createMarineWorld(){
   if(side===1){x=d;z=t;yaw=Math.PI/2;ix=-1;iz=0;}
   if(side===2){x=t;z=d;yaw=0;ix=0;iz=-1;}
   if(side===3){x=-d;z=t;yaw=-Math.PI/2;ix=1;iz=0;}
-  boats.push({id:boats.length,type:"boat",x,y:WATER_LEVEL,z,yaw,speed:0,steering:0,color:colors[(i+side*2)%colors.length],landX:x+ix*5.2,landZ:z+iz*5.2,length:5.6,width:2.4});
+  boats.push({id:boats.length,type:"boat",x,y:WATER_LEVEL,z,yaw,speed:0,steering:0,color:colors[(i+side*2)%colors.length],landX:x+ix*6.8,landZ:z+iz*6.8,length:7.4,width:3.3,scale:1.28});
  }
  const dolphins = [
   {id:0,x:0,y:-2.5,z:-270,yaw:0,speed:0,phase:.2,scheduleOffset:0,baseX:0,baseZ:-278,rangeX:34,rangeZ:42,active:false,ridden:false},
@@ -77,7 +77,7 @@ export function createIslandCollisionBoxes(islands){
  return boxes;
 }
 
-export const hullShape=(()=>{const s=new THREE.Shape();s.moveTo(-1.08,-2.55);s.lineTo(1.08,-2.55);s.lineTo(1.28,1.55);s.lineTo(.72,2.35);s.lineTo(0,2.82);s.lineTo(-.72,2.35);s.lineTo(-1.28,1.55);s.closePath();const g=new THREE.ExtrudeGeometry(s,{depth:.62,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.09,bevelThickness:.08});g.rotateX(-Math.PI/2);g.computeVertexNormals();return g;})();
+export const hullShape=(()=>{const s=new THREE.Shape();s.moveTo(-1.08,-2.55);s.lineTo(1.08,-2.55);s.lineTo(1.28,1.55);s.lineTo(.72,2.35);s.lineTo(0,2.82);s.lineTo(-.72,2.35);s.lineTo(-1.28,1.55);s.closePath();const g=new THREE.ExtrudeGeometry(s,{depth:.94,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.13,bevelThickness:.12});g.rotateX(-Math.PI/2);g.computeVertexNormals();return g;})();
 const metal=new THREE.MeshStandardMaterial({color:"#343c43",metalness:.68,roughness:.34});
 const deck=new THREE.MeshStandardMaterial({color:"#d4c49d",roughness:.84});
 const glass=new THREE.MeshPhysicalMaterial({color:"#9ed9e4",transparent:true,opacity:.58,roughness:.12,metalness:.12});
@@ -224,27 +224,29 @@ function BoatModel({boat}) {
  const root=useRef(null),wake=useRef(null),paint=useMemo(()=>new THREE.MeshPhysicalMaterial({color:boat.color,metalness:.46,roughness:.22,clearcoat:1,clearcoatRoughness:.12}),[boat.color]);
  const wakeMaterial=useMemo(()=>new THREE.MeshBasicMaterial({color:"#bdeef2",transparent:true,opacity:.36,depthWrite:false,side:THREE.DoubleSide}),[]);
  useFrame(({clock})=>{if(!root.current)return;root.current.position.set(boat.x,boat.y+Math.sin(clock.elapsedTime*1.8+boat.id)*.045,boat.z);root.current.rotation.y=boat.yaw;root.current.rotation.z=Math.sin(clock.elapsedTime*1.25+boat.id)*.018;root.current.rotation.x=Math.sin(clock.elapsedTime*1.05+boat.id*.7)*.012;const speed=Math.abs(boat.speed||0);if(wake.current){wake.current.visible=speed>1.4;wake.current.scale.z=.55+Math.min(2.2,speed*.13);wakeMaterial.opacity=THREE.MathUtils.clamp(speed*.026,0,.48);}});
- return React.createElement("group",{ref:root,scale:boat.scale||1.04},
+ return React.createElement("group",{ref:root,scale:boat.scale||1.28},
   React.createElement(BoatDetails, { boat }),
   React.createElement("group",{ref:wake,position:[0,-.27,-3.0]},
    ...[-1,1].map(side=>React.createElement("mesh",{key:"wake-"+side,position:[side*.55,0,-1.45],rotation:[-Math.PI/2,0,side*.09],material:wakeMaterial},React.createElement("planeGeometry",{args:[.62,4.8]}))),
    React.createElement("mesh",{position:[0,.005,-1.15],rotation:[-Math.PI/2,0,0],material:wakeMaterial},React.createElement("planeGeometry",{args:[1.6,2.8]}))
   ),
-  React.createElement("mesh",{geometry:hullShape,position:[0,-.42,0],material:paint,castShadow:true,receiveShadow:true}),
-  React.createElement("mesh",{position:[0,.22,-.28],material:deck},React.createElement("boxGeometry",{args:[1.78,.08,3.5]})),
+  React.createElement("mesh",{geometry:hullShape,position:[0,-.56,0],material:paint,castShadow:true,receiveShadow:true}),
+  React.createElement("mesh",{position:[0,.22,-.28],material:deck},React.createElement("boxGeometry",{args:[1.9,.1,3.8]})),
+  ...[-1,1].map(side=>React.createElement("mesh",{key:"raised-gunwale-"+side,position:[side*.99,.42,-.05],material:paint,castShadow:true},React.createElement("boxGeometry",{args:[.15,.42,4.45]}))),
   React.createElement("mesh",{position:[0,.36,-.85],material:metal},React.createElement("boxGeometry",{args:[1.45,.42,.42]})),
   React.createElement("mesh",{position:[0,.72,-.85],material:glass},React.createElement("boxGeometry",{args:[1.18,.48,.035]})),
-  React.createElement("mesh",{position:[0,1.08,-.88],material:deck},React.createElement("boxGeometry",{args:[1.55,.13,.82]})),
-  ...[-1,1].map(side=>React.createElement("mesh",{key:"cabin-side-window-"+side,position:[side*.72,.75,-.9],material:glass},React.createElement("boxGeometry",{args:[.035,.35,.62]}))),
+  React.createElement("mesh",{position:[0,1.08,-.88],material:deck},React.createElement("boxGeometry",{args:[1.75,.15,1.12]})),
+  React.createElement("mesh",{position:[0,1.2,-.9],material:deck,castShadow:true},React.createElement("boxGeometry",{args:[1.92,.15,1.3]})),
+  ...[-1,1].map(side=>React.createElement("mesh",{key:"cabin-side-window-"+side,position:[side*.72,.75,-.9],material:glass},React.createElement("boxGeometry",{args:[.045,.46,.82]}))),
   ...[-1,1].map(side=>React.createElement("mesh",{key:"lounge-seat-"+side,position:[side*.48,.42,1.05],material:deck},React.createElement("boxGeometry",{args:[.62,.22,.92]}))),
   React.createElement("mesh",{position:[0,.42,-1.75],material:deck},React.createElement("boxGeometry",{args:[1.65,.18,.52]})),
   React.createElement("mesh",{position:[0,.3,-2.28],material:metal},React.createElement("boxGeometry",{args:[1.22,.48,.28]})),
   React.createElement("mesh",{position:[0,.27,1.95],material:deck},React.createElement("boxGeometry",{args:[1.12,.08,.58]})),
   React.createElement("mesh",{position:[0,.76,2.55]},React.createElement("sphereGeometry",{args:[.13,10,8]}),React.createElement("meshBasicMaterial",{color:"#fff2c4"})),
   ...[-1,1].flatMap(side=>[
-   React.createElement("mesh",{key:"rail-low-"+side,position:[side*.92,.55,-.1],material:metal},React.createElement("boxGeometry",{args:[.055,.055,3.3]})),
-   ...[-1.45,-.25,1.1].map((z,i)=>React.createElement("mesh",{key:"rail-post-"+side+"-"+i,position:[side*.92,.43,z],material:metal},React.createElement("cylinderGeometry",{args:[.035,.035,.72,8]}))),
-   React.createElement("mesh",{key:"rail-top-"+side,position:[side*.92,.78,-.1],material:metal},React.createElement("boxGeometry",{args:[.065,.065,3.35]})),
+   React.createElement("mesh",{key:"rail-low-"+side,position:[side*.92,.55,-.1],material:metal},React.createElement("boxGeometry",{args:[.065,.065,4.3]})),
+   ...[-1.85,-.1,1.85].map((z,i)=>React.createElement("mesh",{key:"rail-post-"+side+"-"+i,position:[side*.99,.48,z],material:metal},React.createElement("cylinderGeometry",{args:[.045,.045,.84,8]}))),
+   React.createElement("mesh",{key:"rail-top-"+side,position:[side*.92,.78,-.1],material:metal},React.createElement("boxGeometry",{args:[.075,.075,4.35]})),
    React.createElement("mesh",{key:"gold-line-"+side,position:[side*.91,-.22,0],material:new THREE.MeshStandardMaterial({color:"#d7b36a",metalness:.82,roughness:.25})},React.createElement("boxGeometry",{args:[.035,.045,4.2]}))
   ]),
   React.createElement("mesh",{position:[0,.98,-.9],material:metal},React.createElement("boxGeometry",{args:[1.28,.08,.08]})),
@@ -252,7 +254,10 @@ function BoatModel({boat}) {
   React.createElement("mesh",{position:[0,.56,1.42],material:metal},React.createElement("boxGeometry",{args:[.62,.08,.55]})),
   React.createElement("mesh",{position:[0,.72,1.4],material:deck},React.createElement("boxGeometry",{args:[.72,.22,.32]})),
   React.createElement("mesh",{position:[0,.43,.92],material:metal},React.createElement("cylinderGeometry",{args:[.21,.21,.28,12]})),
-  React.createElement("mesh",{position:[0,.58,.92],material:deck},React.createElement("cylinderGeometry",{args:[.25,.25,.05,12]}))
+  React.createElement("mesh",{position:[0,.58,.92],material:deck},React.createElement("cylinderGeometry",{args:[.25,.25,.05,12]})),
+  React.createElement("mesh",{position:[0,.12,-2.65],material:boatDetailBlack,castShadow:true},React.createElement("boxGeometry",{args:[.62,.9,.34]})),
+  React.createElement("mesh",{position:[0,-.24,-2.82],material:boatDetailSteel,rotation:[Math.PI/2,0,0]},React.createElement("cylinderGeometry",{args:[.08,.08,.42,12]})),
+  React.createElement("mesh",{position:[0,.28,-2.56],material:boatDetailPaint},React.createElement("boxGeometry",{args:[1.7,.08,.62]}))
  );
 }
 function IslandRock({rock,island}){

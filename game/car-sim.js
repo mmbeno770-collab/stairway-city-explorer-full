@@ -1,6 +1,6 @@
 export const CAR = { MAX_FORWARD: 24, MAX_REVERSE: 8, ACCEL: 10, BRAKE: 18, DRAG: 1.8, STEER: 1.25, RADIUS: 1.05 };
 export function makeCar(x, y, z, yaw = 0, color = "#c0392b", kind = "sedan") {
-    const dimensions = kind === "tank" ? [3.8, 5.5] : kind === "bus" ? [2.5, 6.6] : kind === "camper" ? [2.4, 5.0] : kind === "golfCart" ? [1.9, 2.9] : kind === "scooter" ? [.9, 1.65] : kind === "jeep" ? [2.2, 4.5] : kind === "race" ? [2.0, 4.45] : [1.9, 4.15];
+    const dimensions = kind === "tank" ? [3.8, 5.5] : kind === "bus" ? [2.5, 6.6] : kind === "camper" ? [2.4, 5.0] : kind === "golfCart" ? [1.9, 2.9] : kind === "scooter" ? [.9, 1.65] : kind === "jeep" ? [2.2, 4.5] : kind === "race" ? [2.0, 4.45] : kind === "pickup" ? [2.08, 4.9] : kind === "minivan" ? [2.08, 4.85] : kind === "van" ? [2.12, 5.25] : kind === "suv" ? [2.08, 4.65] : kind === "hatchback" ? [1.82, 3.82] : kind === "taxi" ? [1.92, 4.3] : [1.9, 4.15];
     return { x, y, z, yaw, speed: 0, steering: 0, color, kind, width: dimensions[0], length: dimensions[1], radius: dimensions[0] / 2, brake: false };
 }
 export function stepCar(car, controls, dt, env) {

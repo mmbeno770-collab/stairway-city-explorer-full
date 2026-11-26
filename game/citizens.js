@@ -1834,8 +1834,67 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         const face = Math.atan2(car.x - driver.x, car.z - driver.z);
         if (rig.root) { rig.root.position.set(driver.x, driver.y, driver.z); rig.root.rotation.y = face; }
         poseHuman(rig, { mode: "walk", phase: progress * 7, speed: 1.4, air: false, t: now + driver.tOffset, dt });
-        if (progress >= 1) { driver.state = "drive"; driver.distanceLeft = 34 + driver.carIndex * 2.2; }
+        if (progress >= 1) { driver.state = "drive"; driver.distanceLeft = 34 + driver.carIndex * 2.2; if (driver.isPolice) car.officerPresent = true; }
         continue;
+      }
+      if (driver.isPolice && driver.state === "police-on-foot") {
+        driver.policeWalkTimer = Math.max(0, driver.policeWalkTimer - dt);
+        const angle = now * .72 + driver.tOffset;
+        driver.x = car.x + Math.cos(angle) * 3.4;
+        driver.z = car.z + Math.sin(angle) * 3.4;
+        driver.y = collider.groundAt(driver.x, driver.z, 0, .8);
+        driver.yaw = angle + Math.PI / 2;
+        if (rig.root) {
+          rig.root.position.set(driver.x, driver.y, driver.z);
+          rig.root.rotation.y = driver.yaw;
+          rig.root.visible = true;
+        }
+        poseHuman(rig, { mode: "walk", phase: now * 1.1, speed: .9, air: false, t: now + driver.tOffset, dt });
+        if (driver.policeWalkTimer <= 0) {
+          driver.state = "police-reboard";
+          driver.elapsed = 0;
+          driver.reboardStart = { x: driver.x, z: driver.z };
+        }
+        continue;
+      }
+      if (driver.isPolice && driver.state === "police-reboard") {
+        driver.elapsed += dt;
+        const progress = clamp(driver.elapsed / 2.25, 0, 1);
+        const eased = progress * progress * (3 - 2 * progress);
+        const seatTarget = localOffset(car.x, car.z, 1.45, -.12, car.yaw);
+        driver.x = THREE.MathUtils.lerp(driver.reboardStart?.x ?? driver.x, seatTarget.x, eased);
+        driver.z = THREE.MathUtils.lerp(driver.reboardStart?.z ?? driver.z, seatTarget.z, eased);
+        driver.y = collider.groundAt(driver.x, driver.z, 0, .8);
+        const face = Math.atan2(car.x - driver.x, car.z - driver.z);
+        if (rig.root) {
+          rig.root.position.set(driver.x, driver.y, driver.z);
+          rig.root.rotation.y = face;
+          rig.root.visible = true;
+        }
+        poseHuman(rig, { mode: "walk", phase: progress * 7, speed: 1.25, air: false, t: now + driver.tOffset, dt });
+        if (progress >= 1) {
+          driver.state = "drive";
+          driver.policePatrolTimer = 44 + (driver.carIndex % 5) * 7;
+          car.officerPresent = true;
+          car.brake = false;
+          driver.distanceLeft = 36;
+          driver.blocked = 0;
+        }
+        continue;
+      }
+      if (driver.isPolice && driver.state === "drive") {
+        driver.policePatrolTimer = Math.max(0, driver.policePatrolTimer - dt);
+        if (driver.policePatrolTimer <= 0 && !driver.busRoute) {
+          car.speed = 0;
+          car.brake = true;
+          car.officerPresent = false;
+          driver.state = "police-on-foot";
+          driver.policeWalkTimer = 6.5 + (driver.carIndex % 4) * 1.2;
+          driver.x = car.x + Math.cos(car.yaw + Math.PI / 2) * 2.8;
+          driver.z = car.z - Math.sin(car.yaw + Math.PI / 2) * 2.8;
+          driver.y = collider.groundAt(driver.x, driver.z, 0, .8);
+          continue;
+        }
       }
       if (driver.busRoute) {
         updateCityBus(car, driver, cars, walkers, world, busStops, now, dt, carEnv);
@@ -2016,20 +2075,34 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
 
   return h(React.Fragment, null, sim.all.map((person) => h(React.Fragment, { key: person.id },
     h(Human, { rig: person.rig, lowDetail: conversationRef?.current?.personId !== person.id }),
-    person.id.startsWith("walker-") ? h(CitizenSpeechBubble, { person }) : null
+    h(CitizenSpeechBubble, { person })
   )));
 }
 
 function CitizenSpeechBubble({ person }) {
   const bubble = useRef(null);
+  const healthTrack = useRef(null);
+  const healthFill = useRef(null);
   useFrame(({ clock }) => {
     const element = bubble.current;
-    if (!element) return;
-    const visible = !!person.bubbleText && person.bubbleUntil > clock.elapsedTime;
-    element.style.display = visible ? "block" : "none";
-    if (visible && element.textContent !== person.bubbleText) element.textContent = person.bubbleText;
+    if (element) {
+      const visible = !!person.bubbleText && person.bubbleUntil > clock.elapsedTime;
+      element.style.display = visible ? "block" : "none";
+      if (visible && element.textContent !== person.bubbleText) element.textContent = person.bubbleText;
+    }
+    const maximum = Math.max(1, person.maxHealth || 100);
+    const ratio = Math.max(0, Math.min(1, (person.health ?? maximum) / maximum));
+    if (healthTrack.current) healthTrack.current.style.display = ratio < .999 ? "block" : "none";
+    if (healthFill.current) healthFill.current.style.width = (ratio * 100) + "%";
   });
-  return h(Html, { position: [0, 2.22, 0], center: true, distanceFactor: 11, occlude: false, style: { pointerEvents: "none" } },
-    h("div", { ref: bubble, className: "citizen-world-bubble", style: { display: "none" } })
+  return h(React.Fragment, null,
+    h(Html, { position: [0, 2.22, 0], center: true, distanceFactor: 11, occlude: false, style: { pointerEvents: "none" } },
+      h("div", { ref: bubble, className: "citizen-world-bubble", style: { display: "none" } })
+    ),
+    h(Html, { position: [0, 2.52, 0], center: true, distanceFactor: 12, occlude: false, style: { pointerEvents: "none" } },
+      h("div", { ref: healthTrack, className: "citizen-health-track", style: { display: "none" } },
+        h("div", { ref: healthFill, className: "citizen-health-fill" })
+      )
+    )
   );
 }

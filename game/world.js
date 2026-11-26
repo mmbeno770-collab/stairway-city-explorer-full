@@ -11,13 +11,20 @@ export const CABLE_STATIONS = [
   { id: 7, name: "תחנת מרכז־מערב", x: -72, z: 0, y: 50 }
 ];
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+export function hillHeightAt(hill, x, z) {
+    const distance = Math.hypot(x - hill.x, z - hill.z);
+    if (distance >= hill.radius) return 0;
+    const t = distance / hill.radius;
+    return hill.height * Math.pow(1 - t * t, 2);
+}
 const THEMES = [
+    { theme: "luxuryLobby", label: "לובי יוקרתי", floor: "#e3d8c1" }, { theme: "luxurySuite", label: "סוויטת מגורים", floor: "#d9e7e4" },
     { theme: "cafe", label: "בית קפה", floor: "#e9c39d" }, { theme: "library", label: "ספרייה", floor: "#a8c4d0" }, { theme: "gym", label: "חדר כושר", floor: "#9aaec9" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#f1e2cc" }, { theme: "office", label: "משרדים", floor: "#b8d8d1" }, { theme: "apartment", label: "דירת מגורים", floor: "#e6cba9" }, { theme: "arcade", label: "אולם משחקים", floor: "#b7b0dd" }, { theme: "garden", label: "גן פנימי", floor: "#add09b" }, { theme: "music", label: "אולפן מוזיקה", floor: "#d9aabe" }, { theme: "kids", label: "חדר ילדים", floor: "#d8ece2" }, { theme: "researchLab", label: "מעבדת מחקר", floor: "#c6e3e8" }, { theme: "dataCenter", label: "מרכז נתונים", floor: "#a9c3d4" }, { theme: "smartFactory", label: "ייצור מתקדם", floor: "#ccd8cf" },
 ];
 const FACADES = ["#d8eeeb", "#c4e4e8", "#b5dce6", "#e4eee8", "#c9e4df", "#d5e8f0", "#b8d8e4", "#e7e6d8", "#c2e2df", "#dcebf0"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
-    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [], busStops = [], alleyways = [], publicSpaces = [];
+    const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [], busStops = [], alleyways = [], publicSpaces = [], hills = [];
     let wildlifeReserve = null;
     const elevators = [];
     const add = (x0, y0, z0, x1, y1, z1, color, kind = "solid", collide = true, noGround = false, extra = null) => boxes.push({ x0: Math.min(x0, x1), y0: Math.min(y0, y1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), y1: Math.max(y0, y1), z1: Math.max(z0, z1), color, kind, collide, noGround, ...(extra || {}) });
@@ -406,6 +413,50 @@ export function generateWorld(seed = 7) {
             busStop(cx + 5.5, cz + 15.0);
             continue;
         }
+        if (gx === 2 && gz === 9) {
+            // A dedicated, walkable hillside park with gentle slopes and scenic paths.
+            publicSpaces.push({ id: "coastal-hill-park", gridX: gx, gridZ: gz, x: cx, z: cz, style: "hills", radiusX: 13.5, radiusZ: 13.5 });
+            add(cx - 13.5, .025, cz - 13.5, cx + 13.5, .07, cz + 13.5, "#8fa77c", "solid", false);
+            for (const hill of [
+                { id: "park-ridge-west", x: cx - 6.2, z: cz - 4.9, radius: 8.7, height: 2.7 },
+                { id: "park-ridge-east", x: cx + 5.7, z: cz + 1.0, radius: 7.7, height: 2.05 },
+                { id: "park-knoll-south", x: cx - 1.1, z: cz + 9.3, radius: 5.8, height: 1.35 }
+            ]) {
+                hills.push(hill);
+                const cell = 2;
+                for (let x0 = hill.x - hill.radius; x0 < hill.x + hill.radius; x0 += cell) {
+                    for (let z0 = hill.z - hill.radius; z0 < hill.z + hill.radius; z0 += cell) {
+                        const top = hillHeightAt(hill, x0 + cell * .5, z0 + cell * .5);
+                        if (top < .025) continue;
+                        boxes.push({
+                            x0, x1: x0 + cell, z0, z1: z0 + cell,
+                            y0: Math.max(0, top - .075), y1: top,
+                            kind: "collisionOnly", collide: true, noGround: false
+                        });
+                    }
+                }
+            }
+            // Curved footpaths stay clear of the hill tops and join the park entrances.
+            add(cx - 13.2, .08, cz - 1.0, cx + 13.2, .14, cz + .2, "#d3c9ad", "solid", false);
+            add(cx - 1.0, .08, cz - 13.0, cx + .15, .14, cz + 13.0, "#d3c9ad", "solid", false);
+            for (const side of [-1, 1]) {
+                const bx = cx + side * 10.3, bz = cz + 8.4;
+                add(bx - 1.1, .2, bz - .18, bx + 1.1, .42, bz + .18, "#795b41", "solid", false);
+                add(bx - 1.1, .42, bz + .08, bx + 1.1, 1.0, bz + .25, "#795b41", "solid", false);
+                inter.push({ type: "sofa", x: bx, y: .2, z: bz, face: Math.PI });
+            }
+            for (const [dx, dz, scale] of [
+                [-11.8, -10.2, .82], [11.5, -10.3, .78],
+                [-11.5, 10.9, .86], [11.5, 10.8, .82],
+                [0, -12.0, .68]
+            ]) trees.push({ x: cx + dx, z: cz + dz, s: scale + r() * .1, turn: r() * .5 });
+            lamps.push(
+                { x: cx - 12.2, z: cz - 2.0 }, { x: cx + 12.2, z: cz - 2.0 },
+                { x: cx - 12.2, z: cz + 11.8 }, { x: cx + 12.2, z: cz + 11.8 }
+            );
+            landmarks.push({ type: "hillPark", x: cx, z: cz, name: "פארק הגבעות" });
+            continue;
+        }
         if (gx === 2 && gz === 7) { addLandmarkLot("mall", cx, cz); continue; }
         if (gx === 8 && gz === 2) { addLandmarkLot("sports", cx, cz); continue; }
         if (gx === 7 && gz === 8) { addLandmarkLot("amusement", cx, cz); continue; }
@@ -490,13 +541,15 @@ export function generateWorld(seed = 7) {
         // Neighbourhood identity is spatially consistent rather than randomly mixed block by block.
         const district = gx >= 5 && gx <= 8 && gz >= 7 && gz <= 9
             ? "innovation"
-            : gx >= 2 && gx <= 4 && gz >= 5 && gz <= 8
-                ? "heritage"
-                : gx >= 7 && gx <= 9 && gz >= 3 && gz <= 5
-                    ? "garden"
-                    : gx >= 2 && gx <= 4 && gz >= 2 && gz <= 4
-                        ? "creative"
-                        : "mixed";
+            : gx >= 6 && gx <= 9 && gz >= 1 && gz <= 2
+                ? "luxury"
+                : gx >= 2 && gx <= 4 && gz >= 5 && gz <= 8
+                    ? "heritage"
+                    : gx >= 7 && gx <= 9 && gz >= 3 && gz <= 5
+                        ? "garden"
+                        : gx >= 2 && gx <= 4 && gz >= 2 && gz <= 4
+                            ? "creative"
+                            : "mixed";
         const innovationTypes = ["office", "research", "dataCenter", "factory"];
         const innovationType = district === "innovation"
             ? innovationTypes[(gx * 7 + gz * 3) % innovationTypes.length]
@@ -507,27 +560,34 @@ export function generateWorld(seed = 7) {
         cz += (r() - .5) * (cityCore ? 2.0 : 4.6);
         const W = district === "innovation"
             ? 18.2 + Math.floor(r() * 5) * .78
-            : (district === "heritage" ? 12.4 : district === "garden" ? 12.8 : district === "creative" ? 13.6 : cityCore ? 15.5 : 12.5) + Math.floor(r() * 6) * (district === "heritage" ? .82 : 1.05);
+            : district === "luxury"
+                ? 17.8 + Math.floor(r() * 4) * .95
+                : (district === "heritage" ? 12.4 : district === "garden" ? 12.8 : district === "creative" ? 13.6 : cityCore ? 15.5 : 12.5) + Math.floor(r() * 6) * (district === "heritage" ? .82 : 1.05);
         const D = district === "innovation"
             ? 17.3 + Math.floor(r() * 5) * .82
-            : (district === "heritage" ? 12.1 : district === "garden" ? 13.1 : district === "creative" ? 13.4 : cityCore ? 14.5 : 12.5) + Math.floor(r() * 6) * .92;
+            : district === "luxury"
+                ? 17.1 + Math.floor(r() * 4) * .9
+                : (district === "heritage" ? 12.1 : district === "garden" ? 13.1 : district === "creative" ? 13.4 : cityCore ? 14.5 : 12.5) + Math.floor(r() * 6) * .92;
         const nFloors = district === "innovation"
             ? (innovationType === "office" ? 7 + Math.floor(r() * 3)
                 : innovationType === "research" ? 5 + Math.floor(r() * 3)
                     : innovationType === "dataCenter" ? 4 + Math.floor(r() * 3)
                         : 3 + Math.floor(r() * 3))
-            : district === "heritage" ? 2 + Math.floor(r() * 3)
-                : district === "garden" ? 2 + Math.floor(r() * 3)
-                    : district === "creative" ? 3 + Math.floor(r() * 3)
-                        : cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
+            : district === "luxury" ? 6 + Math.floor(r() * 4)
+                : district === "heritage" ? 2 + Math.floor(r() * 3)
+                    : district === "garden" ? 2 + Math.floor(r() * 3)
+                        : district === "creative" ? 3 + Math.floor(r() * 3)
+                            : cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
         const x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2;
         const facadePalettes = {
+            luxury: ["#e7decb", "#d6e6e2", "#c7dce0", "#efe5d0", "#b8d6dc"],
             heritage: ["#d9e9e4", "#cfe4e4", "#f0eadb", "#c4dcdf", "#e5eee7"],
             garden: ["#c8e5d8", "#d9ece2", "#e5eddc", "#b8ddd6", "#d6e9e4"],
             creative: ["#a9d9e7", "#c5e5e9", "#d7ece5", "#b6d9e7", "#e2eee9"],
             innovation: ["#79bfd2", "#8acbdc", "#a0d9d7", "#8ebfda", "#b5dce2"]
         };
         const glassPalettes = {
+            luxury: ["#9cd4da", "#b8e1e5", "#d0e6e4"],
             heritage: ["#a9d5d1", "#c3e3da"],
             garden: ["#a6ddc8", "#c6e7d4"],
             creative: ["#94d2df", "#b8e0d8"],
@@ -538,8 +598,8 @@ export function generateWorld(seed = 7) {
         const facade = facadePalette[Math.floor(r() * facadePalette.length)];
         const glass = glassPalette[Math.floor(r() * glassPalette.length)];
         const floors = [{
-            theme: district === "innovation" ? "innovationLobby" : "lobby",
-            label: district === "innovation" ? "לובי חדשנות" : "לובי"
+            theme: district === "innovation" ? "innovationLobby" : district === "luxury" ? "luxuryLobby" : "lobby",
+            label: district === "innovation" ? "לובי חדשנות" : district === "luxury" ? "לובי יוקרתי" : "לובי"
         }];
         const pool = [...THEMES].sort(() => r() - .5);
         const innovationFloorThemes = {
@@ -553,6 +613,8 @@ export function generateWorld(seed = 7) {
                 const themes = innovationFloorThemes[innovationType] || innovationFloorThemes.office;
                 const theme = themes[(f - 1) % themes.length];
                 floors.push(THEMES.find((item) => item.theme === theme) || THEMES[0]);
+            } else if (district === "luxury") {
+                floors.push(THEMES.find((item) => item.theme === "luxurySuite") || THEMES[5]);
             } else floors.push(pool[(f - 1) % pool.length]);
         }
         const id = buildings.length;
@@ -567,9 +629,12 @@ export function generateWorld(seed = 7) {
             dataCenter: "מרכז נתונים קוונטי",
             factory: "מפעל ייצור חכם"
         };
+        const luxuryNames = ["מגדל פנינה", "מגדל אופל", "בית פסגת הים", "מגדל הריביירה", "מגדל הכתר", "מגדל התכלת"];
         const buildingName = district === "innovation"
             ? innovationNames[innovationType] + " " + (1 + (gx + gz) % 4)
-            : NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : "");
+            : district === "luxury"
+                ? luxuryNames[(gx + gz) % luxuryNames.length]
+                : NAMES[id % NAMES.length] + (id >= NAMES.length ? " " + (Math.floor(id / NAMES.length) + 1) : "");
         const elevatorId = elevators.length, elevatorX = x1 - 1.65, elevatorZ = z0 + 4.15;
         const elevatorLayout = { id: elevatorId, buildingId: id, buildingName, x: elevatorX, z: elevatorZ, doorX: elevatorX - 1.35, approachX: elevatorX - 2.2, floors: nFloors + 1, basement: true };
         elevators.push(elevatorLayout);
@@ -733,21 +798,24 @@ export function generateWorld(seed = 7) {
             furnish(add, inter, r, floors[f].theme, sx1 + .6, x1 - 3.5, z0 + t + .4, z1 - t - .4, y + (f === 0 ? .15 : 0), f === 0);
         }
         // Street-level shops give the blocks a lived-in, mixed-use frontage.
-        const shopPalette = district === "heritage"
-            ? ["#a95f47", "#c28d50", "#7b6456", "#bd7658", "#d1ae75"]
-            : district === "garden"
-                ? ["#78917a", "#a88f68", "#9baf9e", "#c0a87b", "#688b83"]
-                : district === "creative"
-                    ? ["#b46b49", "#668b88", "#8c7894", "#c0964f", "#5c7892"]
-                    : ["#b46b49", "#c89b52", "#668b88", "#8d6b56", "#5c7892", "#9a7650"];
-        const storefrontCount = district === "innovation" ? 0
+        const shopPalette = district === "luxury"
+            ? ["#c8a96f", "#456f7c", "#d8c9a8", "#789da2", "#9c8053"]
             : district === "heritage"
-                ? (W > 16 ? 2 : 1)
+                ? ["#a95f47", "#c28d50", "#7b6456", "#bd7658", "#d1ae75"]
                 : district === "garden"
-                    ? ((gx + gz) % 3 === 0 ? 0 : 1)
+                    ? ["#78917a", "#a88f68", "#9baf9e", "#c0a87b", "#688b83"]
                     : district === "creative"
-                        ? (W > 16.5 ? 2 : 1)
-                        : cityCore ? (W > 18 ? 2 : 1) : ((gx * 5 + gz * 3) % 4 === 0 ? 0 : (W > 17.5 ? 2 : 1));
+                        ? ["#b46b49", "#668b88", "#8c7894", "#c0964f", "#5c7892"]
+                        : ["#b46b49", "#c89b52", "#668b88", "#8d6b56", "#5c7892", "#9a7650"];
+        const storefrontCount = district === "innovation" ? 0
+            : district === "luxury" ? (gx % 2 === 0 ? 2 : 1)
+                : district === "heritage"
+                    ? (W > 16 ? 2 : 1)
+                    : district === "garden"
+                        ? ((gx + gz) % 3 === 0 ? 0 : 1)
+                        : district === "creative"
+                            ? (W > 16.5 ? 2 : 1)
+                            : cityCore ? (W > 18 ? 2 : 1) : ((gx * 5 + gz * 3) % 4 === 0 ? 0 : (W > 17.5 ? 2 : 1));
         const shopSides = storefrontCount === 2 ? [-1, 1] : storefrontCount === 1 ? [((gx + gz) % 2 === 0 ? -1 : 1)] : [];
         shopSides.forEach((side, shop) => {
             const shopX = cx + side * W * .30, shopWidth = Math.min(3.5, W * .22);
@@ -775,7 +843,7 @@ export function generateWorld(seed = 7) {
             add(bladeX, 2.45, z0 - .78, bladeX + .1, 3.18, z0 - .66, "#465a61", "solid", false);
             add(bladeX - .28, 2.78, z0 - .98, bladeX + .34, 3.3, z0 - .58, accent, "solid", false);
             add(bladeX - .18, 2.88, z0 - 1.0, bladeX + .24, 2.96, z0 - .56, "#ffe2a0", "glow", false);
-            if (district === "heritage" || district === "creative" || (gx + gz + shop) % 3 === 0) {
+            if (district === "luxury" || district === "heritage" || district === "creative" || (gx + gz + shop) % 3 === 0) {
                 // A compact outdoor cafe set sits beside the shop, leaving the doorway clear.
                 const tableZ = z0 - 2.0;
                 add(shopX - .58, .69, tableZ - .58, shopX + .58, .82, tableZ + .58, "#8b6546", "solid", false);
@@ -792,25 +860,25 @@ export function generateWorld(seed = 7) {
         });
 
         if (district !== "innovation" && district !== "garden") {
-            const balconyColor = district === "heritage" ? "#806b59" : "#596b72";
-            for (let floor = 1; floor < nFloors; floor += district === "heritage" ? 1 : 2) {
+            const balconyColor = district === "luxury" ? "#c2a568" : district === "heritage" ? "#806b59" : "#596b72";
+            for (let floor = 1; floor < nFloors; floor += (district === "heritage" || district === "luxury") ? 1 : 2) {
                 const balconyY = floor * FLOOR_H + .18;
                 for (const side of [-1, 1]) {
                     const balconyX = cx + side * W * .28;
                     const balconyWidth = Math.min(3.35, W * .24);
                     const bx0 = balconyX - balconyWidth / 2, bx1 = balconyX + balconyWidth / 2;
-                    add(bx0, balconyY - .12, z0 - 1.28, bx1, balconyY, z0 + .08, district === "heritage" ? "#b89c7b" : "#83969b", "solid", false);
+                    add(bx0, balconyY - .12, z0 - 1.28, bx1, balconyY, z0 + .08, district === "luxury" ? "#d2bd91" : district === "heritage" ? "#b89c7b" : "#83969b", "solid", false);
                     for (const postSide of [-1, 1]) {
                         const postX = balconyX + postSide * (balconyWidth / 2 - .08);
                         add(postX - .055, balconyY, z0 - 1.27, postX + .055, balconyY + 1.08, z0 - 1.15, balconyColor, "solid", false);
                     }
-                    add(bx0, balconyY + .98, z0 - 1.28, bx1, balconyY + 1.08, z0 - 1.15, district === "heritage" ? "#b18c65" : "#b8c5c5", "solid", false);
+                    add(bx0, balconyY + .98, z0 - 1.28, bx1, balconyY + 1.08, z0 - 1.15, district === "luxury" ? "#c5a96e" : district === "heritage" ? "#b18c65" : "#b8c5c5", "solid", false);
                     add(bx0, balconyY + .05, z0 - 1.23, bx1, balconyY + .12, z0 - 1.17, balconyColor, "solid", false);
                     for (let rail = 1; rail < 7; rail++) {
                         const railX = bx0 + rail * balconyWidth / 7;
                         add(railX - .025, balconyY + .12, z0 - 1.25, railX + .025, balconyY + .98, z0 - 1.18, balconyColor, "solid", false);
                     }
-                    if (district === "heritage" || (floor + side) % 3 === 0) {
+                    if (district === "luxury" || district === "heritage" || (floor + side) % 3 === 0) {
                         add(balconyX - .48, balconyY + .05, z0 - .98, balconyX + .48, balconyY + .35, z0 - .68, "#6d8063", "solid", false);
                         add(balconyX - .4, balconyY + .35, z0 - .91, balconyX + .4, balconyY + .66, z0 - .74, "#729466", "solid", false);
                     }
@@ -1109,7 +1177,7 @@ export function generateWorld(seed = 7) {
     // Open perimeter lets visitors reach the beach and boarding points.
     const b0 = buildings[0];
     const trafficSignals = crosswalks.filter((crossing) => crossing.signal);
-    return { boxes, buildings, trees, lamps, homes, landmarks, crosswalks, trafficSignals, busStops, busRoutes, curvedRoads, alleyways, publicSpaces, wildlifeReserve, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
+    return { boxes, buildings, trees, lamps, homes, hills, landmarks, crosswalks, trafficSignals, busStops, busRoutes, curvedRoads, alleyways, publicSpaces, wildlifeReserve, interactables: inter, parkingVehicles, elevators, elevator: elevators[0] || null, spawn: [(b0.x0 + b0.x1) / 2, .2, b0.z0 - 5] };
 }
 export function shade(hex, amt) { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + amt * 255))), rr = f((n >> 16) & 255), gg = f((n >> 8) & 255), bb = f(n & 255); return "#" + ((rr << 16) | (gg << 8) | bb).toString(16).padStart(6, "0"); }
 const BRIGHT = ["#e74c3c", "#f39c12", "#f1c40f", "#2ecc71", "#3498db", "#9b59b6", "#1abc9c", "#e67e22"];

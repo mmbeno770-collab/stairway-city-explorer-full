@@ -939,7 +939,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       waitingForBus: false, waitingBusStopId: null, busQueueSlot: 0, busWaitTimer: 0,
       onBus: false, busDriverId: null, busDestinationStopId: null,
       seatReturnRoute: null, returningFromSeat: false,
-      greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4,
+      greetCooldown: 3 + (i % 7) * 3.5, socialCooldown: 7 + (i % 6) * 4, ambientCooldown: 5 + (i % 11) * 2.3,
       bubbleText: "", bubbleUntil: 0, rngState: (i + 37) * 2654435761 >>> 0,
       tOffset: i * .83
     });
@@ -1000,7 +1000,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   return { walkers, drivers, airPilots, heliPilots, socialSeats, busStops, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
 }
 
-export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, hour = 14, weather = "clear", busInfoRef }) {
+export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, onAmbientSpeak, hour = 14, weather = "clear", busInfoRef }) {
   const collider = useMemo(() => new Collider(world.boxes), [world]);
   const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider), [world, cars, helis, airVehicles, collider]);
   if (citizensRef) citizensRef.current = sim.walkers;
@@ -1055,6 +1055,7 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         person.appearanceRoot = rig.root;
       }
       person.greetCooldown = Math.max(0, person.greetCooldown - dt);
+      person.ambientCooldown = Math.max(0, (person.ambientCooldown || 0) - dt);
       const routineProfile = person.routineProfile || ROUTINE_PROFILES[0];
       person.socialCooldown = Math.max(0, person.socialCooldown - dt * routineProfile.socialRate * activity.socialRate);
       person.socialPairCooldown = Math.max(0, (person.socialPairCooldown || 0) - dt * activity.socialRate);
@@ -1286,6 +1287,23 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         person.phase += dt * .35;
         poseHuman(rig, { mode: "observe", style: person.routineAction, phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
         continue;
+      }
+      if (player && playerDistance > 7 && playerDistance < 27
+        && person.ambientCooldown <= 0 && !person.visiting && !person.followPlayer
+        && !person.socialPairPartnerId && !person.seated
+        && conversationRef?.current?.personId !== person.id) {
+        const lines = [
+          "מעניין מה יש ברחוב הבא.",
+          "איזה יום יפה לטייל בעיר.",
+          "אולי אעצור בבית הקפה בהמשך.",
+          "הבניינים בשכונה הזאת ממש מיוחדים.",
+          "אני צריך לבדוק מה חדש בפארק.",
+          "הגיע הזמן להמשיך בסיבוב שלי."
+        ];
+        person.ambientCooldown = 22 + nextRandom(person) * 17;
+        person.bubbleText = lines[Math.floor(nextRandom(person) * lines.length)];
+        person.bubbleUntil = now + 3.1;
+        onAmbientSpeak?.(person, person.bubbleText);
       }
       if (player && person.greetCooldown <= 0 && !person.visiting && !person.followPlayer) {
         if (playerDistance > 1.4 && playerDistance < 5.8 && Math.abs(player.y - person.y) < 2.2) {

@@ -156,6 +156,30 @@ function CarModel({ car }) {
         ] });
     }
     const extra = [];
+    const bodyWidth = car.width || 1.9, bodyLength = car.length || 4.15;
+    if (car.kind === "suv") extra.push(
+        _jsx("mesh", { material: bodyMat, position: [0, 1.57, -.18], children: _jsx("boxGeometry", { args: [bodyWidth * .84, .55, bodyLength * .5] }) }),
+        _jsx("mesh", { material: glass, position: [0, 1.58, .86], children: _jsx("boxGeometry", { args: [bodyWidth * .73, .43, .04] }) }),
+        _jsx("mesh", { material: trim, position: [0, 1.86, -.18], children: _jsx("boxGeometry", { args: [bodyWidth * .88, .08, bodyLength * .52] }) })
+    );
+    if (car.kind === "pickup") extra.push(
+        _jsx("mesh", { material: trim, position: [0, .9, -1.35], children: _jsx("boxGeometry", { args: [bodyWidth * .78, .08, 1.15] }) }),
+        ...[-1, 1].map((side) => _jsx("mesh", { material: bodyMat, position: [side * bodyWidth * .43, 1.04, -1.35], children: _jsx("boxGeometry", { args: [.11, .38, 1.18] }) }, "pickup-bed-" + side)),
+        _jsx("mesh", { material: bodyMat, position: [0, 1.04, -1.91], children: _jsx("boxGeometry", { args: [bodyWidth * .84, .36, .1] }) })
+    );
+    if (car.kind === "minivan" || car.kind === "van") extra.push(
+        _jsx("mesh", { material: bodyMat, position: [0, 1.58, -.38], children: _jsx("boxGeometry", { args: [bodyWidth * .88, car.kind === "van" ? .82 : .58, bodyLength * .55] }) }),
+        ...[-1, 1].map((side) => _jsx("mesh", { material: glass, position: [side * (bodyWidth * .45), 1.55, -.58], children: _jsx("boxGeometry", { args: [.035, .48, bodyLength * .25] }) }, "van-side-window-" + side)),
+        _jsx("mesh", { material: glass, position: [0, 1.55, -bodyLength * .48], children: _jsx("boxGeometry", { args: [bodyWidth * .64, .48, .035] }) })
+    );
+    if (car.kind === "hatchback") extra.push(
+        _jsx("mesh", { material: bodyMat, position: [0, 1.34, -1.42], rotation: [-.16, 0, 0], children: _jsx("boxGeometry", { args: [bodyWidth * .8, .3, .78] }) }),
+        _jsx("mesh", { material: glass, position: [0, 1.48, -1.34], rotation: [-.38, 0, 0], children: _jsx("boxGeometry", { args: [bodyWidth * .68, .035, .62] }) })
+    );
+    if (car.kind === "taxi") extra.push(
+        _jsx("mesh", { material: bodyMat, position: [0, 1.78, -.16], children: _jsx("boxGeometry", { args: [.52, .14, .32] }) }),
+        _jsx("mesh", { material: headlamp, position: [0, 1.88, -.16], children: _jsx("boxGeometry", { args: [.35, .035, .19] }) })
+    );
     if (car.kind === "jeep") extra.push(
         _jsx("mesh", { material: bodyMat, position: [0, 1.48, -.18], children: _jsx("boxGeometry", { args: [1.62, .86, 2.0] }) }),
         _jsx("mesh", { material: glass, position: [0, 1.62, .86], children: _jsx("boxGeometry", { args: [1.5, .46, .045] }) }),
@@ -169,24 +193,24 @@ function CarModel({ car }) {
         _jsx("mesh", { material: bodyMat, position: [0, .88, .02], children: _jsx("boxGeometry", { args: [1.94, .12, 3.55] }) })
     );
     return _jsxs("group", { ref: root, children: [
-        _jsx("mesh", { material: bodyMat, position: [0, .62, 0], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", { args: [1.88, .58, 4.15] }) }),
-        _jsx("mesh", { material: bodyMat, position: [0, .91, 1.28], scale: [1, .58, 1], castShadow: true, children: _jsx("boxGeometry", { args: [1.78, .56, 1.35] }) }),
-        _jsx("mesh", { material: bodyMat, position: [0, .91, -1.58], scale: [1, .55, 1], castShadow: true, children: _jsx("boxGeometry", { args: [1.8, .52, 1.05] }) }),
-        _jsx("mesh", { material: glass, position: [0, 1.27, -.12], castShadow: true, children: _jsx("boxGeometry", { args: [1.52, .72, 1.92] }) }),
-        _jsx("mesh", { material: trim, position: [0, 1.63, -.12], children: _jsx("boxGeometry", { args: [1.58, .075, 2.0] }) }),
-        _jsx("mesh", { material: trim, position: [0, 1.03, .84], children: _jsx("boxGeometry", { args: [1.82, .085, .08] }) }),
-        _jsx("mesh", { material: trim, position: [0, 1.02, -1.08], children: _jsx("boxGeometry", { args: [1.82, .08, .08] }) }),
-        _jsx("mesh", { material: trim, position: [0, .47, 2.1], children: _jsx("boxGeometry", { args: [1.75, .22, .12] }) }),
-        _jsx("mesh", { material: trim, position: [0, .47, -2.1], children: _jsx("boxGeometry", { args: [1.75, .22, .12] }) }),
-        _jsx("mesh", { material: trim, position: [0, .68, 2.095], children: _jsx("boxGeometry", { args: [.78, .22, .025] }) }),
-        [-.64, .64].map(x => _jsx("mesh", { material: headlamp, position: [x, .82, 2.09], children: _jsx("boxGeometry", { args: [.34, .16, .035] }) }, x)),
-        [-.9, .9].map(x => _jsx("mesh", { material: trim, position: [x, 1.18, .75], children: _jsx("boxGeometry", { args: [.17, .12, .28] }) }, x)),
-        [-.72, .72].map((x, i) => _jsx("mesh", { ref: el => { if (el) brakes.current[i] = el; }, material: tailOff, position: [x, .82, -2.095], children: _jsx("boxGeometry", { args: [.34, .19, .04] }) }, i)),
+        _jsx("mesh", { material: bodyMat, position: [0, .62, 0], castShadow: true, receiveShadow: true, children: _jsx("boxGeometry", { args: [bodyWidth, .58, bodyLength] }) }),
+        _jsx("mesh", { material: bodyMat, position: [0, .91, bodyLength * .31], scale: [1, .58, 1], castShadow: true, children: _jsx("boxGeometry", { args: [bodyWidth * .95, .56, bodyLength * .33] }) }),
+        _jsx("mesh", { material: bodyMat, position: [0, .91, -bodyLength * .37], scale: [1, .55, 1], castShadow: true, children: _jsx("boxGeometry", { args: [bodyWidth * .94, .52, bodyLength * .25] }) }),
+        _jsx("mesh", { material: glass, position: [0, 1.27, -.12], castShadow: true, children: _jsx("boxGeometry", { args: [bodyWidth * .81, .72, bodyLength * .46] }) }),
+        _jsx("mesh", { material: trim, position: [0, 1.63, -.12], children: _jsx("boxGeometry", { args: [bodyWidth * .84, .075, bodyLength * .48] }) }),
+        _jsx("mesh", { material: trim, position: [0, 1.03, bodyLength * .2], children: _jsx("boxGeometry", { args: [bodyWidth * .96, .085, .08] }) }),
+        _jsx("mesh", { material: trim, position: [0, 1.02, -bodyLength * .26], children: _jsx("boxGeometry", { args: [bodyWidth * .96, .08, .08] }) }),
+        _jsx("mesh", { material: trim, position: [0, .47, bodyLength * .5], children: _jsx("boxGeometry", { args: [bodyWidth * .93, .22, .12] }) }),
+        _jsx("mesh", { material: trim, position: [0, .47, -bodyLength * .5], children: _jsx("boxGeometry", { args: [bodyWidth * .93, .22, .12] }) }),
+        _jsx("mesh", { material: trim, position: [0, .68, bodyLength * .5 + .005], children: _jsx("boxGeometry", { args: [.78, .22, .025] }) }),
+        [-.34, .34].map(x => _jsx("mesh", { material: headlamp, position: [x * bodyWidth, .82, bodyLength * .5], children: _jsx("boxGeometry", { args: [.34, .16, .035] }) }, x)),
+        [-.9, .9].map(x => _jsx("mesh", { material: trim, position: [x * bodyWidth * .52, 1.18, bodyLength * .2], children: _jsx("boxGeometry", { args: [.17, .12, .28] }) }, x)),
+        [-.38, .38].map((x, i) => _jsx("mesh", { ref: el => { if (el) brakes.current[i] = el; }, material: tailOff, position: [x * bodyWidth, .82, -bodyLength * .5], children: _jsx("boxGeometry", { args: [.34, .19, .04] }) }, i)),
         [-1, 1].flatMap(side => [-1, 1].map(axle => {
             const index = (side === -1 ? 0 : 2) + (axle === -1 ? 0 : 1);
             return _jsx("group", {
                 ref: (el) => { if (axle === 1 && el) steerWheels.current[index] = el; },
-                position: [side * .96, .34, axle * 1.35],
+                position: [side * bodyWidth * .51, .34, axle * bodyLength * .325],
                 children: _jsx("group", {
                     ref: (el) => { if (el) wheels.current[index] = el; },
                     "rotation-z": Math.PI / 2,
@@ -194,8 +218,8 @@ function CarModel({ car }) {
                 })
             }, `${side}-${axle}`);
         })),
-        _jsx("mesh", { material: bodyMat, position: [-1.03, 1.15, .8], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),
-        _jsx("mesh", { material: bodyMat, position: [1.03, 1.15, .8], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),
+        _jsx("mesh", { material: bodyMat, position: [-bodyWidth * .55, 1.15, bodyLength * .19], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),
+        _jsx("mesh", { material: bodyMat, position: [bodyWidth * .55, 1.15, bodyLength * .19], children: _jsx("boxGeometry", { args: [.22, .12, .25] }) }),
         ...extra
     ] });
 }

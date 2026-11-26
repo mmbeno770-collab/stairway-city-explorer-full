@@ -2112,6 +2112,7 @@ function CitizenSpeechBubble({ person, playerPositionRef }) {
   const bubble = useRef(null);
   const healthTrack = useRef(null);
   const healthFill = useRef(null);
+  const livesLabel = useRef(null);
   const bubbleAnchor = useRef(null);
   const healthAnchor = useRef(null);
   useFrame(({ clock }) => {
@@ -2129,14 +2130,18 @@ function CitizenSpeechBubble({ person, playerPositionRef }) {
     const nearby = !!player && !person.hidden && Math.hypot(player.x - person.x, player.z - person.z) < 16;
     if (healthTrack.current) healthTrack.current.style.display = nearby ? "block" : "none";
     if (healthFill.current) healthFill.current.style.width = (ratio * 100) + "%";
+    if (livesLabel.current) livesLabel.current.textContent = "♥ " + (person.lives ?? 3);
   });
   return h(React.Fragment, null,
     h(Html, { ref: bubbleAnchor, position: [0, 2.22, 0], center: true, distanceFactor: 11, occlude: false, style: { pointerEvents: "none" } },
       h("div", { ref: bubble, className: "citizen-world-bubble", style: { display: "none" } })
     ),
     h(Html, { ref: healthAnchor, position: [0, 2.52, 0], center: true, distanceFactor: 12, occlude: false, style: { pointerEvents: "none" } },
-      h("div", { ref: healthTrack, className: "citizen-health-track", style: { display: "none" } },
-        h("div", { ref: healthFill, className: "citizen-health-fill" })
+      h("div", { ref: healthTrack, className: "citizen-vitals", style: { display: "none" } },
+        h("div", { className: "citizen-health-track" },
+          h("div", { ref: healthFill, className: "citizen-health-fill" })
+        ),
+        h("span", { ref: livesLabel, className: "citizen-lives" }, "♥ 3")
       )
     )
   );

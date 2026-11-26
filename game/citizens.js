@@ -927,7 +927,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
       appearance: makeCitizenAppearance(i), appearanceRoot: null,
       routineProfile, routineCooldown: 4 + (i % 7) * 2.4, routineTimer: 0, routineDuration: 0,
       routineAction: routineProfile.look, routineStartYaw: i * .71, routineTurn: 0,
-      building, route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
+      building, homeBuilding: building, homeName: WALKER_NAMES[i % WALKER_NAMES.length], route, sidewalkRoute: route, usesElevator: i % 3 === 0, visitRoute: makeBuildingVisitRoute(building, world, i % 3 === 0),
       visitTarget: null, followPlayer: false, ridingElevator: false, elevatorId: -1, elevatorTrip: null, elevatorDestination: 0,
       doorIndex: findBuildingDoor(world, building),
       routeDirection: i % 2 === 0 ? 1 : -1,
@@ -1044,6 +1044,18 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
 export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, onAmbientSpeak, hour = 14, weather = "clear", busInfoRef, islandHomes = [] }) {
   const collider = useMemo(() => new Collider(world.boxes), [world]);
   const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider, islandHomes), [world, cars, helis, airVehicles, collider, islandHomes]);
+  const homeSigns = useMemo(() => {
+    const seen = new Set(), signs = [];
+    for (const person of sim.walkers) {
+      if (person.isIslandResident || !person.homeBuilding) continue;
+      const building = person.homeBuilding;
+      const key = Math.round(building.x0 * 10) + ":" + Math.round(building.z0 * 10);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      signs.push({ key, building, name: person.homeName || person.name });
+    }
+    return signs;
+  }, [sim.walkers]);
   if (citizensRef) citizensRef.current = sim.walkers;
   const simulationClock = useRef(0);
 
@@ -2079,10 +2091,21 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
     }
   });
 
-  return h(React.Fragment, null, sim.all.map((person) => h(React.Fragment, { key: person.id },
-    h(Human, { rig: person.rig, lowDetail: conversationRef?.current?.personId !== person.id }),
-    h(CitizenSpeechBubble, { person, playerPositionRef })
-  )));
+  return h(React.Fragment, null,
+    ...homeSigns.map((sign) => h(CitizenHomeNameplate, { key: sign.key, building: sign.building, name: sign.name })),
+    ...sim.all.map((person) => h(React.Fragment, { key: person.id },
+      h(Human, { rig: person.rig, lowDetail: conversationRef?.current?.personId !== person.id }),
+      h(CitizenSpeechBubble, { person, playerPositionRef })
+    ))
+  );
+}
+
+function CitizenHomeNameplate({ building, name }) {
+  const x = (building.x0 + building.x1) * .5;
+  const z = building.z0 - .55;
+  return h(Html, { position: [x, 4.15, z], center: true, distanceFactor: 14, occlude: false, style: { pointerEvents: "none" } },
+    h("div", { className: "citizen-home-name" }, name)
+  );
 }
 
 function CitizenSpeechBubble({ person, playerPositionRef }) {

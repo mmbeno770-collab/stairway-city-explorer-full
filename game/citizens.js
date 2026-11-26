@@ -77,7 +77,7 @@ function randomRange(person, min, max) {
 
 function getDailyActivityProfile(hour, weather) {
   const clockHour = ((Number(hour) % 24) + 24) % 24;
-  const night = clockHour < 6 || clockHour >= 22;
+  const night = clockHour < 6 || clockHour >= 20;
   const morningRush = clockHour >= 7 && clockHour < 10;
   const eveningRush = clockHour >= 16 && clockHour < 19;
   const rainy = weather === "rain" || weather === "storm" || weather === "snow";
@@ -218,6 +218,13 @@ function loopPath(loop, startIndex, targetIndex) {
 function nextRandom(person) {
   person.rngState = (Math.imul(person.rngState, 1664525) + 1013904223) >>> 0;
   return person.rngState / 4294967296;
+}
+function freshDialogue(person, lines, memoryKey = "lastDialogueIndex") {
+  if (!lines.length) return "";
+  let index = Math.floor(nextRandom(person) * lines.length);
+  if (lines.length > 1 && index === person[memoryKey]) index = (index + 1 + Math.floor(nextRandom(person) * (lines.length - 1))) % lines.length;
+  person[memoryKey] = index;
+  return lines[index];
 }
 
 function chooseAdjacentBuilding(person, world) {
@@ -906,17 +913,17 @@ function pedestrianPathObstacleClearance(person, direction, lookAhead, collider,
   return nearest;
 }
 
-function makeCitizens(world, cars, helis, airVehicles, collider) {
+function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = []) {
   const walkers = [];
   const buildings = world.buildings || [];
-  const walkerCount = Math.min(100, buildings.length + 14);
+  const walkerCount = Math.min(112, buildings.length + 26);
   for (let i = 0; i < walkerCount; i++) {
     const building = buildings[(i * 5 + 3) % buildings.length];
     const route = makeWalkRoute(building);
     const point = route[(i * 3) % route.length];
     const routineProfile = ROUTINE_PROFILES[i % ROUTINE_PROFILES.length];
     walkers.push({
-      id: "walker-" + i, name: WALKER_NAMES[i % WALKER_NAMES.length] + (i >= WALKER_NAMES.length ? " " + (Math.floor(i / WALKER_NAMES.length) + 1) : ""), personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
+      id: "walker-" + i, health: 100, maxHealth: 100, name: WALKER_NAMES[i % WALKER_NAMES.length] + (i >= WALKER_NAMES.length ? " " + (Math.floor(i / WALKER_NAMES.length) + 1) : ""), personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
       appearance: makeCitizenAppearance(i), appearanceRoot: null,
       routineProfile, routineCooldown: 4 + (i % 7) * 2.4, routineTimer: 0, routineDuration: 0,
       routineAction: routineProfile.look, routineStartYaw: i * .71, routineTurn: 0,
@@ -944,6 +951,38 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       tOffset: i * .83
     });
   }
+  const cityWalkerCount = walkers.length;
+  for (let index = 0; index < islandHomes.length; index++) {
+    const home = islandHomes[index];
+    const template = walkers[index % Math.max(1, cityWalkerCount)];
+    if (!template || !home) continue;
+    const route = template.sidewalkRoute.map((point) => ({ ...point }));
+    const resident = {
+      ...template,
+      id: "walker-island-" + index,
+      name: home.name,
+      health: 100, maxHealth: 100,
+      rig: {}, appearanceRoot: null,
+      appearance: makeCitizenAppearance(cityWalkerCount + index + 9),
+      route, sidewalkRoute: route,
+      visitRoute: makeBuildingVisitRoute(template.building, world, template.usesElevator),
+      x: home.x, y: .3, z: home.z, hidden: true,
+      home, homeIndex: index, isIslandResident: true,
+      homeStatus: "home", homeTravelTimer: 0,
+      nightWanderer: index % 8 === 0,
+      dayStayHome: index % 10 === 1,
+      islandExplorer: index % 9 === 0,
+      islandHopTimer: 0, islandHopTarget: null,
+      bubbleText: "", bubbleUntil: 0,
+      rngState: (index + 911) * 2654435761 >>> 0,
+      tOffset: 80 + index * .71,
+      visiting: false, followPlayer: false, ridingElevator: false, seated: false,
+      seatTarget: null, seatChatPartner: null, socialPairPartnerId: null,
+      socialPairRole: "", socialPairPartnerId: null,
+      waitingForBus: false, onBus: false, hidden: true
+    };
+    walkers.push(resident);
+  }
 
   const socialSeats = makeSocialSeatDestinations(world);
   const busStops = makeBusStopDestinations(world);
@@ -960,7 +999,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       ? (nearestLoopIndex(busRoute, car.x, car.z) + 1) % busRoute.length
       : 1;
     drivers.push({
-      id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach",
+      id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach", health: 100, maxHealth: 100, isPolice: !!car.isPolice, policePatrolTimer: 42 + drivers.length * 4.5, policeWalkTimer: 0,
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),
       ...lane, busRoute,
       busRouteIndex, busStopTimer: 0, passengerCount: 0, passengerIds: [],
@@ -977,7 +1016,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
       ? [{ x: -76, z: -72 }, { x: 76, z: -72 }, { x: 76, z: 72 }, { x: -76, z: 72 }]
       : [{ x: 18, z: 18 }, { x: 18, z: -18 }, { x: -18, z: -18 }, { x: -18, z: 18 }];
     airPilots.push({
-      id: "pilot-" + vehicle.id, rig: {}, vehicleIndex, state: "approach",
+      id: "pilot-" + vehicle.id, rig: {}, vehicleIndex, state: "approach", health: 100, maxHealth: 100,
       elapsed: 0, start, x: start.x, z: start.z,
       y: collider.groundAt(start.x, start.z, 0, .8), route,
       waypoint: 0, targetAltitude: vehicle.id === "plane" ? 26 : 4.15,
@@ -990,7 +1029,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
     if (!heli.npcControlled) return;
     const start = localOffset(heli.x, heli.z, 3.6, 0, heli.yaw);
     heliPilots.push({
-      id: "pilot-heli", rig: {}, heliIndex, state: "approach",
+      id: "pilot-heli", rig: {}, heliIndex, state: "approach", health: 100, maxHealth: 100,
       elapsed: 0, start, x: start.x, z: start.z,
       y: collider.groundAt(start.x, start.z, heli.y, .8),
       route: [{ x: -82, z: 0 }, { x: 0, z: -82 }, { x: 82, z: 0 }, { x: 0, z: 82 }],
@@ -1000,9 +1039,9 @@ function makeCitizens(world, cars, helis, airVehicles, collider) {
   return { walkers, drivers, airPilots, heliPilots, socialSeats, busStops, all: [...walkers, ...drivers, ...airPilots, ...heliPilots] };
 }
 
-export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, onAmbientSpeak, hour = 14, weather = "clear", busInfoRef }) {
+export function Citizens({ world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef, onDoorToggle, onAmbientSpeak, hour = 14, weather = "clear", busInfoRef, islandHomes = [] }) {
   const collider = useMemo(() => new Collider(world.boxes), [world]);
-  const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider), [world, cars, helis, airVehicles, collider]);
+  const sim = useMemo(() => makeCitizens(world, cars, helis, airVehicles, collider, islandHomes), [world, cars, helis, airVehicles, collider, islandHomes]);
   if (citizensRef) citizensRef.current = sim.walkers;
   const simulationClock = useRef(0);
 

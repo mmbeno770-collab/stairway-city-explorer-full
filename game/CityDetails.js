@@ -489,7 +489,7 @@ export function CityDetails({ buildings, trees, windStrength = 1, nightFactor = 
         metal: new THREE.MeshStandardMaterial({ roughness: 0.68, metalness: 0.16, envMapIntensity: 0.95, flatShading: true }),
         gold: new THREE.MeshPhysicalMaterial({ color: "#ebc77e", roughness: 0.54, metalness: 0.18, clearcoat: 0.18, clearcoatRoughness: 0.6, envMapIntensity: 1.05, flatShading: true }),
         wood: new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0.015, envMapIntensity: 1.05, roughnessMap: surfaceTexture || null, bumpMap: surfaceTexture || null, bumpScale: 0.02 }),
-        glass: new THREE.MeshPhysicalMaterial({ roughness: 0.14, metalness: 0.06, transparent: true, opacity: 0.72, clearcoat: 0.42, clearcoatRoughness: 0.32, envMapIntensity: 1.35, depthWrite: false, flatShading: true }),
+        glass: new THREE.MeshPhysicalMaterial({ roughness: 0.14, metalness: 0.06, transparent: true, opacity: 0.42, clearcoat: 0.42, clearcoatRoughness: 0.32, envMapIntensity: 1.35, depthWrite: false, flatShading: true }),
         solar: new THREE.MeshPhysicalMaterial({ roughness: 0.13, metalness: 0.68, clearcoat: 0.94, clearcoatRoughness: 0.08, envMapIntensity: 2.2 }),
         glow: new THREE.MeshBasicMaterial({ toneMapped: false }),
         foliage: new THREE.MeshStandardMaterial({ roughness: 0.94, metalness: 0 }),

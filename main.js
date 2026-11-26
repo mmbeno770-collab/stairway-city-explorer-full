@@ -35,8 +35,6 @@ function FastGameBoot() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [loadMessage, setLoadMessage] = useState("מכינים את העיר התלת־ממדית...");
-  const [entered, setEntered] = useState(false);
-  const [openShopOnEnter, setOpenShopOnEnter] = useState(false);
 
   const retryLoad = useCallback(() => {
     setLoadError("");
@@ -80,27 +78,13 @@ function FastGameBoot() {
     };
   }, []);
 
-  if (entered && GameComponent) {
-    return React.createElement(GameComponent, { initialShopOpen: openShopOnEnter });
-  }
+  if (GameComponent) return React.createElement(GameComponent);
 
-  const ready = Boolean(GameComponent);
   const statusText = loadError
     ? "הטעינה נתקלה בבעיה"
-    : ready
-      ? "קובצי המשחק מוכנים — אפשר להיכנס!"
-      : loading
-        ? loadMessage
-        : "מסדרים את מסך הפתיחה...";
-
-  const enterGame = () => {
-    setOpenShopOnEnter(false);
-    setEntered(true);
-  };
-  const enterShop = () => {
-    setOpenShopOnEnter(true);
-    setEntered(true);
-  };
+    : loading
+      ? loadMessage
+      : "מכינים את הלובי והחנות...";
 
   return React.createElement("main", { className: "quick-home-screen", dir: "rtl" },
     React.createElement("div", { className: "quick-home-shell" },
@@ -116,11 +100,11 @@ function FastGameBoot() {
           React.createElement("div", { className: "quick-home-kicker" }, "ההרפתקה הבאה מתחילה כאן"),
           React.createElement("h1", null, "עיר שלמה מחכה לך."),
           React.createElement("p", null, "שוטטו ברחובות, גלו איים וחופים, נהגו בכלי רכב ופגשו את תושבי העיר."),
-          React.createElement("div", { className: "quick-home-status " + (ready ? "is-ready" : loadError ? "has-error" : "is-loading"), role: "status", "aria-live": "polite" },
+          React.createElement("div", { className: "quick-home-status " + (loadError ? "has-error" : "is-loading"), role: "status", "aria-live": "polite" },
             React.createElement("span", { className: "quick-home-status-dot", "aria-hidden": "true" }),
             React.createElement("span", null, statusText)
           ),
-          React.createElement("div", { className: "quick-home-progress " + (ready ? "is-complete" : ""), "aria-hidden": "true" },
+          React.createElement("div", { className: "quick-home-progress", "aria-hidden": "true" },
             React.createElement("span", null)
           ),
           loadError
@@ -129,15 +113,15 @@ function FastGameBoot() {
                 React.createElement("button", { type: "button", onClick: retryLoad }, "נסה לטעון שוב")
               )
             : React.createElement("div", { className: "quick-home-actions" },
-                React.createElement("button", { type: "button", className: "quick-home-button", onClick: enterGame, disabled: !ready },
-                  ready ? "כניסה לעיר  ←" : "העיר נטענת..."
+                React.createElement("button", { type: "button", className: "quick-home-button", disabled: true },
+                  "מכינים את הלובי..."
                 ),
-                React.createElement("button", { type: "button", className: "quick-home-shop-button", onClick: enterShop, disabled: !ready },
-                  "🛒 חנות ושדרוגים"
+                React.createElement("button", { type: "button", className: "quick-home-shop-button", disabled: true },
+                  "🛒 החנות תיפתח בלובי"
                 )
               ),
           React.createElement("div", { className: "quick-home-footnote" },
-            ready ? "הטעינה הושלמה. בחרו לאן להמשיך." : "בינתיים אפשר להישאר כאן — המשחק נטען ברקע."
+            "בינתיים אפשר להישאר כאן — המשחק נטען ברקע."
           )
         ),
         React.createElement("div", { className: "quick-home-visual", "aria-hidden": "true" },

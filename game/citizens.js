@@ -373,19 +373,19 @@ function releaseSeatConversation(person, walkers) {
 
 function startSeatConversation(person, partner, now) {
   const openers = [
-    "איך עובר עליך היום?",
-    "כבר הספקת להכיר את הכיכר הזאת?",
-    "נעים לעצור כאן אחרי סיבוב בעיר.",
-    "איזה מקום נחמד לשבת ולדבר."
+    "איך עובר עליך היום?","כבר הספקת להכיר את הכיכר הזאת?","נעים לעצור כאן אחרי סיבוב בעיר.",
+    "איזה מקום נחמד לשבת ולדבר.","שמעת על השכונה החדשה ליד הים?","מאיפה הגעת היום?",
+    "יש לך מסלול טיול מועדף?","נראה שהעיר נעשתה קצת יותר ירוקה.","הספסל הזה בדיוק במקום הנכון.",
+    "ראיתי כמה סירות חדשות בחוף.","מה המקום הבא שאתה רוצה לבקר בו?","נחמד לפגוש שכן באמצע היום."
   ];
   const replies = [
-    "מצוין, בדיוק יצאתי לטייל קצת.",
-    "כן, יש כאן פינות ממש יפות.",
-    "בהחלט, עוד מעט אמשיך לגלות את העיר.",
-    "נכון, תמיד מגלים כאן משהו חדש."
+    "מצוין, בדיוק יצאתי לטייל קצת.","כן, יש כאן פינות ממש יפות.","בהחלט, עוד מעט אמשיך לגלות את העיר.",
+    "נכון, תמיד מגלים כאן משהו חדש.","עוד לא ביקרתי שם, אולי אגיע אחר כך.","אני אוהב להסתובב ברחובות הצדדיים.",
+    "היום אני מתכנן לבקר בפארק.","הגעתי ברגל מהשכונה הסמוכה.","ראיתי את הסירות, הן נראות נהדר.",
+    "אולי ניפגש שוב ליד המאפייה.","נעים לנוח כאן לפני שממשיכים.","אני רוצה להכיר עוד כמה בניינים בעיר."
   ];
-  person.bubbleText = openers[Math.floor(nextRandom(person) * openers.length)];
-  partner.bubbleText = replies[Math.floor(nextRandom(partner) * replies.length)];
+  person.bubbleText = freshDialogue(person, openers, "lastSeatOpener");
+  partner.bubbleText = freshDialogue(partner, replies, "lastSeatReply");
   person.bubbleUntil = now + 2.8;
   partner.bubbleUntil = now + 2.8;
   const delay = randomRange(person, 3.8, 5.4);
@@ -1100,6 +1100,113 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
       person.socialPairCooldown = Math.max(0, (person.socialPairCooldown || 0) - dt * activity.socialRate);
       person.routineCooldown = Math.max(0, (person.routineCooldown || 0) - dt * activity.routineRate);
       if (person.bubbleUntil <= now) person.bubbleText = "";
+      if (person.isIslandResident) {
+        if (activity.night && (person.homeStatus === "city" || person.homeStatus === "island-hop")) {
+          person.homeStatus = "travel-home";
+          person.homeTravelTimer = 7.5 + (person.homeIndex % 4) * 1.1;
+          person.bubbleText = "היום הסתיים, אני חוזר הביתה לאי בסירה.";
+          person.bubbleUntil = now + 3.5;
+        }
+        if (!activity.night && (person.homeStatus === "home" || person.homeStatus === "outdoor")) {
+          if (person.homeStatus === "home" && person.dayStayHome) {
+            person.hidden = true;
+            if (rig.root) rig.root.visible = false;
+            continue;
+          }
+          person.homeStatus = "travel-city";
+          person.homeTravelTimer = 8 + (person.homeIndex % 5) * 1.2;
+          person.bubbleText = "אני יוצא עם המעבורת לעיר, יש לי כמה דברים לעשות.";
+          person.bubbleUntil = now + 3.5;
+        }
+        if (person.homeStatus === "travel-home" || person.homeStatus === "travel-city") {
+          person.homeTravelTimer = Math.max(0, person.homeTravelTimer - dt);
+          person.hidden = true;
+          if (rig.root) rig.root.visible = false;
+          if (person.homeTravelTimer <= 0) {
+            if (person.homeStatus === "travel-home") {
+              person.homeStatus = person.nightWanderer ? "outdoor" : "home";
+              person.x = person.home.x + (person.nightWanderer ? 5.5 : 0);
+              person.y = .3;
+              person.z = person.home.z + (person.nightWanderer ? 3.5 : 0);
+              person.hidden = !person.nightWanderer;
+            } else {
+              const otherIslands = (world.islands || []).filter((island) => !island.isResidential && !island.isPlayerIsland);
+              if (person.islandExplorer && otherIslands.length) {
+                person.islandHopTarget = otherIslands[person.homeIndex % otherIslands.length];
+                person.islandHopTimer = 30 + (person.homeIndex % 4) * 9;
+                person.homeStatus = "island-hop";
+                person.x = person.islandHopTarget.x + 10;
+                person.y = .28;
+                person.z = person.islandHopTarget.z + 8;
+              } else {
+                person.homeStatus = "city";
+                person.route = person.sidewalkRoute;
+                const firstPoint = person.route[0];
+                person.x = firstPoint.x;
+                person.z = firstPoint.z;
+                person.y = collider.groundAt(person.x, person.z, 0, .8);
+                person.waypoint = 1;
+              }
+              person.hidden = false;
+            }
+          }
+          continue;
+        }
+        if (person.homeStatus === "home") {
+          person.hidden = true;
+          if (rig.root) rig.root.visible = false;
+          continue;
+        }
+        if (person.homeStatus === "outdoor" && activity.night) {
+          const angle = now * .22 + person.homeIndex * 1.7;
+          person.x = person.home.x + Math.cos(angle) * 8.2;
+          person.z = person.home.z + Math.sin(angle) * 6.6;
+          person.y = .3;
+          person.yaw = angle + Math.PI / 2;
+          person.phase += dt * .8;
+          if (person.ambientCooldown <= 0) {
+            const line = freshDialogue(person, ["יצאתי לנשום קצת אוויר ליד הבית.","הלילה שקט כאן באי.","עוד מעט אחזור פנימה, רק סיבוב קצר.","נעים לטייל ליד הים בשעה הזאת.","מחר אקח את הסירה לעיר מוקדם."], "lastIslandNightLine");
+            person.bubbleText = line;
+            person.bubbleUntil = now + 3.2;
+            person.ambientCooldown = 24 + nextRandom(person) * 16;
+            const nearbyPlayer = playerPositionRef?.current;
+            if (nearbyPlayer && Math.hypot(nearbyPlayer.x - person.x, nearbyPlayer.z - person.z) < 26) onAmbientSpeak?.(person, line);
+          }
+          if (rig.root) {
+            rig.root.position.set(person.x, person.y, person.z);
+            rig.root.rotation.y = person.yaw;
+            rig.root.visible = true;
+          }
+          poseHuman(rig, { mode: "walk", phase: person.phase, speed: .8, air: false, t: now + person.tOffset, dt });
+          continue;
+        }
+        if (person.homeStatus === "island-hop" && person.islandHopTarget) {
+          person.islandHopTimer = Math.max(0, person.islandHopTimer - dt);
+          const angle = now * .17 + person.homeIndex;
+          person.x = person.islandHopTarget.x + Math.cos(angle) * 13;
+          person.z = person.islandHopTarget.z + Math.sin(angle) * 10;
+          person.y = .28;
+          person.yaw = angle + Math.PI / 2;
+          person.phase += dt * .75;
+          if (person.islandHopTimer <= 0) {
+            person.homeStatus = "city";
+            person.islandHopTarget = null;
+            person.route = person.sidewalkRoute;
+            const firstPoint = person.route[0];
+            person.x = firstPoint.x;
+            person.z = firstPoint.z;
+            person.y = collider.groundAt(person.x, person.z, 0, .8);
+            person.waypoint = 1;
+          }
+          if (rig.root) {
+            rig.root.position.set(person.x, person.y, person.z);
+            rig.root.rotation.y = person.yaw;
+            rig.root.visible = true;
+          }
+          poseHuman(rig, { mode: "walk", phase: person.phase, speed: .75, air: false, t: now + person.tOffset, dt });
+          continue;
+        }
+      }
       if (person.ridingElevator && person.elevatorTrip) {
         const lift = elevatorCars[person.elevatorId];
         if (!lift) {
@@ -1327,29 +1434,30 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
         poseHuman(rig, { mode: "observe", style: person.routineAction, phase: person.phase, speed: 0, air: false, t: now + person.tOffset, dt });
         continue;
       }
-      if (player && playerDistance > 7 && playerDistance < 27
-        && person.ambientCooldown <= 0 && !person.visiting && !person.followPlayer
-        && !person.socialPairPartnerId && !person.seated
+      if (person.ambientCooldown <= 0 && !person.visiting && !person.followPlayer
+        && !person.socialPairPartnerId && !person.seated && !person.hidden
         && conversationRef?.current?.personId !== person.id) {
         const lines = [
-          "מעניין מה יש ברחוב הבא.",
-          "איזה יום יפה לטייל בעיר.",
-          "אולי אעצור בבית הקפה בהמשך.",
-          "הבניינים בשכונה הזאת ממש מיוחדים.",
-          "אני צריך לבדוק מה חדש בפארק.",
-          "הגיע הזמן להמשיך בסיבוב שלי."
+          "מעניין מה יש ברחוב הבא.","איזה יום יפה לטייל בעיר.","אולי אעצור בבית הקפה בהמשך.",
+          "הבניינים בשכונה הזאת ממש מיוחדים.","אני צריך לבדוק מה חדש בפארק.","הגיע הזמן להמשיך בסיבוב שלי.",
+          "ראיתי היום אוטובוס חדש ליד התחנה.","אולי אקפוץ לבקר חבר שגר מעבר לכיכר.","הרחוב הזה השתנה מאז הפעם הקודמת.",
+          "יש כאן פינה שקטה שאפשר לנוח בה.","אני מחפש דרך מעניינת להגיע לשכונה הבאה.","מעניין מה פתוח עכשיו במרכז העיר.",
+          "כדאי לי לעבור ליד המזרקה לפני שאמשיך.","הנוף מהרחוב הזה ממש יפה.","אני צריך לבדוק אם יש מקום פנוי בספרייה.",
+          "אולי אקנה משהו קטן במאפייה.","נראה שהיום יש הרבה תנועה בכבישים.","אני אוהב לגלות סמטאות שלא הכרתי.",
+          "עוד מעט אעצור לשבת ולנוח.","שמתי לב שמוסיפים כאן פרטים לבניינים.","אני בדרך לפגוש כמה חברים.",
+          "היום אנסה מסלול אחר מהרגיל.","מעניין אם המעבורת כבר יצאה לאי."
         ];
-        person.ambientCooldown = 22 + nextRandom(person) * 17;
-        person.bubbleText = lines[Math.floor(nextRandom(person) * lines.length)];
-        person.bubbleUntil = now + 3.1;
-        onAmbientSpeak?.(person, person.bubbleText);
+        person.ambientCooldown = 16 + nextRandom(person) * 21;
+        person.bubbleText = freshDialogue(person, lines, "lastAmbientLine");
+        person.bubbleUntil = now + 3.3;
+        if (player && playerDistance > 7 && playerDistance < 29) onAmbientSpeak?.(person, person.bubbleText);
       }
       if (player && person.greetCooldown <= 0 && !person.visiting && !person.followPlayer) {
         if (playerDistance > 1.4 && playerDistance < 5.8 && Math.abs(player.y - person.y) < 2.2) {
           person.greetCooldown = 13 + ((person.rngState >>> 8) % 900) / 100;
           person.wait = Math.max(person.wait, 1.15);
           person.yaw = Math.atan2(player.x - person.x, player.z - person.z);
-          person.bubbleText = ["שלום! שמח לראות אותך.", "יום טוב! לאן אתה מטייל?", "מה נשמע? העיר גדולה, נכון?", "ברוך הבא! אולי ניפגש שוב ברחוב."][person.rngState % 4];
+          person.bubbleText = freshDialogue(person, ["שלום! טוב לראות אותך כאן.","יום טוב! לאן אתה ממשיך מכאן?","מה נשמע? כבר הספקת לטייל בעיר?","ברוך הבא! אולי ניפגש שוב בהמשך.","נעים לפגוש עוד מטייל ברחוב.","הגעת כבר לשכונה החדשה?","יש היום הרבה מה לראות בעיר.","שיהיה לך סיבוב מוצלח!","אתה מכיר את הדרך אל הפארק?","איזה כיף לראות אנשים מטיילים כאן."], "lastGreetingLine");
           person.bubbleUntil = now + 2.8;
         }
       }
@@ -1405,10 +1513,10 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
           const angle = Math.atan2(companion.x - person.x, companion.z - person.z);
           person.yaw = angle; companion.yaw = angle + Math.PI;
           person.wait = Math.max(person.wait, 1.8); companion.wait = Math.max(companion.wait, 1.8);
-          const openers = ["מה נשמע? איך הולך?", "היי, מזמן לא דיברנו.", "איזה יום נעים לטיול.", "לאן אתה ממשיך מכאן?"];
-          const answers = ["הכול טוב, תודה. ואתך?", "בסדר גמור, בדיוק יצאתי לסיבוב.", "מעולה. אולי ניפגש שוב בהמשך.", "אני בדרך לבדוק מקום חדש בעיר."];
-          person.bubbleText = openers[Math.floor(nextRandom(person) * openers.length)]; person.bubbleUntil = now + 2.8;
-          companion.bubbleText = answers[Math.floor(nextRandom(companion) * answers.length)]; companion.bubbleUntil = now + 2.8;
+          const openers = ["מה נשמע? איך הולך?","היי, מזמן לא דיברנו.","איזה יום נעים לטיול.","לאן אתה ממשיך מכאן?","שמעת מה התחדש בכיכר?","יש לך המלצה למקום מעניין בעיר?","אני בדרך לסיבוב בשכונה החדשה.","כבר ביקרת באי המגורים?","הרחוב הזה תמיד מלא בהפתעות.","אולי נעבור יחד דרך הפארק?","ראיתי מעבורת יוצאת לכיוון האי.","איך היה הביקור שלך במרכז?"];
+          const answers = ["הכול טוב, תודה. ואתך?","בסדר גמור, בדיוק יצאתי לסיבוב.","מעולה, אולי ניפגש שוב בהמשך.","אני בדרך לבדוק מקום חדש בעיר.","כן, שמעתי שיש שם טיילת נחמדה.","בשמחה, אפשר להמשיך יחד עוד קצת.","עוד לא, אולי אגיע לשם היום.","עברתי שם אתמול והיה ממש נעים.","אני דווקא מחפש בית קפה שקט.","בוא נלך לכיוון הרחוב הראשי.","יש שם כמה בתים יפים ליד החוף.","אולי נעצור קודם ליד התחנה."];
+          person.bubbleText = freshDialogue(person, openers, "lastPairOpener"); person.bubbleUntil = now + 2.8;
+          companion.bubbleText = freshDialogue(companion, answers, "lastPairAnswer"); companion.bubbleUntil = now + 2.8;
           person.socialCooldown = 28; companion.socialCooldown = 31;
           startWalkingPair(person, companion, now);
         } else person.socialCooldown = 5 + (person.rngState % 500) / 100;

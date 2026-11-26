@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, Sky } from "@react-three/drei";
 import * as THREE from "three";
-import { Collider, generateWorld, locate, CITY_HALF, BLOCK, GRID, CABLE_STATIONS } from "./world.js";
+import { Collider, generateWorld, locate, hillHeightAt, CITY_HALF, BLOCK, GRID, CABLE_STATIONS } from "./world.js";
 import { getParkRideLocations, getParkRidePose } from "./park-rides.js";
 import { Human, poseHuman, BARBELL } from "./human.js";
 import { Citizens } from "./citizens.js";
@@ -93,6 +93,7 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
 
   const districtColors = {
     innovation: "#8da7b0",
+    luxury: "#d4bd83",
     heritage: "#c7a77d",
     garden: "#91ad8a",
     creative: "#b49bc0",
@@ -100,6 +101,7 @@ function WorldMapPanel({ world, marine, playerPositionRef, completedIds = [] }) 
   };
   const districtNames = {
     innovation: "רובע החדשנות",
+    luxury: "רובע היוקרה",
     heritage: "הרובע ההיסטורי",
     garden: "רובע הגנים",
     creative: "הרובע היצירתי",
@@ -1224,6 +1226,44 @@ function drawRoadSurfaceWear(ctx, to, pixelScale) {
   ctx.restore();
 }
 
+function RollingHills({ hills = [] }) {
+  const geometries = useMemo(() => hills.map((hill) => {
+    const rings = 14, segments = 48, positions = [], colors = [], indices = [];
+    const color = new THREE.Color();
+    for (let ring = 0; ring <= rings; ring++) {
+      const radiusRatio = ring / rings;
+      for (let segment = 0; segment <= segments; segment++) {
+        const angle = (segment / segments) * Math.PI * 2;
+        const x = Math.cos(angle) * hill.radius * radiusRatio;
+        const z = Math.sin(angle) * hill.radius * radiusRatio;
+        const height = hillHeightAt(hill, hill.x + x, hill.z + z);
+        positions.push(x, height, z);
+        const moisture = Math.max(0, Math.min(1, height / Math.max(.1, hill.height)));
+        color.setHSL(.255 + moisture * .035, .34 + moisture * .11, .34 + moisture * .07);
+        colors.push(color.r, color.g, color.b);
+      }
+    }
+    for (let ring = 0; ring < rings; ring++) for (let segment = 0; segment < segments; segment++) {
+      const a = ring * (segments + 1) + segment;
+      const b = (ring + 1) * (segments + 1) + segment;
+      indices.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return { id: hill.id, x: hill.x, z: hill.z, geometry };
+  }), [hills]);
+  useEffect(() => () => geometries.forEach((item) => item.geometry.dispose()), [geometries]);
+  const material = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .96 }), []);
+  useEffect(() => () => material.dispose(), [material]);
+  return h(React.Fragment, null, ...geometries.map((item) => h("mesh", {
+    key: item.id, geometry: item.geometry, material, position: [item.x, .012, item.z],
+    receiveShadow: true, castShadow: true
+  })));
+}
+
 function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = [], publicSpaces = [] }) {
   const data = useMemo(() => {
     const size = 1536;
@@ -1273,7 +1313,7 @@ function Ground({ wet, buildings, busRoutes = [], curvedRoads = [], alleyways = 
     ctx.save(); traceCoast(-9); ctx.clip();
     for (let i = 0; i < GRID; i++) for (let k = 0; k < GRID; k++) {
       const x = -CITY_HALF + i * BLOCK + 4, z = -CITY_HALF + k * BLOCK + 4;
-      const parkLot = (i === 1 && k === 1) || (i === GRID - 2 && k === GRID - 2);
+      const parkLot = (i === 1 && k === 1) || (i === GRID - 2 && k === GRID - 2) || (i === 2 && k === 9);
       const recreationLot = (i === 8 && k === 2) || (i === 7 && k === 8);
       const residentialLot = (i === 0 || i === GRID - 1 || k === 0 || k === GRID - 1) && (i + k) % 2 === 0;
       const civicLot = (i === 4 && k === 3) || (i === 7 && k === 6);
@@ -3314,6 +3354,7 @@ export default function Game() {
         h(Environment, { resolution: quality === "high" ? 128 : quality === "balanced" ? 80 : 48 }, h(Lightformer, { intensity: 1.35 + environment.daylight, position: [0, 10, 0], rotation: [Math.PI / 2, 0, 0], scale: [24, 22, 1] }), h(Lightformer, { intensity: .72, color: "#ffd9a8", position: [-10, 3, -5], rotation: [0, Math.PI / 2, 0], scale: [22, 5, 1] }), h(Lightformer, { intensity: .62, color: "#b9d9ed", position: [12, 5, -9], rotation: [0, -Math.PI / 3, 0], scale: [14, 6, 1] }), h(Lightformer, { intensity: .42, color: "#f0e0c3", position: [-4, 8, 13], rotation: [0, Math.PI / 2.8, 0], scale: [12, 8, 1] })),
         h(WeatherEffects, { weather, profile: environment }), h(AmbientLife, { quality }), h(BirdFlocks), h(StreetLights, { lamps: world.lamps, nightFactor: environment.nightFactor, quality }), h(QualityMonitor, { onLevel: setQuality }),
         h(Ground, { wet: weather === "rain" || weather === "storm", buildings: world.buildings, busRoutes: world.busRoutes, curvedRoads: world.curvedRoads, alleyways: world.alleyways, publicSpaces: world.publicSpaces }),
+        h(RollingHills, { hills: world.hills }),
         h(MarineWorld, { marine, boats, divingRef, quality, boatRaceRef }),
         h(CaveSystem, { playerPositionRef }),
         h(UrbanRabbits, { playerPositionRef }),
@@ -3325,7 +3366,7 @@ export default function Game() {
         h(Boxes, { world, kind: "roadMarking" }), h(Boxes, { world, kind: "tactile" }),
         h(PedestrianCrossingModels, { world }),
         h(TrafficSignals, { world }),
-        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),
+        h(Trees, { world, nightFactor: environment.nightFactor }), h(CityDetails, { buildings: world.buildings, trees: world.trees, homes: world.homes, windStrength: environment.windStrength, nightFactor: environment.nightFactor }), h(CityLandmarks, { world, helis }),
         h(AnimatedWorld, { world, windStrength: environment.windStrength }),
         h(DoorSet, { world, doorStates }), ...elevatorCars.map((car) => h(ElevatorModel, { key: car.layout.id, layout: car.layout, y: car.y, moving: car.moving })),
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),

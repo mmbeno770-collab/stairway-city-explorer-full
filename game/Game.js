@@ -1246,7 +1246,7 @@ function RollingHills({ hills = [] }) {
     for (let ring = 0; ring < rings; ring++) for (let segment = 0; segment < segments; segment++) {
       const a = ring * (segments + 1) + segment;
       const b = (ring + 1) * (segments + 1) + segment;
-      indices.push(a, b, a + 1, b, b + 1, a + 1);
+      indices.push(a, a + 1, b, b, a + 1, b + 1);
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));

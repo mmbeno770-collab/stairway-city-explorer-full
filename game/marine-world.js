@@ -47,6 +47,7 @@ export function createMarineWorld(){
   if(side===1){x=d;z=t;yaw=Math.PI/2;ix=-1;iz=0;}
   if(side===2){x=t;z=d;yaw=0;ix=0;iz=-1;}
   if(side===3){x=-d;z=t;yaw=-Math.PI/2;ix=1;iz=0;}
+  if(side===1 && Math.abs(t)<=45) continue;
   boats.push({id:boats.length,type:"boat",x,y:WATER_LEVEL,z,yaw,speed:0,steering:0,color:colors[(i+side*2)%colors.length],landX:x+ix*6.8,landZ:z+iz*6.8,length:7.4,width:3.3,scale:1.28});
  }
 

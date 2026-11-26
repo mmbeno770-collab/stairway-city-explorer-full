@@ -2075,31 +2075,37 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
 
   return h(React.Fragment, null, sim.all.map((person) => h(React.Fragment, { key: person.id },
     h(Human, { rig: person.rig, lowDetail: conversationRef?.current?.personId !== person.id }),
-    h(CitizenSpeechBubble, { person })
+    h(CitizenSpeechBubble, { person, playerPositionRef })
   )));
 }
 
-function CitizenSpeechBubble({ person }) {
+function CitizenSpeechBubble({ person, playerPositionRef }) {
   const bubble = useRef(null);
   const healthTrack = useRef(null);
   const healthFill = useRef(null);
+  const bubbleAnchor = useRef(null);
+  const healthAnchor = useRef(null);
   useFrame(({ clock }) => {
+    if (bubbleAnchor.current) bubbleAnchor.current.position.set(person.x, person.y + 2.22, person.z);
+    if (healthAnchor.current) healthAnchor.current.position.set(person.x, person.y + 2.52, person.z);
     const element = bubble.current;
     if (element) {
-      const visible = !!person.bubbleText && person.bubbleUntil > clock.elapsedTime;
+      const visible = !person.hidden && !!person.bubbleText && person.bubbleUntil > clock.elapsedTime;
       element.style.display = visible ? "block" : "none";
       if (visible && element.textContent !== person.bubbleText) element.textContent = person.bubbleText;
     }
     const maximum = Math.max(1, person.maxHealth || 100);
     const ratio = Math.max(0, Math.min(1, (person.health ?? maximum) / maximum));
-    if (healthTrack.current) healthTrack.current.style.display = ratio < .999 ? "block" : "none";
+    const player = playerPositionRef?.current;
+    const nearby = !!player && !person.hidden && Math.hypot(player.x - person.x, player.z - person.z) < 16;
+    if (healthTrack.current) healthTrack.current.style.display = nearby ? "block" : "none";
     if (healthFill.current) healthFill.current.style.width = (ratio * 100) + "%";
   });
   return h(React.Fragment, null,
-    h(Html, { position: [0, 2.22, 0], center: true, distanceFactor: 11, occlude: false, style: { pointerEvents: "none" } },
+    h(Html, { ref: bubbleAnchor, position: [0, 2.22, 0], center: true, distanceFactor: 11, occlude: false, style: { pointerEvents: "none" } },
       h("div", { ref: bubble, className: "citizen-world-bubble", style: { display: "none" } })
     ),
-    h(Html, { position: [0, 2.52, 0], center: true, distanceFactor: 12, occlude: false, style: { pointerEvents: "none" } },
+    h(Html, { ref: healthAnchor, position: [0, 2.52, 0], center: true, distanceFactor: 12, occlude: false, style: { pointerEvents: "none" } },
       h("div", { ref: healthTrack, className: "citizen-health-track", style: { display: "none" } },
         h("div", { ref: healthFill, className: "citizen-health-fill" })
       )

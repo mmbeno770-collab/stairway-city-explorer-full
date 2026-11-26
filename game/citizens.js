@@ -1000,6 +1000,8 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
       : 1;
     drivers.push({
       id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach", health: 100, maxHealth: 100, lives: 3, isPolice: !!car.isPolice, policePatrolTimer: 42 + drivers.length * 4.5, policeWalkTimer: 0,
+      appearance: car.isPolice ? { ...makeCitizenAppearance(120 + drivers.length), shirt: "#243e60", shirtHighlight: "#3d5e83", pants: "#273445", pantsHighlight: "#273445", headwear: true, headwearColor: "#172c49", headwearTrim: "#d2d7dc", backpack: false } : makeCitizenAppearance(120 + drivers.length),
+      appearanceRoot: null,
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),
       ...lane, busRoute,
       busRouteIndex, busStopTimer: 0, passengerCount: 0, passengerIds: [],
@@ -1818,6 +1820,10 @@ export function Citizens({ world, cars, helis, airVehicles, elevatorCars, active
     for (const driver of drivers) {
       const car = cars[driver.carIndex], rig = driver.rig;
       if (!car) continue;
+      if (rig.root && driver.appearanceRoot !== rig.root) {
+        applyHumanAppearance(rig.root, driver.appearance);
+        driver.appearanceRoot = rig.root;
+      }
       const playerDriving = activeVehicleRef.current.mode === "car" && activeVehicleRef.current.target === driver.carIndex;
       if (playerDriving) {
         if (rig.root) rig.root.visible = false;

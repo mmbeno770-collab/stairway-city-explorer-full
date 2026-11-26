@@ -2979,7 +2979,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
     if (label !== s.lastLoc) { s.lastLoc = label; onLoc(label); }
   });
   return h(React.Fragment, null,
-    h("directionalLight", { position: [50, 105, 45], intensity: 2.1, color: "#fff0d1", castShadow: true, "shadow-mapSize": [quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024, quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024], "shadow-camera-left": -185, "shadow-camera-right": 185, "shadow-camera-top": 185, "shadow-camera-bottom": -185, "shadow-camera-near": 1, "shadow-camera-far": 420, "shadow-bias": -0.00018, "shadow-normalBias": 0.025, "shadow-radius": quality === "high" ? 4 : 2 }),
+    h("directionalLight", { position: environment.sunPosition, intensity: environment.sunIntensity, color: environment.sunColor, castShadow: true, "shadow-mapSize": [quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024, quality === "high" ? 2048 : quality === "balanced" ? 1536 : 1024], "shadow-camera-left": -185, "shadow-camera-right": 185, "shadow-camera-top": 185, "shadow-camera-bottom": -185, "shadow-camera-near": 1, "shadow-camera-far": 420, "shadow-bias": -0.00018, "shadow-normalBias": 0.025, "shadow-radius": quality === "high" ? 4 : 2 }),
     h(Human, { rig }),
     h(DiverSuit, { rig })
   );
@@ -3036,7 +3036,7 @@ export default function Game() {
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false);
   const [dockOpen, setDockOpen] = useState(false), [activeDockPanel, setActiveDockPanel] = useState(null);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
-  const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(false), [quality, setQuality] = useState("balanced");
+  const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(true), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
   const [conversation, setConversation] = useState(null), [chatDraft, setChatDraft] = useState("");
   const [wildlifeMission, setWildlifeMission] = useState(() => ({

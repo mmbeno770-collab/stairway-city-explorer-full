@@ -14,7 +14,7 @@ function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 10139
 const THEMES = [
     { theme: "cafe", label: "בית קפה", floor: "#e9c39d" }, { theme: "library", label: "ספרייה", floor: "#a8c4d0" }, { theme: "gym", label: "חדר כושר", floor: "#9aaec9" }, { theme: "gallery", label: "גלריה לאמנות", floor: "#f1e2cc" }, { theme: "office", label: "משרדים", floor: "#b8d8d1" }, { theme: "apartment", label: "דירת מגורים", floor: "#e6cba9" }, { theme: "arcade", label: "אולם משחקים", floor: "#b7b0dd" }, { theme: "garden", label: "גן פנימי", floor: "#add09b" }, { theme: "music", label: "אולפן מוזיקה", floor: "#d9aabe" }, { theme: "kids", label: "חדר ילדים", floor: "#d8ece2" }, { theme: "researchLab", label: "מעבדת מחקר", floor: "#c6e3e8" }, { theme: "dataCenter", label: "מרכז נתונים", floor: "#a9c3d4" }, { theme: "smartFactory", label: "ייצור מתקדם", floor: "#ccd8cf" },
 ];
-const FACADES = ["#f2cf9f", "#efb1a7", "#a8d5e0", "#b7d4ac", "#c9b9e6", "#f0dfad", "#a4d5ca", "#e7c0d2", "#d9cfb8", "#aac4e0"];
+const FACADES = ["#d8eeeb", "#c4e4e8", "#b5dce6", "#e4eee8", "#c9e4df", "#d5e8f0", "#b8d8e4", "#e7e6d8", "#c2e2df", "#dcebf0"];
 const NAMES = ["מגדל השקמה", "בית האורנים", "מרכז הגפן", "בית הים", "מגדל הזית", "בית הרימון", "מגדל האלון", "בית התמר", "מרכז הדקל", "בית הברוש", "מגדל הארז", "בית התאנה"];
 export function generateWorld(seed = 7) {
     const r = rng(seed), boxes = [], buildings = [], trees = [], lamps = [], inter = [], parkingVehicles = [], homes = [], landmarks = [], crosswalks = [], busStops = [], alleyways = [], publicSpaces = [];
@@ -522,10 +522,10 @@ export function generateWorld(seed = 7) {
                         : cityCore ? 4 + Math.floor(r() * 5) : 2 + Math.floor(r() * 5);
         const x0 = cx - W / 2, x1 = cx + W / 2, z0 = cz - D / 2, z1 = cz + D / 2;
         const facadePalettes = {
-            heritage: ["#f0c99f", "#e6aa93", "#f4dfbb", "#d79780", "#edc7a0"],
-            garden: ["#d5e7c1", "#b1d9b9", "#f0e8c1", "#a8cfb0", "#c8ddb0"],
-            creative: ["#a8d9e8", "#efb7ab", "#f4dda0", "#bcb0e4", "#a5d9ce"],
-            innovation: ["#8bc8dc", "#83b4cf", "#a3d8cf", "#91a9d7", "#b7cbe9"]
+            heritage: ["#d9e9e4", "#cfe4e4", "#f0eadb", "#c4dcdf", "#e5eee7"],
+            garden: ["#c8e5d8", "#d9ece2", "#e5eddc", "#b8ddd6", "#d6e9e4"],
+            creative: ["#a9d9e7", "#c5e5e9", "#d7ece5", "#b6d9e7", "#e2eee9"],
+            innovation: ["#79bfd2", "#8acbdc", "#a0d9d7", "#8ebfda", "#b5dce2"]
         };
         const glassPalettes = {
             heritage: ["#a9d5d1", "#c3e3da"],

@@ -1163,3 +1163,16 @@ body { background: #b7e8ff; }
   border-radius: inherit;
   transition: width .12s linear;
 }
+
+.citizen-home-name {
+  padding: 3px 7px;
+  border: 1px solid rgba(153, 207, 210, .64);
+  border-radius: 6px;
+  color: #f4fbf8;
+  background: rgba(27, 48, 54, .88);
+  box-shadow: 0 2px 8px rgba(0,0,0,.26);
+  font: 700 10px/1.25 system-ui, sans-serif;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}

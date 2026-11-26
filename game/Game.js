@@ -3272,6 +3272,21 @@ export default function Game() {
   const activeVehicleRef = useRef({ mode: "walk", target: -1 });
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);
   const toggleDoor = useCallback((index) => { const next = { ...doorRef.current, [index]: !doorRef.current[index] }; doorRef.current = next; setDoorStates(next); }, []);
+  const speakNpc = useCallback((person, message) => {
+    if (typeof window === "undefined" || !window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== "function") return;
+    const synthesis = window.speechSynthesis;
+    const utterance = new window.SpeechSynthesisUtterance(String(message || "").slice(0, 260));
+    const residentNumber = Number.parseInt(String(person?.id || "").replace("walker-", ""), 10) || 0;
+    utterance.lang = "he-IL";
+    // Small per-resident differences make each character sound less alike.
+    utterance.rate = .88 + (residentNumber % 6) * .035;
+    utterance.pitch = .84 + (residentNumber % 8) * .045;
+    utterance.volume = .82;
+    const hebrewVoice = synthesis.getVoices().find((voice) => String(voice.lang || "").toLowerCase().startsWith("he"));
+    if (hebrewVoice) utterance.voice = hebrewVoice;
+    synthesis.cancel();
+    synthesis.speak(utterance);
+  }, []);
   const beginConversation = useCallback((person) => {
     const greeting = "שלום, אני " + person.name + ". " + String(person.personality || "אוהב לגלות מקומות חדשים").split(",")[0] + ". נחמד שנפגשנו — מה מעניין אותך היום?";
     person.bubbleText = "שלום! מה שלומך?";
@@ -3279,10 +3294,12 @@ export default function Game() {
     conversationRef.current = { personId: person.id, bubbleText: person.bubbleText };
     setConversation({ personId: person.id, npcName: person.name, personality: person.personality, topic: "", messages: [{ from: "npc", text: greeting }] });
     setChatDraft("");
-  }, []);
+    speakNpc(person, greeting);
+  }, [speakNpc]);
   const closeConversation = useCallback(() => {
     const person = citizensRef.current.find((item) => item.id === conversationRef.current?.personId);
     if (person) { person.bubbleText = ""; person.bubbleUntil = 0; }
+    window.speechSynthesis?.cancel?.();
     conversationRef.current = null;
     input.current.closeTalk = true;
     setConversation(null);
@@ -3312,6 +3329,7 @@ export default function Game() {
     }
     const topic = getNpcTopic(message, conversation.topic);
     const reply = makeNpcReply(conversation.npcName, message, conversation.messages.length, topic, currentPerson?.personality || conversation.personality, conversation.messages);
+    speakNpc(currentPerson || { id: conversation.personId }, reply);
     if (conversationRef.current) conversationRef.current = { ...conversationRef.current, bubbleText: reply };
     setConversation((current) => current ? ({
       ...current, topic,

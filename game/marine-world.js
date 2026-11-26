@@ -73,6 +73,19 @@ export function createIslandCollisionBoxes(islands){
   for(let row=0;row<rows;row++){const z0=island.z-rz+row/rows*rz*2,z1=island.z-rz+(row+1)/rows*rz*2,nz=((z0+z1)/2-island.z)/rz,half=rx*Math.sqrt(Math.max(.025,1-nz*nz))*.96;if(half<1)continue;
    boxes.push({x0:island.x-half,x1:island.x+half,y0:-1.9,y1:.28,z0,z1,color:island.color,kind:"marine-collider",collide:true,noGround:false});
   }
+  if(island.isResidential){
+   for(const home of island.homes||[]){
+    const x=home.x,z=home.z,halfX=4.55,halfZ=4.05,t=.24,wallTop=3.55;
+    boxes.push(
+     {x0:x-halfX,y0:.29,y1:wallTop,z0:z-halfZ,x1:x-halfX+t,z1:z+halfZ,kind:"solid",collide:true,noGround:true},
+     {x0:x+halfX-t,y0:.29,y1:wallTop,z0:z-halfZ,x1:x+halfX,z1:z+halfZ,kind:"solid",collide:true,noGround:true},
+     {x0:x-halfX,y0:.29,y1:wallTop,z0:z-halfZ,x1:x+halfX,z1:z-halfZ+t,kind:"solid",collide:true,noGround:true},
+     {x0:x-halfX,y0:.29,y1:wallTop,z0:z+halfZ-t,x1:x-1.0,z1:z+halfZ,kind:"solid",collide:true,noGround:true},
+     {x0:x+1.0,y0:.29,y1:wallTop,z0:z+halfZ-t,x1:x+halfX,z1:z+halfZ,kind:"solid",collide:true,noGround:true},
+     {x0:x-halfX-.15,y0:wallTop,y1:wallTop+.3,z0:z-halfZ-.15,x1:x+halfX+.15,z1:z+halfZ+.15,kind:"solid",collide:true,noGround:true}
+    );
+   }
+  }
  }
  return boxes;
 }

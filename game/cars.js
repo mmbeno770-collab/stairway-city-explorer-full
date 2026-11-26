@@ -9,6 +9,8 @@ const trim = new THREE.MeshStandardMaterial({ color: "#252a30", metalness: .45, 
 const headlamp = new THREE.MeshBasicMaterial({ color: "#fff1c4", toneMapped: false });
 const tailOff = new THREE.MeshStandardMaterial({ color: "#771c1c", emissive: "#250606", roughness: .4 });
 const tailOn = new THREE.MeshStandardMaterial({ color: "#ff3030", emissive: "#ff1111", emissiveIntensity: 1.8 });
+const policeRedLight = new THREE.MeshStandardMaterial({ color: "#ff4545", emissive: "#ff1717", emissiveIntensity: 1.9, roughness: .25 });
+const policeBlueLight = new THREE.MeshStandardMaterial({ color: "#438cff", emissive: "#176bff", emissiveIntensity: 1.9, roughness: .25 });
 const busPassengerBody = ["#466b8c", "#a86a4d", "#587d58", "#8b688f", "#b08b4e"].map((color) => new THREE.MeshStandardMaterial({ color, roughness: .86 }));
 const busPassengerSkin = new THREE.MeshStandardMaterial({ color: "#b98468", roughness: .92 });
 function makeWheelParts(radius, width) {
@@ -37,7 +39,7 @@ function makeWheelParts(radius, width) {
 }
 function CarModel({ car }) {
     const root = useRef(null), wheels = useRef([]), steerWheels = useRef([]), brakes = useRef([]), busDoor = useRef(null), busPassengers = useRef([]);
-    useFrame((_, dt) => {
+    useFrame(({ clock }, dt) => {
         if (!root.current) return;
         root.current.position.set(car.x, car.y, car.z); root.current.rotation.y = car.yaw;
         for (const wheel of wheels.current) if (wheel) {
@@ -49,6 +51,11 @@ function CarModel({ car }) {
         for (const lamp of brakes.current) if (lamp) lamp.material = car.brake || car.speed < -.1 ? tailOn : tailOff;
         if (busDoor.current) busDoor.current.rotation.y = THREE.MathUtils.damp(busDoor.current.rotation.y, car.doorOpen ? -.82 : 0, 8, dt);
         busPassengers.current.forEach((passenger, index) => { if (passenger) passenger.visible = index < (car.passengerCount || 0); });
+        if (car.isPolice) {
+            const flash = Math.sin(clock.elapsedTime * 13 + (car.patrolIndex || 0)) > 0;
+            policeRedLight.emissiveIntensity = flash ? 2.8 : .25;
+            policeBlueLight.emissiveIntensity = flash ? .25 : 2.8;
+        }
     });
     const bodyMat = useMemo(() => new THREE.MeshPhysicalMaterial({ color: car.color, metalness: .38, roughness: .24, clearcoat: .92, clearcoatRoughness: .16, envMapIntensity: 1.45 }), [car.color]);
     if (car.kind === "scooter") {
@@ -157,6 +164,13 @@ function CarModel({ car }) {
     }
     const extra = [];
     const bodyWidth = car.width || 1.9, bodyLength = car.length || 4.15;
+    if (car.isPolice) extra.push(
+        _jsx("mesh", { material: trim, position: [0, 1.93, -.2], children: _jsx("boxGeometry", { args: [1.05, .1, .32] }) }, "police-lightbar-base"),
+        _jsx("mesh", { material: policeRedLight, position: [-.32, 2.02, -.2], children: _jsx("boxGeometry", { args: [.38, .16, .25] }) }, "police-red-light"),
+        _jsx("mesh", { material: policeBlueLight, position: [.32, 2.02, -.2], children: _jsx("boxGeometry", { args: [.38, .16, .25] }) }, "police-blue-light"),
+        _jsx("mesh", { material: trim, position: [0, .76, .05], children: _jsx("boxGeometry", { args: [bodyWidth + .025, .16, bodyLength * .64] }) }, "police-side-stripe"),
+        _jsx("mesh", { material: policeBlueLight, position: [0, .76, .05], children: _jsx("boxGeometry", { args: [bodyWidth + .04, .055, bodyLength * .62] }) }, "police-blue-marking")
+    );
     if (car.kind === "suv") extra.push(
         _jsx("mesh", { material: bodyMat, position: [0, 1.57, -.18], children: _jsx("boxGeometry", { args: [bodyWidth * .84, .55, bodyLength * .5] }) }),
         _jsx("mesh", { material: glass, position: [0, 1.58, .86], children: _jsx("boxGeometry", { args: [bodyWidth * .73, .43, .04] }) }),

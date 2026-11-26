@@ -1911,7 +1911,7 @@ function isPortablePickup(item) {
     && (item.mass || 0) <= 2.5;
 }
 
-function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk, boatRaceRef, onBoatRaceFinish, onCaveCollect, collectedCaveIds = [], shopOwned = [] }) {
+function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc, onPrompt, onMode, onHud, doorStatesRef, toggleDoor, onElevatorMenu, cableRide, cableCurve, elevatorMenuRef, quality, environment, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent, onIslandVisit, onTalk, boatRaceRef, onBoatRaceFinish, onCaveCollect, collectedCaveIds = [], shopOwned = [] }) {
   const col = useMemo(() => new Collider(world.boxes), [world]);
   const pickupItems = useMemo(() => world.interactables.filter((item) => item.type === "pickup"), [world]);
   const rig = useMemo(() => ({}), []);
@@ -3331,7 +3331,7 @@ export default function Game() {
         h(Helicopters, { helis }), h(Cars, { cars }), h(ParkingModels, { airVehicles }),
         h(PickupProps, { items: world.interactables.filter((item) => item.type === "pickup"), heldItemRef, playerPositionRef, collectedIds: shopSave.caveFindIds }),
         h(Citizens, { world, cars, helis, airVehicles, elevatorCars, activeVehicleRef, citizensRef, conversationRef, playerPositionRef, doorStatesRef: doorRef, onDoorToggle: toggleDoor, hour, weather, busInfoRef }),
-        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, boatRaceRef, onBoatRaceFinish: awardBoatRace, onCaveCollect: awardCaveDiscovery, collectedCaveIds: shopSave.caveFindIds, shopOwned: shopSave.ownedItems })
+        h(Player, { world, helis, cars, boats, marine, divingRef, airVehicles, elevatorCars, activeVehicleRef, input, onLoc: setLoc, onPrompt: setPrompt, onMode: setMode, onHud: setHud, doorStatesRef: doorRef, toggleDoor, onElevatorMenu: setElevatorMenu, cableRide, cableCurve, quality, environment, citizensRef, conversationRef, playerPositionRef, heldItemRef, wildlifeRef, onWildlifeEvent: completeWildlifeMission, onIslandVisit: awardIslandVisit, onTalk: beginConversation, boatRaceRef, onBoatRaceFinish: awardBoatRace, onCaveCollect: awardCaveDiscovery, collectedCaveIds: shopSave.caveFindIds, shopOwned: shopSave.ownedItems })
       )
     ),
     h("div", { className: "hud-panel hud-loc" }, h("span", { className: "hud-dot" }), loc),

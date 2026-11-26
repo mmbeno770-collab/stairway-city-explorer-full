@@ -2590,6 +2590,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
               const policeZ = vehicle.z - forwardZ * 34 - Math.sin(vehicle.yaw) * side * 5.2;
               const police = makeCar(policeX, vehicle.y, policeZ, vehicle.yaw, "#f0f0e9", "suv");
               police.isPolice = true;
+              police.health = 100; police.maxHealth = 100; police.lives = 3;
               police.sirenIndex = index;
               return police;
             });
@@ -3446,7 +3447,7 @@ export default function Game() {
   const [cameraDrag, setCameraDrag] = useState(null);
   const environment = useMemo(() => getEnvironmentProfile(weather, hour, quality), [weather, hour, quality]);
   const helis = useMemo(() => world.interactables.filter((item) => item.type === "heli").map((item) => Object.assign(makeHeli(item.x, item.y, item.z, item.face, item.scale || 1, item.padSize || 6), { npcControlled: !!item.npcControlled })), [world]);
-  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled, parking: !!item.parking, busRouteId: item.busRouteId, passengerCount: item.passengerCount || 0, doorOpen: false, stolen: false, isPolice: !!item.isPolice, officerPresent: !!item.isPolice, health: 100, maxHealth: 100, ownerName: item.ownerName || "" })), [world]);
+  const cars = useMemo(() => world.interactables.filter((item) => item.type === "car").map((item) => Object.assign(makeCar(item.x, item.y, item.z, item.face, item.color, item.kind), { npcControlled: !!item.npcControlled, parking: !!item.parking, busRouteId: item.busRouteId, passengerCount: item.passengerCount || 0, doorOpen: false, stolen: false, isPolice: !!item.isPolice, officerPresent: !!item.isPolice, health: 100, maxHealth: 100, lives: 3, ownerName: item.ownerName || "" })), [world]);
   const airVehicles = useMemo(() => (world.parkingVehicles || []).map(makeAirVehicle), [world]);
   const activeVehicleRef = useRef({ mode: "walk", target: -1 });
   const weightList = useMemo(() => world.interactables.filter((item) => item.type === "weights"), [world]);

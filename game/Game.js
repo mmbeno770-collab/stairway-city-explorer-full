@@ -2637,7 +2637,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           if (root) { root.position.copy(temp.v.set(-.34, .52, .22).applyQuaternion(temp.q).add(new THREE.Vector3(car.x, car.y, car.z))); root.rotation.set(0, car.yaw, 0); }
           poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
           p.set(car.x, car.y, car.z); camTarget.set(car.x, car.y + 1.65, car.z); camDist = s.carDist; followYaw = car.yaw;
-          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud(`רכב · ${Math.round(Math.abs(car.speed) * 3.6)} קמ״ש · W קדימה · S אחורה · A ימינה · D שמאלה · Shift בלימה`); }
+          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("רכב · W קדימה · S אחורה · A ימינה · D שמאלה · Shift בלימה"); }
         }
       }
     } else if (s.mode === "boat") {
@@ -2781,7 +2781,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           poseHuman(rig, { mode: "car", phase: 0, speed: 0, air: false, t: s.t, dt });
           camTarget.set(jetSki.x, jetSki.y + 1.7, jetSki.z); camDist = 6.2; followYaw = jetSki.yaw;
           s.hudTimer -= dt;
-          if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("אופנוע ים · " + Math.round(Math.abs(jetSki.speed) * 3.6) + " קמ״ש · W קדימה · S אחורה · A ימינה · D שמאלה · רווח בלימה"); }
+          if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("אופנוע ים · W קדימה · S אחורה · A ימינה · D שמאלה · רווח בלימה"); }
           onPrompt(Math.abs(jetSki.speed) < 1.15 ? "F / פעולה — לרדת מאופנוע הים" : "האטו כדי לרדת מאופנוע הים");
         }
       }
@@ -2922,7 +2922,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           if (s.hudTimer <= 0) {
             s.hudTimer = .2;
             const label = vehicle.id === "plane" ? "מטוס" : "טסלה מעופפת";
-            onHud(label + " · " + Math.round(Math.abs(vehicle.speed) * 3.6) + " קמ״ש · W/S קדימה ואחורה · A ימינה · D שמאלה · רווח עלייה · Shift הנמכה");
+            onHud(label + " · W/S קדימה ואחורה · A ימינה · D שמאלה · רווח עלייה · Shift הנמכה");
           }
           onPrompt(canExit ? "F / פעולה — לצאת מכלי הטיס" : "כדי לצאת: להנמיך ולעצור");
         }
@@ -2945,7 +2945,7 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
           if (root) { root.position.copy(new THREE.Vector3(0, .69, .5).applyQuaternion(temp.q).add(temp.v.set(heli.x, heli.y, heli.z))); root.quaternion.copy(temp.q); }
           poseHuman(rig, { mode: "heli", phase: 0, speed: 0, air: false, t: s.t, dt });
           p.set(heli.x, heli.y, heli.z); camTarget.set(heli.x, heli.y + 2, heli.z); camDist = s.heliDist; followYaw = heli.yaw;
-          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("מסוק · " + Math.round(Math.hypot(heli.vx, heli.vz) * 3.6) + " קמ״ש · W/S קדימה ואחורה · A ימינה · D שמאלה · רווח לעלייה · Shift לירידה · גובה " + Math.round(heli.y) + " מ׳"); }
+          s.hudTimer -= dt; if (s.hudTimer <= 0) { s.hudTimer = .2; onHud("מסוק · W/S קדימה ואחורה · A ימינה · D שמאלה · רווח לעלייה · Shift לירידה"); }
           onPrompt(canExitHeli(heli) ? "F / פעולה — לצאת מהמסוק" : "");
         }
       }

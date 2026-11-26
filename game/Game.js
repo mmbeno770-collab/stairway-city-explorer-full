@@ -3034,7 +3034,7 @@ export default function Game() {
   const cableCurve = useMemo(() => makeCableCurve(), []);
   const input = useRef({ keys: new Set(), drag: { dx: 0, dy: 0 }, lastDrag: -10, zoom: 0, joy: { x: 0, y: 0 }, action: false, up: false, down: false, closeTalk: false, elevatorFloor: null, pickup: false, throw: false, sneak: false });
   const [loc, setLoc] = useState("ברחובות העיר"), [started, setStarted] = useState(false);
-  const [dockOpen, setDockOpen] = useState(false), [activeDockPanel, setActiveDockPanel] = useState(null);
+  const [dockOpen, setDockOpen] = useState(false), [activeDockPanel, setActiveDockPanel] = useState(null), [mapExpanded, setMapExpanded] = useState(false);
   const [prompt, setPrompt] = useState(""), [hud, setHud] = useState(""), [mode, setMode] = useState("walk");
   const [weather, setWeather] = useState("clear"), [hour, setHour] = useState(14), [clockRunning, setClockRunning] = useState(true), [quality, setQuality] = useState("balanced");
   const [elevatorMenu, setElevatorMenu] = useState(null), [doorStates, setDoorStates] = useState({});
@@ -3357,10 +3357,11 @@ export default function Game() {
       )
     ),
     started && h(React.Fragment, null,
-      activeDockPanel && h("section", { className: "game-tool-panel hud-panel", dir: "rtl", role: "region", "aria-label": "לוח מידע" },
+      activeDockPanel && h("section", { className: "game-tool-panel hud-panel" + (activeDockPanel === "map" && mapExpanded ? " is-expanded" : ""), dir: "rtl", role: "region", "aria-label": "לוח מידע" },
         h("header", { className: "game-tool-panel-header" },
           h("strong", null, ({ map: "🗺️ מפה", weather: "🌦️ מזג אוויר", help: "❔ עזרה", buses: "🚌 מידע על אוטובוסים", missions: "🧭 משימות" })[activeDockPanel]),
-          h("button", { type: "button", onClick: () => setActiveDockPanel(null), "aria-label": "סגירה" }, "×")
+          activeDockPanel === "map" && h("button", { type: "button", className: "map-expand-toggle", onClick: () => setMapExpanded((value) => !value), "aria-label": mapExpanded ? "הקטנת המפה" : "הגדלת המפה", title: mapExpanded ? "הקטנת המפה" : "הגדלת המפה" }, mapExpanded ? "↙" : "⤢"),
+          h("button", { type: "button", onClick: () => { setActiveDockPanel(null); setMapExpanded(false); }, "aria-label": "סגירה" }, "×")
         ),
         activeDockPanel === "map" && h(WorldMapPanel, { world, marine, playerPositionRef, completedIds: wildlifeMission.completedIds }),
         activeDockPanel === "weather" && h("div", { className: "tool-panel-scroll tool-weather" },
@@ -3426,7 +3427,7 @@ export default function Game() {
           "aria-label": dockOpen ? "סגירת תפריט כלים" : "פתיחת תפריט כלים",
           "aria-expanded": dockOpen,
           onClick: () => {
-            if (dockOpen) { setDockOpen(false); setActiveDockPanel(null); }
+            if (dockOpen) { setDockOpen(false); setActiveDockPanel(null); setMapExpanded(false); }
             else setDockOpen(true);
           }
         }, dockOpen ? "×" : "☰")

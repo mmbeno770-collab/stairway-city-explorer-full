@@ -923,7 +923,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
     const point = route[(i * 3) % route.length];
     const routineProfile = ROUTINE_PROFILES[i % ROUTINE_PROFILES.length];
     walkers.push({
-      id: "walker-" + i, health: 100, maxHealth: 100, name: WALKER_NAMES[i % WALKER_NAMES.length] + (i >= WALKER_NAMES.length ? " " + (Math.floor(i / WALKER_NAMES.length) + 1) : ""), personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
+      id: "walker-" + i, health: 100, maxHealth: 100, lives: 3, name: WALKER_NAMES[i % WALKER_NAMES.length] + (i >= WALKER_NAMES.length ? " " + (Math.floor(i / WALKER_NAMES.length) + 1) : ""), personality: PERSONALITIES[i % PERSONALITIES.length], rig: {},
       appearance: makeCitizenAppearance(i), appearanceRoot: null,
       routineProfile, routineCooldown: 4 + (i % 7) * 2.4, routineTimer: 0, routineDuration: 0,
       routineAction: routineProfile.look, routineStartYaw: i * .71, routineTurn: 0,
@@ -961,7 +961,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
       ...template,
       id: "walker-island-" + index,
       name: home.name,
-      health: 100, maxHealth: 100,
+      health: 100, maxHealth: 100, lives: 3,
       rig: {}, appearanceRoot: null,
       appearance: makeCitizenAppearance(cityWalkerCount + index + 9),
       route, sidewalkRoute: route,
@@ -999,7 +999,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
       ? (nearestLoopIndex(busRoute, car.x, car.z) + 1) % busRoute.length
       : 1;
     drivers.push({
-      id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach", health: 100, maxHealth: 100, isPolice: !!car.isPolice, policePatrolTimer: 42 + drivers.length * 4.5, policeWalkTimer: 0,
+      id: "driver-" + drivers.length, rig: {}, carIndex, state: "approach", health: 100, maxHealth: 100, lives: 3, isPolice: !!car.isPolice, policePatrolTimer: 42 + drivers.length * 4.5, policeWalkTimer: 0,
       elapsed: 0, start, x: start.x, z: start.z, y: collider.groundAt(start.x, start.z, 0, .8),
       ...lane, busRoute,
       busRouteIndex, busStopTimer: 0, passengerCount: 0, passengerIds: [],
@@ -1016,7 +1016,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
       ? [{ x: -76, z: -72 }, { x: 76, z: -72 }, { x: 76, z: 72 }, { x: -76, z: 72 }]
       : [{ x: 18, z: 18 }, { x: 18, z: -18 }, { x: -18, z: -18 }, { x: -18, z: 18 }];
     airPilots.push({
-      id: "pilot-" + vehicle.id, rig: {}, vehicleIndex, state: "approach", health: 100, maxHealth: 100,
+      id: "pilot-" + vehicle.id, rig: {}, vehicleIndex, state: "approach", health: 100, maxHealth: 100, lives: 3,
       elapsed: 0, start, x: start.x, z: start.z,
       y: collider.groundAt(start.x, start.z, 0, .8), route,
       waypoint: 0, targetAltitude: vehicle.id === "plane" ? 26 : 4.15,
@@ -1029,7 +1029,7 @@ function makeCitizens(world, cars, helis, airVehicles, collider, islandHomes = [
     if (!heli.npcControlled) return;
     const start = localOffset(heli.x, heli.z, 3.6, 0, heli.yaw);
     heliPilots.push({
-      id: "pilot-heli", rig: {}, heliIndex, state: "approach", health: 100, maxHealth: 100,
+      id: "pilot-heli", rig: {}, heliIndex, state: "approach", health: 100, maxHealth: 100, lives: 3,
       elapsed: 0, start, x: start.x, z: start.z,
       y: collider.groundAt(start.x, start.z, heli.y, .8),
       route: [{ x: -82, z: 0 }, { x: 0, z: -82 }, { x: 82, z: 0 }, { x: 0, z: 82 }],

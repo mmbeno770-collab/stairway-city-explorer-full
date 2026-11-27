@@ -21,7 +21,7 @@ import { formatGameTime, getEnvironmentProfile, WEATHER_OPTIONS } from "./enviro
 import { createMarineWorld, createIslandCollisionBoxes, isMainlandLand, getIslandAt, getWaterHeight, mainlandCoastRadius, MarineWorld } from "./marine-world.js";
 import { WildlifeReserve, WILDLIFE_MISSIONS } from "./wildlife-reserve.js";
 import { AdventureMissions, createAdventureMissionColliders, getAdventureMissionLayout } from "./adventure-missions.js";
-import { useGameMultiplayer, MultiplayerAuthPanel, RemotePlayerAvatars, getPlayerIslandLocation } from "./multiplayer.js";
+import { useGameMultiplayer, RemotePlayerAvatars, getPlayerIslandLocation } from "./multiplayer.js";
 import { CAVE_ENTRANCES, CAVE_DISCOVERIES, CAVE_FLOOR_Y, CaveSystem } from "./cave-system.js";
 import { UrbanRabbits } from "./urban-rabbits.js";
 import { BOAT_RACE_COURSE } from "./boat-race.js";

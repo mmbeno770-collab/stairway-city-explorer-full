@@ -34,146 +34,75 @@ function FastGameBoot() {
   const [GameComponent, setGameComponent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [loadMessage, setLoadMessage] = useState("מכינים את העיר התלת־ממדית...");
+  const [loadProgress, setLoadProgress] = useState(3);
+  const [loadMessage, setLoadMessage] = useState("מתחילים להכין את העיר...");
 
   const retryLoad = useCallback(() => {
-    setLoadError("");
-    setLoadMessage("ממשיכים להכין את העיר...");
-    setLoading(true);
-    loadGameModule()
-      .then((module) => {
-        setGameComponent(() => module.default);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setLoading(false);
-        setLoadError(String(error?.message || error || "שגיאה לא ידועה"));
-      });
+    setLoadError(""); setLoadProgress(7); setLoadMessage("מנסים שוב לטעון את קובצי העיר..."); setLoading(true);
+    loadGameModule().then((module) => {
+      setLoadProgress(54); setLoadMessage("מפעילים את העולם התלת־ממדי...");
+      setGameComponent(() => module.default); setLoading(false);
+    }).catch((error) => { setLoading(false); setLoadError(String(error?.message || error || "שגיאה לא ידועה")); });
   }, []);
 
   useEffect(() => {
-    let active = true;
+    let active = true, stageTimers = [];
     const startTimer = window.setTimeout(() => {
       if (!active) return;
-      setLoading(true);
-      loadGameModule()
-        .then((module) => {
-          if (!active) return;
-          setGameComponent(() => module.default);
-          setLoading(false);
-        })
-        .catch((error) => {
-          if (!active) return;
-          setLoading(false);
-          setLoadError(String(error?.message || error || "שגיאה לא ידועה"));
-        });
+      setLoading(true); setLoadProgress(8); setLoadMessage("מכינים את מפת העיר...");
+      const stages = [
+        [420,13,"טוענים את הרחובות והבניינים..."], [1050,19,"מחברים את השכונות והפארקים..."],
+        [1900,27,"מכינים את האיים והחופים..."], [3100,35,"טוענים כלי רכב, סירות ותושבים..."],
+        [5000,43,"מסיימים להכין את מנוע המשחק..."]
+      ];
+      stageTimers = stages.map(([delay,value,message]) => window.setTimeout(() => {
+        if (active) { setLoadProgress(value); setLoadMessage(message); }
+      }, delay));
+      loadGameModule().then((module) => {
+        stageTimers.forEach(window.clearTimeout);
+        if (!active) return;
+        setLoadProgress(54); setLoadMessage("מפעילים את העולם התלת־ממדי...");
+        setGameComponent(() => module.default); setLoading(false);
+      }).catch((error) => {
+        stageTimers.forEach(window.clearTimeout);
+        if (active) { setLoading(false); setLoadError(String(error?.message || error || "שגיאה לא ידועה")); }
+      });
     }, 100);
-    const messageTimer = window.setTimeout(() => {
-      if (active) setLoadMessage("טוענים את העיר, האיים, כלי הרכב והתושבים...");
-    }, 4200);
-    return () => {
-      active = false;
-      window.clearTimeout(startTimer);
-      window.clearTimeout(messageTimer);
-    };
+    return () => { active = false; window.clearTimeout(startTimer); stageTimers.forEach(window.clearTimeout); };
   }, []);
 
-  if (GameComponent) return React.createElement(GameComponent);
-
-  const statusText = loadError
-    ? "הטעינה נתקלה בבעיה"
-    : loading
-      ? loadMessage
-      : "מכינים את הלובי והחנות...";
-
-  return React.createElement("main", { className: "quick-home-screen", dir: "rtl" },
-    React.createElement("div", { className: "quick-home-shell" },
-      React.createElement("header", { className: "quick-home-topbar" },
-        React.createElement("div", { className: "quick-home-brand" },
-          React.createElement("span", { className: "quick-home-brand-mark" }, "✦"),
-          React.createElement("span", null, "STAIRWAY CITY EXPLORER")
-        ),
-        React.createElement("span", { className: "quick-home-world-tag" }, "עולם פתוח · תלת־ממד")
-      ),
-      React.createElement("section", { className: "quick-home-hero" },
-        React.createElement("div", { className: "quick-home-copy" },
-          React.createElement("div", { className: "quick-home-kicker" }, "ההרפתקה הבאה מתחילה כאן"),
-          React.createElement("h1", null, "עיר שלמה מחכה לך."),
-          React.createElement("p", null, "שוטטו ברחובות, גלו איים וחופים, נהגו בכלי רכב ופגשו את תושבי העיר."),
-          React.createElement("div", { className: "quick-home-status " + (loadError ? "has-error" : "is-loading"), role: "status", "aria-live": "polite" },
-            React.createElement("span", { className: "quick-home-status-dot", "aria-hidden": "true" }),
-            React.createElement("span", null, statusText)
-          ),
-          React.createElement("div", { className: "quick-home-progress", "aria-hidden": "true" },
-            React.createElement("span", null)
-          ),
-          loadError
-            ? React.createElement("div", { className: "quick-home-error", role: "alert" },
-                React.createElement("p", null, "לא הצלחנו לטעון את קובצי המשחק. אפשר לנסות שוב."),
-                React.createElement("button", { type: "button", onClick: retryLoad }, "נסה לטעון שוב")
-              )
-            : React.createElement("div", { className: "quick-home-actions" },
-                React.createElement("button", { type: "button", className: "quick-home-button", disabled: true },
-                  "מכינים את הלובי..."
-                ),
-                React.createElement("button", { type: "button", className: "quick-home-shop-button", disabled: true },
-                  "🛒 החנות תיפתח בלובי"
-                )
-              ),
-          React.createElement("div", { className: "quick-home-footnote" },
-            "בינתיים אפשר להישאר כאן — המשחק נטען ברקע."
-          )
-        ),
-        React.createElement("div", { className: "quick-home-visual", "aria-hidden": "true" },
-          React.createElement("div", { className: "quick-home-sun" }),
-          React.createElement("div", { className: "quick-home-cloud cloud-one" }),
-          React.createElement("div", { className: "quick-home-cloud cloud-two" }),
-          React.createElement("div", { className: "quick-home-hill hill-back" }),
-          React.createElement("div", { className: "quick-home-hill hill-front" }),
-          React.createElement("div", { className: "quick-home-cityline" },
-            React.createElement("span", { className: "building-a" }),
-            React.createElement("span", { className: "building-b" }),
-            React.createElement("span", { className: "building-c" }),
-            React.createElement("span", { className: "building-d" }),
-            React.createElement("span", { className: "building-e" })
-          ),
-          React.createElement("div", { className: "quick-home-water" }),
-          React.createElement("div", { className: "quick-home-road" }),
-          React.createElement("span", { className: "quick-home-tree tree-one" }, "🌲"),
-          React.createElement("span", { className: "quick-home-tree tree-two" }, "🌴"),
-          React.createElement("span", { className: "quick-home-boat" }, "⛵"),
-          React.createElement("span", { className: "quick-home-scene-label" }, "עיר · טבע · איים")
+  if (GameComponent) return React.createElement(GameComponent, { initialProgress: 54 });
+  const percent = Math.max(0, Math.min(99, Math.round(loadProgress)));
+  const statusText = loadError ? "לא הצלחנו לטעון את העיר" : loadMessage;
+  return React.createElement("main", { className:"city-loading-screen quick-home-screen", dir:"rtl", role:"status", "aria-live":"polite" },
+    React.createElement("div", { className:"city-loading-shell" },
+      React.createElement("header", { className:"city-loading-header" },
+        React.createElement("div", { className:"city-loading-logo" }, "🏙️"),
+        React.createElement("div", { className:"city-loading-title" },
+          React.createElement("span", null, "ברוכים הבאים אל"),
+          React.createElement("h1", null, "STAIRWAY CITY"),
+          React.createElement("p", null, "עיר שלמה של הרפתקאות")
         )
       ),
-      React.createElement("section", { className: "quick-home-discover" },
-        React.createElement("div", { className: "quick-home-section-heading" },
-          React.createElement("div", null,
-            React.createElement("span", { className: "quick-home-kicker" }, "מה מחכה בפנים"),
-            React.createElement("h2", null, "בוחרים את ההרפתקה")
-          ),
-          React.createElement("span", { className: "quick-home-section-note" }, "החנות האמיתית זמינה אחרי הטעינה")
-        ),
-        React.createElement("div", { className: "quick-home-feature-grid" },
-          React.createElement("article", { className: "quick-home-feature-card" },
-            React.createElement("span", { className: "quick-home-feature-icon" }, "🛒"),
-            React.createElement("strong", null, "חנות ההרפתקנים"),
-            React.createElement("span", null, "אי אישי, שדרוגים ועוד")
-          ),
-          React.createElement("article", { className: "quick-home-feature-card" },
-            React.createElement("span", { className: "quick-home-feature-icon" }, "🏝️"),
-            React.createElement("strong", null, "איים וחופים"),
-            React.createElement("span", null, "לגלות מקומות חדשים")
-          ),
-          React.createElement("article", { className: "quick-home-feature-card" },
-            React.createElement("span", { className: "quick-home-feature-icon" }, "🚘"),
-            React.createElement("strong", null, "עיר חיה"),
-            React.createElement("span", null, "רכבים, תושבים ומשימות")
-          )
-        )
+      React.createElement("div", { className:"city-loading-art-frame" },
+        React.createElement("img", { src:"./city-loading-panorama.svg", alt:"תמונה פנורמית מאוירת של העיר, הפארק, השכונות והאיים", draggable:false }),
+        React.createElement("span", { className:"city-loading-art-label" }, "מבט פנורמי על העיר")
       ),
-      React.createElement("footer", { className: "quick-home-footer" },
-        React.createElement("span", null, "Stairway City · עולם פתוח לחקירה"),
-        React.createElement("a", { href: "./privacy.html" }, "מדיניות פרטיות")
+      React.createElement("footer", { className:"city-loading-footer" },
+        React.createElement("div", { className:"city-loading-progress-line" },
+          React.createElement("span", null, statusText), React.createElement("strong", null, percent + "%")
+        ),
+        React.createElement("div", { className:"city-loading-progress-track" },
+          React.createElement("span", { style:{ width:percent + "%" } })
+        ),
+        React.createElement("div", { className:"city-loading-footnote" },
+          React.createElement("span", null, "🌳 מכינים את הרחובות והגנים"),
+          React.createElement("span", null, "🏝️ טוענים את האיים")
+        ),
+        loadError ? React.createElement("div", { className:"city-loading-error", role:"alert" },
+          React.createElement("p", null, "אפשר לנסות לטעון שוב."),
+          React.createElement("button", { type:"button", onClick:retryLoad }, "נסה שוב")
+        ) : null
       )
     )
   );
@@ -183,7 +112,7 @@ const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root element");
 
 const settleBoot = () => {
-  const hasAppShell = Boolean(root.querySelector(".quick-home-screen, .game-root, pre"));
+  const hasAppShell = Boolean(root.querySelector(".city-loading-screen, .game-root, pre"));
   if (hasAppShell) {
     window.__stairwayAppReady = true;
     document.getElementById("boot-status")?.remove();

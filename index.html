@@ -13,6 +13,7 @@
   <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
   <meta name="description" content="עיר פתוחה תלת־ממדית לחקירה, נהיגה וטיסה." />
   <title>Stairway City Explorer — עיר פתוחה</title>
+  <link rel="preload" as="image" href="./city-loading-panorama.svg" type="image/svg+xml" fetchpriority="high" />
   <link rel="stylesheet" href="./styles.css" />
   <style>
     #boot-status { position: fixed; inset: 0; z-index: 99999; display: grid; place-items: center; padding: 24px; background: #0b1720; color: #f4f7fa; font-family: Rubik, sans-serif; text-align: center; }
@@ -27,14 +28,27 @@
 <body>
   <div id="root"></div>
   <div id="boot-status" role="status" aria-live="polite">
-    <div class="boot-card">
-      <div class="boot-spinner"></div>
-      <div class="quick-home-kicker">עיר פתוחה · עולם תלת־ממדי</div>
-      <h1>Stairway City Explorer</h1>
-      <p>עיר שלמה מחכה לכם — איים, נהיגה, תושבים ומשימות.</p>
-      <p class="boot-hint">מסך הבית עולה מיד; המשחק המלא נטען ברקע…</p>
-      <p class="boot-hint">🏝️ איים &nbsp; · &nbsp; 🚘 כלי רכב &nbsp; · &nbsp; 🛒 חנות</p>
-    </div>
+    <main class="city-loading-screen quick-home-screen" dir="rtl">
+      <div class="city-loading-shell">
+        <header class="city-loading-header">
+          <div class="city-loading-logo">🏙️</div>
+          <div class="city-loading-title">
+            <span>ברוכים הבאים אל</span>
+            <h1>STAIRWAY CITY</h1>
+            <p>עיר שלמה של הרפתקאות</p>
+          </div>
+        </header>
+        <div class="city-loading-art-frame">
+          <img src="./city-loading-panorama.svg" alt="תמונה פנורמית מאוירת של העיר, הפארק, השכונות והאיים" fetchpriority="high" />
+          <span class="city-loading-art-label">מבט פנורמי על העיר</span>
+        </div>
+        <footer class="city-loading-footer">
+          <div class="city-loading-progress-line"><span>מתחילים להכין את העיר...</span><strong>3%</strong></div>
+          <div class="city-loading-progress-track"><span style="width:3%"></span></div>
+          <div class="city-loading-footnote"><span>🌳 מכינים את הרחובות והגנים</span><span>🏝️ טוענים את האיים</span></div>
+        </footer>
+      </div>
+    </main>
   </div>
   <script src="%BASE_URL%boot.js" defer></script>
   <script src="%BASE_URL%stairway-controls.js" defer></script>

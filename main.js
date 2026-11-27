@@ -32,24 +32,23 @@ function loadGameModule() {
 
 function FastGameBoot() {
   const [GameComponent, setGameComponent] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [loadProgress, setLoadProgress] = useState(3);
   const [loadMessage, setLoadMessage] = useState("מתחילים להכין את העיר...");
 
   const retryLoad = useCallback(() => {
-    setLoadError(""); setLoadProgress(7); setLoadMessage("מנסים שוב לטעון את קובצי העיר..."); setLoading(true);
+    setLoadError(""); setLoadProgress(7); setLoadMessage("מנסים שוב לטעון את קובצי העיר..."); 
     loadGameModule().then((module) => {
       setLoadProgress(54); setLoadMessage("מפעילים את העולם התלת־ממדי...");
-      setGameComponent(() => module.default); setLoading(false);
-    }).catch((error) => { setLoading(false); setLoadError(String(error?.message || error || "שגיאה לא ידועה")); });
+      setGameComponent(() => module.default); 
+    }).catch((error) => {  setLoadError(String(error?.message || error || "שגיאה לא ידועה")); });
   }, []);
 
   useEffect(() => {
     let active = true, stageTimers = [];
     const startTimer = window.setTimeout(() => {
       if (!active) return;
-      setLoading(true); setLoadProgress(8); setLoadMessage("מכינים את מפת העיר...");
+       setLoadProgress(8); setLoadMessage("מכינים את מפת העיר...");
       const stages = [
         [420,13,"טוענים את הרחובות והבניינים..."], [1050,19,"מחברים את השכונות והפארקים..."],
         [1900,27,"מכינים את האיים והחופים..."], [3100,35,"טוענים כלי רכב, סירות ותושבים..."],
@@ -62,10 +61,10 @@ function FastGameBoot() {
         stageTimers.forEach(window.clearTimeout);
         if (!active) return;
         setLoadProgress(54); setLoadMessage("מפעילים את העולם התלת־ממדי...");
-        setGameComponent(() => module.default); setLoading(false);
+        setGameComponent(() => module.default); 
       }).catch((error) => {
         stageTimers.forEach(window.clearTimeout);
-        if (active) { setLoading(false); setLoadError(String(error?.message || error || "שגיאה לא ידועה")); }
+        if (active) {  setLoadError(String(error?.message || error || "שגיאה לא ידועה")); }
       });
     }, 100);
     return () => { active = false; window.clearTimeout(startTimer); stageTimers.forEach(window.clearTimeout); };

@@ -35,6 +35,17 @@ const EMPTY_WORLD = {
   homes: [], wildlifeReserve: null, elevators: []
 };
 
+function FirstSceneFrame({ onReady }) {
+  const reported = useRef(false);
+  useFrame(() => {
+    if (reported.current) return;
+    reported.current = true;
+    window.requestAnimationFrame(onReady);
+  });
+  return null;
+}
+
+
 function PolicePursuitVisual({ wantedRef }) {
   const roots = useRef([]);
   const redLights = useRef([]);
@@ -3195,17 +3206,16 @@ function Player({ world, helis, cars, boats, marine, divingRef, airVehicles, ele
   );
 }
 
-export default function Game({ initialShopOpen = false } = {}) {
+export default function Game({ initialProgress = 54 } = {}) {
   const playerPositionRef = useRef({ x: 0, y: 0, z: 0 });
   const wantedRef = useRef({ active: false, units: [] });
   const [shopSave, setShopSave] = useState(readShopSave);
   const shopSaveRef = useRef(shopSave);
   const multiplayer = useGameMultiplayer({ playerPositionRef, island: shopSave.customIsland });
   const [playersPanelOpen, setPlayersPanelOpen] = useState(false);
-  const [started, setStarted] = useState(false);
+  const started = true;
   const [sceneReady, setSceneReady] = useState(false);
-  const [launchPending, setLaunchPending] = useState(false);
-  const [selectedLobbyMission, setSelectedLobbyMission] = useState(WILDLIFE_MISSIONS[0]?.id || "");
+  const [sceneProgress, setSceneProgress] = useState(() => Math.min(99, Math.max(1, Number(initialProgress) || 54)));
   const baseMarine = useMemo(() => started ? createMarineWorld() : EMPTY_MARINE, [started]);
   const localIsland = useMemo(() => {
     if (!started || !shopSave.customIsland) return null;
@@ -3276,7 +3286,7 @@ export default function Game({ initialShopOpen = false } = {}) {
     completedIds: shopSave.completedMissionIds,
     points: shopSave.points
   }));
-  const [shopOpen, setShopOpen] = useState(() => Boolean(initialShopOpen));
+  const [shopOpen, setShopOpen] = useState(false);
   const [shopNotice, setShopNotice] = useState("");
   const wildlifeRef = useRef({ animals: [], completedIds: shopSave.completedMissionIds, islandClaimed: shopSave.completedMissionIds.includes("island"), reserveCenter: null });
   const doorRef = useRef({}), cableRide = useRef({ active: false, route: [], progress: 0 }), divingRef = useRef(false);
@@ -3284,6 +3294,9 @@ export default function Game({ initialShopOpen = false } = {}) {
   const elevatorCars = useMemo(() => (world.elevators || []).map((layout) => ({ layout, y: { current: 0 }, moving: { current: false }, occupant: null })), [world]);
   const citizensRef = useRef([]), conversationRef = useRef(null);
   const busInfoRef = useRef({ activeBuses: 0, stops: [] });
+  useEffect(() => {
+    setSceneProgress((current) => Math.max(current, 72));
+  }, []);
   useEffect(() => {
     shopSaveRef.current = shopSave;
     try { window.localStorage.setItem(SHOP_STORAGE_KEY, JSON.stringify(shopSave)); } catch { /* Storage may be unavailable. */ }
@@ -3560,30 +3573,16 @@ export default function Game({ initialShopOpen = false } = {}) {
   const onPointerDown = (event) => { pointer.current = event.pointerId; lastPointer.current = { x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture(event.pointerId); };
   const onPointerMove = (event) => { if (pointer.current !== event.pointerId) return; input.current.drag.dx += event.clientX - lastPointer.current.x; input.current.drag.dy += event.clientY - lastPointer.current.y; input.current.lastDrag = performance.now() / 1000; lastPointer.current = { x: event.clientX, y: event.clientY }; };
   const onPointerUp = (event) => { if (pointer.current === event.pointerId) pointer.current = null; };
-  const beginGame = () => {
-    if (launchPending) return;
-    setLaunchPending(true);
-    window.setTimeout(() => {
-      if (selectedLobbyMission) {
-        setActiveDockPanel("missions");
-        setDockOpen(true);
-      }
-      setStarted(true);
-    }, 120);
-  };
-  const completedMissionCount = shopSave.completedMissionIds.length;
-  const multiplayerLobbyLabel = multiplayer.status === "connected"
-    ? "מחובר לעולם המשותף"
-    : multiplayer.status === "offline"
-      ? "מוכן למשחק · מצב מקומי"
-      : multiplayer.status === "needs-login" || multiplayer.status === "auth-error" || multiplayer.status === "awaiting-email-confirmation"
-        ? "אפשר לשחק מקומית · התחברות משותפת זמינה"
-        : "מכינים חיבור לעולם המשותף ברקע";
+  const handleSceneReady = useCallback(() => {
+    setSceneProgress(100);
+    setSceneReady(true);
+  }, []);
   const joyMove = (event) => { const el = joyRef.current; if (!el || !(event.buttons || event.pointerType === "touch")) return; const r = el.getBoundingClientRect(); let x = (event.clientX - r.left - r.width / 2) / (r.width / 2), y = (event.clientY - r.top - r.height / 2) / (r.height / 2), l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } input.current.joy = { x, y: -y }; setKnob({ x, y }); };
   const joyEnd = () => { input.current.joy = { x: 0, y: 0 }; setKnob({ x: 0, y: 0 }); };
   return h("div", { id: "scene-root", className: "game-root", dir: "rtl" },
     h("div", { className: "game-canvas", onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel: (e) => { input.current.zoom += e.deltaY * .005; } },
-      started && h(Canvas, { shadows: quality === "high", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.4) : quality === "balanced" ? Math.min(window.devicePixelRatio || 1, 1.15) : Math.min(window.devicePixelRatio || 1, 1), camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: true, powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); window.requestAnimationFrame(() => window.requestAnimationFrame(() => setSceneReady(true))); } },
+      started && h(Canvas, { shadows: quality === "high", dpr: quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.4) : quality === "balanced" ? Math.min(window.devicePixelRatio || 1, 1.15) : Math.min(window.devicePixelRatio || 1, 1), camera: { fov: 60, near: .1, far: 600 }, gl: { antialias: true, powerPreference: "high-performance" }, onCreated: ({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.12; gl.setClearColor(environment.skyColor); setSceneProgress((current) => Math.max(current, 90)); } },
+        h(FirstSceneFrame, { onReady: handleSceneReady }),
         h("color", { attach: "background", args: [environment.skyColor] }), h("fog", { attach: "fog", args: [environment.fogColor, environment.fogNear, environment.fogFar] }),
          h(UnderwaterAtmosphere, { enabled: mode === "swim" || mode === "dolphin", fogColor: environment.fogColor, fogNear: environment.fogNear, fogFar: environment.fogFar }),
         h(Sky, { sunPosition: environment.sunPosition, turbidity: environment.turbidity, rayleigh: 1.2 + environment.daylight * .5, mieCoefficient: weather === "fog" ? .012 : .004 }),
@@ -3694,11 +3693,12 @@ export default function Game({ initialShopOpen = false } = {}) {
             ["weather", "🌦️", "מזג אוויר"],
             ["help", "❔", "עזרה"],
             ["buses", "🚌", "אוטובוסים"],
-            ["missions", "🧭", "משימות"]
+            ["missions", "🧭", "משימות"],
+            ["shop", "🛍️", "חנות"]
           ].map(([key, icon, label]) => h("button", {
             key, type: "button", title: label, "aria-label": label,
             className: "game-tool-icon" + (activeDockPanel === key ? " is-active" : ""),
-            onClick: () => setActiveDockPanel((current) => current === key ? null : key)
+            onClick: () => { if (key === "shop") { setShopNotice(""); setShopOpen(true); setDockOpen(false); setActiveDockPanel(null); } else setActiveDockPanel((current) => current === key ? null : key); }
           }, icon))
         ),
         h("button", {
@@ -3752,134 +3752,39 @@ export default function Game({ initialShopOpen = false } = {}) {
     h("button", { type: "button", className: "item-action-btn throw-touch-btn", onPointerDown: (e) => e.stopPropagation(), onClick: () => { input.current.throw = true; }, "aria-label": "זריקת הארגז שמוחזק" }, "H · זריקה"),
     h("button", { type: "button", className: "sneak-touch-btn", onPointerDown: (e) => { e.stopPropagation(); input.current.sneak = true; }, onPointerUp: () => { input.current.sneak = false; }, onPointerLeave: () => { input.current.sneak = false; }, onPointerCancel: () => { input.current.sneak = false; }, "aria-label": "להתגנב בשקט" }, "🤫 התגנבות"),
     (mode === "heli" || mode === "airVehicle" || mode === "swim" || mode === "cable-ladder" || mode === "cable") && h("button", { className: "vehicle-down-btn", onPointerDown: (e) => { e.stopPropagation(); if (mode === "cable-ladder" || mode === "cable") input.current.keys.add("ArrowDown"); else input.current.down = true; }, onPointerUp: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; }, onPointerCancel: () => { input.current.keys.delete("ArrowDown"); input.current.down = false; } }, mode === "cable" ? "אחורה ↓" : "ירידה"),
-    (!started || !sceneReady) && h("div", { className: "start-overlay start-lobby-overlay" },
-      started
-        ? h("section", { className: "lobby-loading-card", dir: "rtl", role: "status", "aria-live": "polite" },
-            h("div", { className: "lobby-loading-orbit" }, "🏝️"),
-            h("div", { className: "lobby-eyebrow" }, "STAIRWAY CITY"),
-            h("h1", null, "מכינים את העיר שלך!"),
-            h("p", null, "מסדרים את הרחובות, האיים והתושבים. עוד רגע ההרפתקה מתחילה."),
-            h("div", { className: "lobby-loading-track" }, h("span", null)),
-            h("small", null, "המסך נשאר כאן עד שהעולם התלת־ממדי מוכן")
+    !sceneReady && h("main", { className:"city-loading-screen game-city-loading", dir:"rtl", role:"status", "aria-live":"polite" },
+      h("div", { className:"city-loading-shell" },
+        h("header", { className:"city-loading-header" },
+          h("div", { className:"city-loading-logo" }, "🏙️"),
+          h("div", { className:"city-loading-title" },
+            h("span", null, "ברוכים הבאים אל"),
+            h("h1", null, "STAIRWAY CITY"),
+            h("p", null, "עיר שלמה של הרפתקאות")
           )
-        : h("main", { className: "start-lobby", dir: "rtl" },
-            h("header", { className: "lobby-topbar" },
-              h("div", { className: "lobby-brand" },
-                h("span", { className: "lobby-brand-mark" }, "✦"),
-                h("div", null, h("strong", null, "STAIRWAY CITY"), h("small", null, "מועדון ההרפתקנים"))
-              ),
-              h("div", { className: "lobby-player" },
-                h("span", { className: "lobby-player-avatar" }, multiplayer.avatarIcon || "⭐"),
-                h("span", null, multiplayer.nickname || "חוקר העיר")
-              ),
-              h("div", { className: "lobby-wallet" },
-                h("span", null, "★"),
-                h("strong", null, shopSave.points.toLocaleString("he-IL")),
-                h("small", null, "נקודות")
-              )
-            ),
-            h("section", { className: "lobby-hero" },
-              h("div", { className: "lobby-hero-copy" },
-                h("div", { className: "lobby-welcome-pill" }, "🌈 איזה כיף שחזרת!"),
-                h("h1", null, "ההרפתקה שלך מתחילה כאן"),
-                h("p", null, "לפני שיוצאים לעיר, אפשר להתחדש בציוד, לבחור משימה ולבדוק כמה כבר גילית בעולם."),
-                h("div", { className: "lobby-connection" },
-                  h("span", { className: "lobby-connection-dot " + (multiplayer.status === "connected" ? "online" : "") }),
-                  multiplayerLobbyLabel,
-                  multiplayer.status !== "connected" && h("button", { type: "button", onClick: multiplayer.retry }, "נסה להתחבר")
-                ),
-                h("div", { className: "lobby-actions" },
-                  h("button", { type: "button", className: "lobby-start-button", onClick: beginGame, disabled: launchPending },
-                    launchPending ? "מכינים את ההרפתקה..." : "🚀 יוצאים להרפתקה"
-                  ),
-                  h("button", { type: "button", className: "lobby-shop-button", onClick: () => { setShopNotice(""); setShopOpen(true); } }, "🛍️ החנות המלאה")
-                )
-              ),
-              h("div", { className: "lobby-scene", "aria-hidden": "true" },
-                h("div", { className: "lobby-sun" }),
-                h("div", { className: "lobby-cloud lobby-cloud-one" }),
-                h("div", { className: "lobby-cloud lobby-cloud-two" }),
-                h("div", { className: "lobby-island-shape" }),
-                h("div", { className: "lobby-water-shape" }),
-                h("div", { className: "lobby-city-buildings" },
-                  h("span", null), h("span", null), h("span", null), h("span", null), h("span", null)
-                ),
-                h("span", { className: "lobby-scene-emoji lobby-tree" }, "🌳"),
-                h("span", { className: "lobby-scene-emoji lobby-palm" }, "🌴"),
-                h("span", { className: "lobby-scene-emoji lobby-boat" }, "⛵"),
-                h("span", { className: "lobby-scene-emoji lobby-animal" }, "🦊"),
-                h("span", { className: "lobby-scene-caption" }, "העיר, האיים והטבע מחכים לך")
-              )
-            ),
-            (multiplayer.status === "needs-login" || multiplayer.status === "auth-error" || multiplayer.status === "awaiting-email-confirmation") &&
-              h("div", { className: "lobby-auth-wrap" }, h(MultiplayerAuthPanel, { multiplayer })),
-            h("section", { className: "lobby-progress-row" },
-              h("article", { className: "lobby-stat-card" },
-                h("span", { className: "lobby-stat-icon" }, "🧭"),
-                h("div", null, h("strong", null, completedMissionCount + "/" + WILDLIFE_MISSIONS.length), h("small", null, "משימות שהושלמו"))
-              ),
-              h("article", { className: "lobby-stat-card" },
-                h("span", { className: "lobby-stat-icon" }, "🏝️"),
-                h("div", null, h("strong", null, String(shopSave.visitedIslandIds.length)), h("small", null, "איים שכבר גילית"))
-              ),
-              h("article", { className: "lobby-stat-card" },
-                h("span", { className: "lobby-stat-icon" }, "🎒"),
-                h("div", null, h("strong", null, shopSave.ownedItems.length + "/3"), h("small", null, "שדרוגים שנרכשו"))
-              )
-            ),
-            h("section", { className: "lobby-section" },
-              h("div", { className: "lobby-section-heading" },
-                h("div", null, h("span", { className: "lobby-section-kicker" }, "מתכוננים לדרך"), h("h2", null, "שדרוגים שכדאי לקחת")),
-                h("button", { type: "button", className: "lobby-text-button", onClick: () => { setShopNotice(""); setShopOpen(true); } }, "לכל החנות ←")
-              ),
-              h("div", { className: "lobby-upgrade-grid" }, ...SHOP_ITEMS.map((item) => {
-                const owned = shopSave.ownedItems.includes(item.id);
-                const enough = shopSave.points >= item.price;
-                return h("article", { key: item.id, className: "lobby-upgrade-card" + (owned ? " is-owned" : "") },
-                  h("div", { className: "lobby-upgrade-icon" }, item.icon),
-                  h("div", { className: "lobby-upgrade-name" }, item.title),
-                  h("p", null, item.description),
-                  h("div", { className: "lobby-upgrade-effect" }, item.effect),
-                  h("div", { className: "lobby-upgrade-buyrow" },
-                    h("strong", null, "★ " + item.price + " נקודות"),
-                    h("button", { type: "button", disabled: owned || !enough, onClick: () => buyShopItem(item) },
-                      owned ? "✓ כבר אצלך" : enough ? "שדרוג!" : "עוד חסרות " + (item.price - shopSave.points)
-                    )
-                  )
-                );
-              }))
-            ),
-            h("section", { className: "lobby-section lobby-missions-section" },
-              h("div", { className: "lobby-section-heading" },
-                h("div", null, h("span", { className: "lobby-section-kicker" }, "האתגר הבא שלך"), h("h2", null, "בוחרים משימה ראשונה")),
-                h("span", { className: "lobby-mission-hint" }, "בחירת משימה תפתח את לוח המשימות כשתיכנס")
-              ),
-              h("div", { className: "lobby-mission-grid" }, ...WILDLIFE_MISSIONS.slice(0, 3).map((mission, index) => {
-                const done = shopSave.completedMissionIds.includes(mission.id);
-                const selected = selectedLobbyMission === mission.id;
-                const icons = ["🦆", "🦌", "🐿️"];
-                return h("button", { key: mission.id, type: "button", className: "lobby-mission-card" + (selected ? " is-selected" : "") + (done ? " is-done" : ""), onClick: () => setSelectedLobbyMission(mission.id), "aria-pressed": selected },
-                  h("span", { className: "lobby-mission-icon" }, done ? "✅" : icons[index]),
-                  h("span", { className: "lobby-mission-copy" },
-                    h("strong", null, mission.title),
-                    h("small", null, mission.description)
-                  ),
-                  h("span", { className: "lobby-mission-reward" }, done ? "הושלם" : "★ " + mission.points)
-                );
-              }))
-            ),
-            h("footer", { className: "lobby-footer" },
-              h("span", null, "☁️ ההתקדמות והשדרוגים נשמרים במכשיר הזה"),
-              h("a", { href: "./privacy.html" }, "מדיניות פרטיות")
-            )
+        ),
+        h("div", { className:"city-loading-art-frame" },
+          h("img", { src:"./city-loading-panorama.svg", alt:"תמונה פנורמית מאוירת של העיר, הפארק, השכונות והאיים", draggable:false }),
+          h("span", { className:"city-loading-art-label" }, "מבט פנורמי על העיר")
+        ),
+        h("footer", { className:"city-loading-footer" },
+          h("div", { className:"city-loading-progress-line" },
+            h("span", null, sceneProgress < 72 ? "מכינים את העולם..." : sceneProgress < 90 ? "מפעילים את מנוע התלת־ממד..." : "עוד רגע והעיר מוכנה..."),
+            h("strong", null, sceneProgress + "%")
           ),
-      !started && shopOpen && h(ShopPanel, {
-        points: shopSave.points, ownedItems: shopSave.ownedItems, island: shopSave.customIsland,
-        notice: shopNotice, onBuy: buyShopItem, onCreateIsland: createPlayerIsland,
-        onExpandIsland: expandPlayerIsland, onBuildIslandItem: buildOnPlayerIsland,
-        onStormIsland: stormPlayerIsland, onRepairIslandStructure: repairPlayerIslandStructure,
-        onRechargeIslandShield: rechargePlayerIslandShield, onClose: () => setShopOpen(false)
-      })
-    )
+          h("div", { className:"city-loading-progress-track" }, h("span", { style:{ width:sceneProgress + "%" } })),
+          h("div", { className:"city-loading-footnote" },
+            h("span", null, "🌳 מכינים את הרחובות והגנים"),
+            h("span", null, "🏝️ טוענים את האיים")
+          )
+        )
+      )
+    ),
+    shopOpen && h(ShopPanel, {
+      points:shopSave.points, ownedItems:shopSave.ownedItems, island:shopSave.customIsland,
+      notice:shopNotice, onBuy:buyShopItem, onCreateIsland:createPlayerIsland,
+      onExpandIsland:expandPlayerIsland, onBuildIslandItem:buildOnPlayerIsland,
+      onStormIsland:stormPlayerIsland, onRepairIslandStructure:repairPlayerIslandStructure,
+      onRechargeIslandShield:rechargePlayerIslandShield, onClose:() => setShopOpen(false)
+    })
   );
 }
